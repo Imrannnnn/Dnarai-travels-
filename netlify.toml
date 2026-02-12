@@ -1,0 +1,15 @@
+# netlify.toml — place at root of repo (not in client)
+
+[build]
+  # Base directory where your frontend project lives
+  base    = "client"
+  # Command to build your frontend
+  command = "npm run build"
+  # Folder Netlify serves (frontend build output)
+  publish = "client/dist"
+
+# SPA redirect: makes all routes serve index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
