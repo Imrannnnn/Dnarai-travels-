@@ -195,9 +195,12 @@ export default function PassportUploadModal({ open, onClose, onUpload }) {
                             >
                                 {isSubmitting ? (
                                     <span className="flex items-center gap-2">
-                                        <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        <div className="h-4 w-4 animate-pulse-slow">
+                                            <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain filter brightness-0 invert" />
+                                        </div>
                                         Uploading...
                                     </span>
+
                                 ) : (
                                     'Secure Upload'
                                 )}

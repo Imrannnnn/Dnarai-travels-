@@ -108,7 +108,12 @@ export default function LoginPage() {
                             className="w-full bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-ocean-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group/btn disabled:opacity-70 disabled:active:scale-100"
                         >
                             {loading ? (
-                                <Loader2 className="animate-spin" size={20} />
+                                <div className="flex items-center gap-2">
+                                    <div className="h-5 w-5 animate-pulse-slow">
+                                        <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain" />
+                                    </div>
+                                    <span>Authenticating...</span>
+                                </div>
                             ) : (
                                 <>
                                     <span>Sign In to Dashboard</span>
@@ -116,6 +121,7 @@ export default function LoginPage() {
                                 </>
                             )}
                         </button>
+
                     </form>
 
                     <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">

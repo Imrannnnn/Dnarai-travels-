@@ -86,13 +86,19 @@ export default function ForgotPasswordPage() {
                             className="w-full bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-ocean-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group/btn disabled:opacity-70 disabled:active:scale-100"
                         >
                             {loading ? (
-                                <Loader2 className="animate-spin" size={20} />
+                                <div className="flex items-center gap-2">
+                                    <div className="h-5 w-5 animate-pulse-slow">
+                                        <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain filter brightness-0 invert" />
+                                    </div>
+                                    <span>Sending Link...</span>
+                                </div>
                             ) : (
                                 <>
                                     <span>Send Recovery Link</span>
                                     <Send size={20} className="group-hover/btn:translate-x-1 transition-transform" />
                                 </>
                             )}
+
                         </button>
                     </form>
                 </div>

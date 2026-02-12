@@ -387,7 +387,14 @@ export default function SuperAdminPage() {
                                 type="submit" disabled={loading}
                                 className="w-full bg-sky-600 text-white rounded-xl py-4 text-sm font-bold uppercase tracking-wider hover:bg-sky-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
                             >
-                                {loading ? 'Authenticating...' : 'Sign In'}
+                                {loading ? (
+                                    <div className="flex items-center justify-center gap-2">
+                                        <div className="h-5 w-5 animate-pulse-slow">
+                                            <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain filter brightness-0 invert" />
+                                        </div>
+                                        <span>Authenticating...</span>
+                                    </div>
+                                ) : 'Sign In'}
                             </button>
                         </form>
                     </div>

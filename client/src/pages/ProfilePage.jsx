@@ -179,7 +179,11 @@ export default function ProfilePage() {
                 disabled={loading}
                 className="inline-flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
               >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <ShieldCheck size={14} />}
+                {loading ? (
+                  <div className="h-4 w-4 animate-pulse-slow">
+                    <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain filter brightness-0 invert" />
+                  </div>
+                ) : <ShieldCheck size={14} />}
                 Update Security Settings
               </button>
             </form>
