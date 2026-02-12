@@ -10,7 +10,6 @@ import { getApiBaseUrl } from '../data/api'
 
 const FallbackIcon = () => null
 const ShieldCheck = Lucide.ShieldCheck || FallbackIcon
-const Loader2 = Lucide.Loader2 || FallbackIcon
 
 export default function ProfilePage() {
   const { documents, passenger, uploadPassport } = useAppData()

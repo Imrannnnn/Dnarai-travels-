@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, ArrowRight } from 'lucide-react'
 import { register as apiRegister, getApiBaseUrl } from '../data/api'
 
 export default function RegisterPage() {
