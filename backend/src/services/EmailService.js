@@ -6,24 +6,27 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Lazy transporter initialization
 let _transporter = null;
+// 
+
+
 const getTransporter = () => {
   if (_transporter) return _transporter;
 
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    console.warn('⚠️ [EmailService] Gmail credentials not configured.');
+  if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_KEY) {
+    console.warn('⚠️ Brevo SMTP not configured');
     return null;
   }
 
   _transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
+    host: 'smtp-relay.brevo.com',
     port: 587,
-    secure: false, // TLS
+    secure: false,
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user: process.env.BREVO_SMTP_USER,
+      pass: process.env.BREVO_SMTP_KEY,
     },
-    connectionTimeout: 10000, // prevent fast timeout
   });
+
   return _transporter;
 };
 
