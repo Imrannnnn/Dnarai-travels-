@@ -42,8 +42,11 @@ app.use(cors({
 }));
 // --------------------------------
 
-app.use(express.json({ limit: '1mb' }));
 
+// Trust the first proxy (Netlify)
+app.set('trust proxy', 1);
+
+app.use(express.json({ limit: '1mb' }));
 app.use(rateLimit({
   windowMs: 60 * 1000,
   max: 120,
