@@ -7,18 +7,18 @@ import { useState } from 'react'
 import { useAppData } from '../data/AppDataContext'
 import { useAuth } from '../data/AuthContext'
 import { getApiBaseUrl } from '../data/api'
+import ActionButton from '../components/ActionButton'
 
 const FallbackIcon = () => null
 const ShieldCheck = Lucide.ShieldCheck || FallbackIcon
 
 export default function ProfilePage() {
-  const { documents, passenger, uploadPassport } = useAppData()
+  const { documents, passenger, uploadPassport, triggerOverlay } = useAppData()
   const { user } = useAuth()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
-  const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState({ text: '', type: '' })
 
   const name = passenger?.name || user?.email || 'N/A'
@@ -31,11 +31,10 @@ export default function ProfilePage() {
     .toUpperCase()
 
   const handlePasswordChange = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    if (e) e.preventDefault()
     setMessage({ text: '', type: '' })
 
-    try {
+    triggerOverlay('Updating Security Key...', async () => {
       const res = await fetch(`${getApiBaseUrl()}/api/auth/change-password`, {
         method: 'POST',
         headers: {
@@ -51,11 +50,7 @@ export default function ProfilePage() {
       setMessage({ text: 'Password updated successfully!', type: 'success' })
       setCurrentPassword('')
       setNewPassword('')
-    } catch (err) {
-      setMessage({ text: err.message, type: 'error' })
-    } finally {
-      setLoading(false)
-    }
+    })
   }
 
   return (
@@ -174,17 +169,15 @@ export default function ProfilePage() {
                   />
                 </div>
               </div>
-              <button
-                disabled={loading}
-                className="inline-flex items-center gap-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all disabled:opacity-50"
+              <ActionButton
+                onClick={handlePasswordChange}
+                className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 !rounded-xl !text-[10px]"
+                loadingMessage="Securing..."
+                successMessage="Password Updated"
+                icon={ShieldCheck}
               >
-                {loading ? (
-                  <div className="h-4 w-4 animate-pulse-slow">
-                    <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain filter brightness-0 invert" />
-                  </div>
-                ) : <ShieldCheck size={14} />}
                 Update Security Settings
-              </button>
+              </ActionButton>
             </form>
           </section>
 

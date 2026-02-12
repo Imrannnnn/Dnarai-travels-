@@ -3,31 +3,27 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Mail, Lock, ArrowRight } from 'lucide-react'
 import { useAuth } from '../data/AuthContext'
 import { login as apiLogin, getApiBaseUrl } from '../data/api'
+import { useAppData } from '../data/AppDataContext'
 
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
     const { login } = useAuth()
+    const { triggerOverlay } = useAppData()
     const navigate = useNavigate()
 
     const handleSubmit = async (e) => {
         e.preventDefault()
-        setLoading(true)
         setError('')
 
-        try {
+        triggerOverlay('Securing Connection...', async () => {
             const baseUrl = getApiBaseUrl()
             const data = await apiLogin({ email, password, baseUrl })
             login(data.accessToken, { role: data.role, email })
             navigate('/dashboard')
-        } catch (err) {
-            setError(err.message || 'Invalid credentials. Please try again.')
-        } finally {
-            setLoading(false)
-        }
+        })
     }
 
     return (
@@ -104,22 +100,10 @@ export default function LoginPage() {
 
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-ocean-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group/btn disabled:opacity-70 disabled:active:scale-100"
+                            className="w-full bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-ocean-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group/btn"
                         >
-                            {loading ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="h-5 w-5 animate-pulse-slow">
-                                        <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain" />
-                                    </div>
-                                    <span>Authenticating...</span>
-                                </div>
-                            ) : (
-                                <>
-                                    <span>Sign In to Dashboard</span>
-                                    <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
-                                </>
-                            )}
+                            <span>Sign In to Dashboard</span>
+                            <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
                         </button>
 
                     </form>

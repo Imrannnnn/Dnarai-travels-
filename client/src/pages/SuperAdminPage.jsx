@@ -5,13 +5,14 @@ import Modal from '../components/Modal'
 import clsx from 'clsx'
 import { convertTo12Hour } from '../utils/time'
 import { useAppData } from '../data/AppDataContext'
+import ActionButton from '../components/ActionButton'
 
 export default function SuperAdminPage() {
     const [token, setToken] = useState(localStorage.getItem('admin_token') || null)
     const [role, setRole] = useState(localStorage.getItem('admin_role') || null)
     const [activeView, setActiveView] = useState('all') // 'all' or 'today'
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-    const { documents } = useAppData()
+    const { documents, triggerOverlay } = useAppData()
 
     // Data State
     const [passengers, setPassengers] = useState([])
@@ -117,9 +118,9 @@ export default function SuperAdminPage() {
     }
 
     async function handleCreatePassenger(e) {
-        e.preventDefault()
-        setLoading(true)
-        try {
+        if (e) e.preventDefault()
+
+        triggerOverlay('Creating Passenger Account...', async () => {
             const res = await fetch(`${baseUrl}/api/agency/onboard-passenger`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -132,16 +133,13 @@ export default function SuperAdminPage() {
             setOnboardingSuccess(data)
             setIsCreatePassengerModalOpen(false)
             setCreatePassengerForm({ fullName: '', email: '', phone: '' })
-        } catch (err) {
-            alert(err.message)
-        } finally {
-            setLoading(false)
-        }
+        })
     }
 
     async function handleUpdatePassenger(e) {
-        e.preventDefault()
-        try {
+        if (e) e.preventDefault()
+
+        triggerOverlay('Updating Passenger Profile...', async () => {
             const res = await fetch(`${baseUrl}/api/passengers/${editForm.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -152,15 +150,13 @@ export default function SuperAdminPage() {
             setPassengers(passengers.map(p => p.id === updated.id ? updated : p))
             setIsEditModalOpen(false)
             if (selectedPassenger?.id === updated.id) setSelectedPassenger(updated)
-        } catch (err) {
-            alert(err.message)
-        }
+        })
     }
 
     async function handleDeletePassenger() {
         if (!deleteConfirmation) return
 
-        try {
+        triggerOverlay('Deleting Passenger...', async () => {
             const res = await fetch(`${baseUrl}/api/passengers/${deleteConfirmation.passenger.id || deleteConfirmation.passenger._id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
@@ -172,22 +168,19 @@ export default function SuperAdminPage() {
                 setSelectedPassenger(null)
             }
             setDeleteConfirmation(null)
-            alert('Passenger deleted successfully')
-        } catch (err) {
-            alert(err.message)
-        }
+        })
     }
 
     async function handleCreateBooking(e) {
-        e.preventDefault()
+        if (e) e.preventDefault()
         if (!selectedPassenger) return
 
         if (!createBookingForm.originCity || !createBookingForm.originIata || !createBookingForm.destCity || !createBookingForm.destIata) {
-            alert('All Route details (City and IATA) are required')
+            triggerOverlay('Error: All Route details required', async () => { throw new Error('All Route details (City and IATA) are required') })
             return
         }
 
-        try {
+        triggerOverlay('Synchronizing Flight Data...', async () => {
             const payload = {
                 passengerId: selectedPassenger.id || selectedPassenger._id,
                 airlineName: createBookingForm.airlineName,
@@ -210,15 +203,13 @@ export default function SuperAdminPage() {
             setBookings([data, ...bookings])
             setIsCreateBookingModalOpen(false)
             setCreateBookingForm({ airlineName: '', flightNumber: '', originCity: '', originIata: '', destCity: '', destIata: '', departureDate: '', departureTime: '' })
-            alert('Flight Booking synchronized successfully')
-        } catch (err) {
-            alert(`Sync Error: ${err.message}`)
-        }
+        })
     }
 
     async function handleUpdateBooking(e) {
-        e.preventDefault()
-        try {
+        if (e) e.preventDefault()
+
+        triggerOverlay('Updating Flight Itinerary...', async () => {
             const payload = {
                 airlineName: editBookingForm.airlineName,
                 flightNumber: editBookingForm.flightNumber,
@@ -241,10 +232,7 @@ export default function SuperAdminPage() {
             setBookings(bookings.map(b => (b.id === data.id || b._id === data._id) ? data : b))
             setIsEditBookingModalOpen(false)
             if (viewingBooking?._id === data._id || viewingBooking?.id === data.id) setViewingBooking(data)
-            alert('Flight Booking updated successfully. Passenger has been notified via email.')
-        } catch (err) {
-            alert(`Update Error: ${err.message}`)
-        }
+        })
     }
 
     function handleViewBookingDetails(booking) {
@@ -270,23 +258,21 @@ export default function SuperAdminPage() {
 
     async function handleClearAllNotifications() {
         if (!window.confirm('Are you sure you want to clear all system alerts? This action is permanent.')) return
-        try {
+
+        triggerOverlay('Clearing System Alerts...', async () => {
             const res = await fetch(`${baseUrl}/api/notifications`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             })
             if (!res.ok) throw new Error('Failed to clear notifications')
             setNotifications([])
-            alert('All notifications cleared successfully')
-        } catch (err) {
-            alert(err.message)
-        }
+        })
     }
 
     async function handleAddStaff(e) {
-        e.preventDefault()
-        setLoading(true)
-        try {
+        if (e) e.preventDefault()
+
+        triggerOverlay('Registering Staff Member...', async () => {
             const res = await fetch(`${baseUrl}/api/auth/add-staff`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -298,11 +284,7 @@ export default function SuperAdminPage() {
             setStaffCreationSuccess(data)
             setIsAddStaffModalOpen(false)
             setAddStaffForm({ email: '', role: 'staff', password: '' })
-        } catch (err) {
-            alert(err.message)
-        } finally {
-            setLoading(false)
-        }
+        })
     }
 
     // Get passengers traveling on selected date
@@ -348,7 +330,7 @@ export default function SuperAdminPage() {
             <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-6">
                 <div className="w-full max-w-md">
                     <div className="text-center mb-8 space-y-4">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-600 text-white shadow-2xl shadow-sky-600/50">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-ocean-600 text-white shadow-2xl shadow-ocean-600/50">
                             <Lucide.ShieldCheck size={36} />
                         </div>
                         <div>
@@ -364,7 +346,7 @@ export default function SuperAdminPage() {
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Email Address</label>
                                     <input
                                         type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                                        className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium focus:border-sky-500 focus:outline-none focus:bg-white transition-all"
+                                        className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium focus:border-ocean-500 focus:outline-none focus:bg-white transition-all"
                                         placeholder="admin@dnarai.com"
                                     />
                                 </div>
@@ -372,7 +354,7 @@ export default function SuperAdminPage() {
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Password</label>
                                     <input
                                         type="password" required value={password} onChange={e => setPassword(e.target.value)}
-                                        className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium focus:border-sky-500 focus:outline-none focus:bg-white transition-all"
+                                        className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium focus:border-ocean-500 focus:outline-none focus:bg-white transition-all"
                                     />
                                 </div>
                             </div>
@@ -385,7 +367,7 @@ export default function SuperAdminPage() {
 
                             <button
                                 type="submit" disabled={loading}
-                                className="w-full bg-sky-600 text-white rounded-xl py-4 text-sm font-bold uppercase tracking-wider hover:bg-sky-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
+                                className="w-full bg-ocean-600 text-white rounded-xl py-4 text-sm font-bold uppercase tracking-wider hover:bg-ocean-700 transition-all shadow-lg hover:shadow-xl disabled:opacity-50"
                             >
                                 {loading ? (
                                     <div className="flex items-center justify-center gap-2">
@@ -412,7 +394,7 @@ export default function SuperAdminPage() {
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 bg-sky-600 rounded-xl flex items-center justify-center text-white shadow-md">
+                                <div className="h-10 w-10 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md">
                                     <Lucide.ShieldCheck size={20} />
                                 </div>
                                 <div>
@@ -459,7 +441,7 @@ export default function SuperAdminPage() {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {[
-                        { label: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'bg-blue-500', bgLight: 'bg-blue-50' },
+                        { label: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'bg-ocean-500', bgLight: 'bg-ocean-50' },
                         { label: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'bg-green-500', bgLight: 'bg-green-50' },
                         { label: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'bg-purple-500', bgLight: 'bg-purple-50', onClick: () => { setActiveView('today'); scrollToPassengerList(); } },
                         { label: 'Notifications', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'bg-amber-500', bgLight: 'bg-amber-50' },
@@ -505,7 +487,7 @@ export default function SuperAdminPage() {
                                         </div>
                                         <button
                                             onClick={() => setIsCreatePassengerModalOpen(true)}
-                                            className="flex items-center gap-2 px-4 py-2.5 bg-sky-600 text-white rounded-xl text-sm font-bold hover:bg-sky-700 transition-all shadow-md whitespace-nowrap"
+                                            className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all shadow-md whitespace-nowrap"
                                         >
                                             <Lucide.Plus size={18} />
                                             New Passenger
@@ -556,7 +538,7 @@ export default function SuperAdminPage() {
                                             placeholder="Search passengers..."
                                             value={searchQuery}
                                             onChange={e => setSearchQuery(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-sky-500 transition-all"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-ocean-500 transition-all"
                                         />
                                     </div>
                                 </div>
@@ -605,12 +587,12 @@ export default function SuperAdminPage() {
                                                 onClick={() => setSelectedPassenger(p)}
                                                 className={clsx(
                                                     "hover:bg-slate-50 cursor-pointer transition-colors",
-                                                    (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) && "bg-sky-50"
+                                                    (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) && "bg-ocean-50"
                                                 )}
                                             >
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold text-sm">
+                                                        <div className="h-10 w-10 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-bold text-sm">
                                                             {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
                                                         </div>
                                                         <div>
@@ -628,7 +610,7 @@ export default function SuperAdminPage() {
                                                         {p.bookings && p.bookings.length > 0 ? (
                                                             <div
                                                                 onClick={(e) => { e.stopPropagation(); handleViewBookingDetails(p.bookings[0]); }}
-                                                                className="text-sm hover:bg-sky-100 p-2 rounded-lg transition-all border border-transparent hover:border-sky-200"
+                                                                className="text-sm hover:bg-ocean-100 p-2 rounded-lg transition-all border border-transparent hover:border-ocean-200"
                                                             >
                                                                 <div className="font-bold text-slate-900 flex items-center gap-1">
                                                                     {p.bookings[0].flightNumber}
@@ -647,7 +629,7 @@ export default function SuperAdminPage() {
                                                     <div className="flex items-center justify-end gap-2">
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); setEditForm(p); setIsEditModalOpen(true); }}
-                                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-sky-600 hover:bg-sky-50 rounded-lg transition-all"
+                                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
                                                         >
                                                             <Lucide.Edit size={14} />
                                                         </button>
@@ -698,7 +680,7 @@ export default function SuperAdminPage() {
                                     <div
                                         key={b._id}
                                         onClick={() => handleViewBookingDetails(b)}
-                                        className="border border-slate-200 rounded-xl p-4 hover:border-sky-300 hover:shadow-md transition-all cursor-pointer group"
+                                        className="border border-slate-200 rounded-xl p-4 hover:border-ocean-300 hover:shadow-md transition-all cursor-pointer group"
                                     >
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-3">
@@ -707,7 +689,7 @@ export default function SuperAdminPage() {
                                                 </div>
                                                 <div>
                                                     <div className="font-bold text-slate-900">{b.airlineName}</div>
-                                                    <div className="text-xs text-sky-600 font-medium">{b.flightNumber}</div>
+                                                    <div className="text-xs text-ocean-600 font-medium">{b.flightNumber}</div>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2">
@@ -722,11 +704,11 @@ export default function SuperAdminPage() {
                                                         e.stopPropagation();
                                                         openEditBookingModal(b);
                                                     }}
-                                                    className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-all"
+                                                    className="p-1.5 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
                                                 >
                                                     <Lucide.Edit size={14} />
                                                 </button>
-                                                <Lucide.ArrowRight size={16} className="text-slate-400 group-hover:text-sky-600 transition-colors" />
+                                                <Lucide.ArrowRight size={16} className="text-slate-400 group-hover:text-ocean-600 transition-colors" />
                                             </div>
                                         </div>
                                         <div className="flex items-center justify-between text-sm">
@@ -752,7 +734,7 @@ export default function SuperAdminPage() {
                             {selectedPassenger ? (
                                 <div className="space-y-6">
                                     <div className="text-center pb-6 border-b border-slate-200">
-                                        <div className="h-20 w-20 rounded-full bg-sky-600 text-white flex items-center justify-center text-2xl font-black mx-auto mb-4">
+                                        <div className="h-20 w-20 rounded-full bg-ocean-600 text-white flex items-center justify-center text-2xl font-black mx-auto mb-4">
                                             {selectedPassenger.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
                                         </div>
                                         <h3 className="text-xl font-black text-slate-900">{selectedPassenger.fullName}</h3>
@@ -779,7 +761,7 @@ export default function SuperAdminPage() {
                                     <div className="grid grid-cols-2 gap-3 pt-4">
                                         <button
                                             onClick={() => setIsCreateBookingModalOpen(true)}
-                                            className="px-4 py-3 bg-sky-600 text-white rounded-xl text-sm font-bold hover:bg-sky-700 transition-all"
+                                            className="px-4 py-3 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all"
                                         >
                                             Add Flight
                                         </button>
@@ -811,12 +793,15 @@ export default function SuperAdminPage() {
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-black uppercase tracking-tight">System Alerts</h3>
                                 {notifications.length > 0 && (
-                                    <button
+                                    <ActionButton
                                         onClick={handleClearAllNotifications}
-                                        className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-red-400 transition-colors"
+                                        variant="ghost"
+                                        className="text-[10px] !py-1 !px-2 tracking-widest text-slate-400 hover:text-red-400"
+                                        loadingMessage="..."
+                                        successMessage="Done"
                                     >
                                         Clear All
-                                    </button>
+                                    </ActionButton>
                                 )}
                             </div>
                             <div className="space-y-3">
@@ -878,7 +863,7 @@ export default function SuperAdminPage() {
                             </div>
                             <div>
                                 <div className="text-xs font-bold text-slate-500 uppercase mb-1">Temporary Password</div>
-                                <div className="text-sm font-mono font-bold text-sky-600 bg-sky-50 px-3 py-2 rounded-lg">
+                                <div className="text-sm font-mono font-bold text-ocean-600 bg-ocean-50 px-3 py-2 rounded-lg">
                                     {onboardingSuccess.tempPassword}
                                 </div>
                             </div>
@@ -886,7 +871,7 @@ export default function SuperAdminPage() {
 
                         <button
                             onClick={() => setOnboardingSuccess(null)}
-                            className="w-full bg-sky-600 text-white rounded-xl py-3 text-sm font-bold hover:bg-sky-700 transition-all"
+                            className="w-full bg-ocean-600 text-white rounded-xl py-3 text-sm font-bold hover:bg-ocean-700 transition-all"
                         >
                             Done
                         </button>
@@ -898,7 +883,7 @@ export default function SuperAdminPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-6">
                     <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
                         <div className="text-center mb-6">
-                            <div className="h-16 w-16 bg-blue-500 rounded-full flex items-center justify-center text-white mx-auto mb-4">
+                            <div className="h-16 w-16 bg-ocean-500 rounded-full flex items-center justify-center text-white mx-auto mb-4">
                                 <Lucide.ShieldCheck size={32} />
                             </div>
                             <h2 className="text-2xl font-black text-slate-900 mb-2">Staff Account Created!</h2>
@@ -916,7 +901,7 @@ export default function SuperAdminPage() {
                             </div>
                             <div>
                                 <div className="text-xs font-bold text-slate-500 uppercase mb-1">Temporary Password</div>
-                                <div className="text-sm font-mono font-bold text-sky-600 bg-sky-50 px-3 py-2 rounded-lg break-all">
+                                <div className="text-sm font-mono font-bold text-ocean-600 bg-ocean-50 px-3 py-2 rounded-lg break-all">
                                     {staffCreationSuccess.tempPassword}
                                 </div>
                             </div>
@@ -951,7 +936,7 @@ export default function SuperAdminPage() {
                             required
                             value={addStaffForm.email}
                             onChange={e => setAddStaffForm({ ...addStaffForm, email: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500"
                             placeholder="staff@agency.com"
                         />
                     </div>
@@ -960,7 +945,7 @@ export default function SuperAdminPage() {
                         <select
                             value={addStaffForm.role}
                             onChange={e => setAddStaffForm({ ...addStaffForm, role: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500"
                         >
                             <option value="staff">Staff</option>
                             <option value="agent">Agent</option>
@@ -976,7 +961,7 @@ export default function SuperAdminPage() {
                             type="password"
                             value={addStaffForm.password}
                             onChange={e => setAddStaffForm({ ...addStaffForm, password: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500"
                             placeholder="Leave blank to auto-generate"
                         />
                     </div>
@@ -990,22 +975,28 @@ export default function SuperAdminPage() {
                 footer={
                     <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsCreatePassengerModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                        <button onClick={handleCreatePassenger} className="px-6 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700">Create</button>
+                        <ActionButton
+                            onClick={handleCreatePassenger}
+                            loadingMessage="Creating..."
+                            successMessage="Passenger Created"
+                        >
+                            Create
+                        </ActionButton>
                     </div>
                 }
             >
                 <form onSubmit={handleCreatePassenger} className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-                        <input type="text" required value={createPassengerForm.fullName} onChange={e => setCreatePassengerForm({ ...createPassengerForm, fullName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                        <input type="text" required value={createPassengerForm.fullName} onChange={e => setCreatePassengerForm({ ...createPassengerForm, fullName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
-                        <input type="email" required value={createPassengerForm.email} onChange={e => setCreatePassengerForm({ ...createPassengerForm, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                        <input type="email" required value={createPassengerForm.email} onChange={e => setCreatePassengerForm({ ...createPassengerForm, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Phone (Optional)</label>
-                        <input type="tel" value={createPassengerForm.phone} onChange={e => setCreatePassengerForm({ ...createPassengerForm, phone: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                        <input type="tel" value={createPassengerForm.phone} onChange={e => setCreatePassengerForm({ ...createPassengerForm, phone: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                     </div>
                 </form>
             </Modal>
@@ -1017,7 +1008,13 @@ export default function SuperAdminPage() {
                 footer={
                     <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsCreateBookingModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                        <button onClick={handleCreateBooking} className="px-6 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700">Create Booking</button>
+                        <ActionButton
+                            onClick={handleCreateBooking}
+                            loadingMessage="Creating..."
+                            successMessage="Sync Complete"
+                        >
+                            Create Booking
+                        </ActionButton>
                     </div>
                 }
             >
@@ -1025,44 +1022,44 @@ export default function SuperAdminPage() {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Airline</label>
-                            <input type="text" required value={createBookingForm.airlineName} onChange={e => setCreateBookingForm({ ...createBookingForm, airlineName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={createBookingForm.airlineName} onChange={e => setCreateBookingForm({ ...createBookingForm, airlineName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Flight Number</label>
-                            <input type="text" required value={createBookingForm.flightNumber} onChange={e => setCreateBookingForm({ ...createBookingForm, flightNumber: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={createBookingForm.flightNumber} onChange={e => setCreateBookingForm({ ...createBookingForm, flightNumber: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Origin City</label>
-                            <input type="text" required value={createBookingForm.originCity} onChange={e => setCreateBookingForm({ ...createBookingForm, originCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={createBookingForm.originCity} onChange={e => setCreateBookingForm({ ...createBookingForm, originCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Origin IATA</label>
-                            <input type="text" required maxLength={3} value={createBookingForm.originIata} onChange={e => setCreateBookingForm({ ...createBookingForm, originIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required maxLength={3} value={createBookingForm.originIata} onChange={e => setCreateBookingForm({ ...createBookingForm, originIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Destination City</label>
-                            <input type="text" required value={createBookingForm.destCity} onChange={e => setCreateBookingForm({ ...createBookingForm, destCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={createBookingForm.destCity} onChange={e => setCreateBookingForm({ ...createBookingForm, destCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Destination IATA</label>
-                            <input type="text" required maxLength={3} value={createBookingForm.destIata} onChange={e => setCreateBookingForm({ ...createBookingForm, destIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required maxLength={3} value={createBookingForm.destIata} onChange={e => setCreateBookingForm({ ...createBookingForm, destIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Departure Date</label>
-                            <input type="date" required value={createBookingForm.departureDate} onChange={e => setCreateBookingForm({ ...createBookingForm, departureDate: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="date" required value={createBookingForm.departureDate} onChange={e => setCreateBookingForm({ ...createBookingForm, departureDate: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Departure Time</label>
-                            <input type="time" required value={createBookingForm.departureTime} onChange={e => setCreateBookingForm({ ...createBookingForm, departureTime: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="time" required value={createBookingForm.departureTime} onChange={e => setCreateBookingForm({ ...createBookingForm, departureTime: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
                 </form>
@@ -1075,22 +1072,28 @@ export default function SuperAdminPage() {
                 footer={
                     <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                        <button onClick={handleUpdatePassenger} className="px-6 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700">Save Changes</button>
+                        <ActionButton
+                            onClick={handleUpdatePassenger}
+                            loadingMessage="Saving..."
+                            successMessage="Profile Saved"
+                        >
+                            Save Changes
+                        </ActionButton>
                     </div>
                 }
             >
                 <div className="p-6 space-y-4">
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
-                        <input type="text" value={editForm.fullName || ''} onChange={e => setEditForm({ ...editForm, fullName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                        <input type="text" value={editForm.fullName || ''} onChange={e => setEditForm({ ...editForm, fullName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Email</label>
-                        <input type="email" value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                        <input type="email" value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                     </div>
                     <div>
                         <label className="block text-sm font-bold text-slate-700 mb-2">Phone</label>
-                        <input type="tel" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                        <input type="tel" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                     </div>
                 </div>
             </Modal>
@@ -1117,12 +1120,15 @@ export default function SuperAdminPage() {
                             >
                                 Cancel
                             </button>
-                            <button
+                            <ActionButton
                                 onClick={handleDeletePassenger}
-                                className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-600/30"
+                                variant="danger"
+                                className="flex-1 px-6 py-3"
+                                loadingMessage="Deleting..."
+                                successMessage="Deleted"
                             >
                                 Yes, Delete
-                            </button>
+                            </ActionButton>
                         </div>
                     </div>
                 </div>
@@ -1136,7 +1142,13 @@ export default function SuperAdminPage() {
                 footer={
                     <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsEditBookingModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                        <button onClick={handleUpdateBooking} className="px-6 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700">Save Changes</button>
+                        <ActionButton
+                            onClick={handleUpdateBooking}
+                            loadingMessage="Updating..."
+                            successMessage="Updated"
+                        >
+                            Save Changes
+                        </ActionButton>
                     </div>
                 }
             >
@@ -1144,44 +1156,44 @@ export default function SuperAdminPage() {
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Airline</label>
-                            <input type="text" required value={editBookingForm.airlineName || ''} onChange={e => setEditBookingForm({ ...editBookingForm, airlineName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={editBookingForm.airlineName || ''} onChange={e => setEditBookingForm({ ...editBookingForm, airlineName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Flight Number</label>
-                            <input type="text" required value={editBookingForm.flightNumber || ''} onChange={e => setEditBookingForm({ ...editBookingForm, flightNumber: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={editBookingForm.flightNumber || ''} onChange={e => setEditBookingForm({ ...editBookingForm, flightNumber: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Origin City</label>
-                            <input type="text" required value={editBookingForm.originCity || ''} onChange={e => setEditBookingForm({ ...editBookingForm, originCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={editBookingForm.originCity || ''} onChange={e => setEditBookingForm({ ...editBookingForm, originCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Origin IATA</label>
-                            <input type="text" required maxLength={3} value={editBookingForm.originIata || ''} onChange={e => setEditBookingForm({ ...editBookingForm, originIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required maxLength={3} value={editBookingForm.originIata || ''} onChange={e => setEditBookingForm({ ...editBookingForm, originIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Destination City</label>
-                            <input type="text" required value={editBookingForm.destCity || ''} onChange={e => setEditBookingForm({ ...editBookingForm, destCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required value={editBookingForm.destCity || ''} onChange={e => setEditBookingForm({ ...editBookingForm, destCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Destination IATA</label>
-                            <input type="text" required maxLength={3} value={editBookingForm.destIata || ''} onChange={e => setEditBookingForm({ ...editBookingForm, destIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="text" required maxLength={3} value={editBookingForm.destIata || ''} onChange={e => setEditBookingForm({ ...editBookingForm, destIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Departure Date</label>
-                            <input type="date" required value={editBookingForm.departureDate || ''} onChange={e => setEditBookingForm({ ...editBookingForm, departureDate: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="date" required value={editBookingForm.departureDate || ''} onChange={e => setEditBookingForm({ ...editBookingForm, departureDate: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Departure Time</label>
-                            <input type="time" required value={editBookingForm.departureTime || ''} onChange={e => setEditBookingForm({ ...editBookingForm, departureTime: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500" />
+                            <input type="time" required value={editBookingForm.departureTime || ''} onChange={e => setEditBookingForm({ ...editBookingForm, departureTime: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                         </div>
                     </div>
 
@@ -1190,7 +1202,7 @@ export default function SuperAdminPage() {
                         <select
                             value={editBookingForm.status || 'confirmed'}
                             onChange={e => setEditBookingForm({ ...editBookingForm, status: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-sky-500"
+                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500"
                         >
                             <option value="confirmed">Confirmed</option>
                             <option value="updated">Updated</option>
@@ -1239,7 +1251,7 @@ export default function SuperAdminPage() {
                                 <div className="flex items-start gap-4">
                                     <div className={clsx(
                                         "mt-1 p-2 rounded-xl shadow-sm",
-                                        note.type === 'unrecognized_booking' ? "bg-amber-500 text-white" : "bg-sky-500 text-white"
+                                        note.type === 'unrecognized_booking' ? "bg-amber-500 text-white" : "bg-ocean-500 text-white"
                                     )}>
                                         {note.type === 'unrecognized_booking' ? <Lucide.UserPlus size={18} /> : <Lucide.Bell size={18} />}
                                     </div>
@@ -1290,7 +1302,7 @@ export default function SuperAdminPage() {
                                 setIsBookingDetailsModalOpen(false);
                                 openEditBookingModal(viewingBooking);
                             }}
-                            className="px-6 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700 transition-all flex items-center gap-2"
+                            className="px-6 py-2 bg-ocean-600 text-white rounded-lg text-sm font-bold hover:bg-ocean-700 transition-all flex items-center gap-2"
                         >
                             <Lucide.Edit size={16} />
                             Edit Flight
@@ -1310,7 +1322,7 @@ export default function SuperAdminPage() {
                         <div className="bg-slate-900 text-white p-6">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <div className="text-xs font-black uppercase tracking-[0.2em] text-sky-400 mb-1">Flight Status</div>
+                                    <div className="text-xs font-black uppercase tracking-[0.2em] text-ocean-400 mb-1">Flight Status</div>
                                     <div className="flex items-center gap-3">
                                         <h2 className="text-3xl font-black">{viewingBooking.flightNumber}</h2>
                                         <span className={clsx(
@@ -1333,8 +1345,8 @@ export default function SuperAdminPage() {
                                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{viewingBooking.origin?.city}</div>
                                 </div>
                                 <div className="flex flex-col items-center px-8">
-                                    <div className="h-px w-20 bg-gradient-to-r from-transparent via-sky-500 to-transparent relative">
-                                        <Lucide.Plane size={20} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-sky-400" />
+                                    <div className="h-px w-20 bg-gradient-to-r from-transparent via-ocean-500 to-transparent relative">
+                                        <Lucide.Plane size={20} className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-ocean-400" />
                                     </div>
                                 </div>
                                 <div className="flex-1 text-right">
@@ -1371,8 +1383,8 @@ export default function SuperAdminPage() {
                                 </div>
                             </div>
 
-                            <div className="col-span-2 bg-sky-50 rounded-2xl p-4 border border-sky-100">
-                                <div className="flex items-center gap-2 text-sky-600 mb-2">
+                            <div className="col-span-2 bg-ocean-50 rounded-2xl p-4 border border-ocean-100">
+                                <div className="flex items-center gap-2 text-ocean-600 mb-2">
                                     <Lucide.Info size={16} />
                                     <span className="text-[10px] font-black uppercase tracking-wider">Service Information</span>
                                 </div>
@@ -1394,7 +1406,7 @@ export default function SuperAdminPage() {
                                 }
                             }}>
                                 <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-sky-500 flex items-center justify-center text-white font-black text-xs">
+                                    <div className="h-10 w-10 rounded-full bg-ocean-500 flex items-center justify-center text-white font-black text-xs">
                                         {passengers.find(p => (p.id || p._id) === viewingBooking.passengerId)?.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
                                     </div>
                                     <div>
@@ -1424,12 +1436,14 @@ export default function SuperAdminPage() {
                         >
                             Cancel
                         </button>
-                        <button
+                        <ActionButton
                             onClick={handleAddStaff}
-                            className="px-6 py-2 bg-sky-600 text-white rounded-lg text-sm font-bold hover:bg-sky-700 shadow-lg shadow-sky-600/30"
+                            className="bg-ocean-600 hover:bg-ocean-700 shadow-ocean-600/30"
+                            loadingMessage="Creating..."
+                            successMessage="Staff Added"
                         >
                             Create Account
-                        </button>
+                        </ActionButton>
                     </div>
                 }
             >
@@ -1444,7 +1458,7 @@ export default function SuperAdminPage() {
                                     required
                                     value={addStaffForm.email}
                                     onChange={e => setAddStaffForm({ ...addStaffForm, email: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-sky-500 transition-all font-medium"
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-ocean-500 transition-all font-medium"
                                     placeholder="staff@dnarai.com"
                                 />
                             </div>
@@ -1457,7 +1471,7 @@ export default function SuperAdminPage() {
                                 <select
                                     value={addStaffForm.role}
                                     onChange={e => setAddStaffForm({ ...addStaffForm, role: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-sky-500 transition-all font-bold text-slate-700"
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-ocean-500 transition-all font-bold text-slate-700"
                                 >
                                     <option value="staff">Staff (Limited Control)</option>
                                     <option value="agent">Agent (Booking Management)</option>
@@ -1474,7 +1488,7 @@ export default function SuperAdminPage() {
                                     type="text"
                                     value={addStaffForm.password}
                                     onChange={e => setAddStaffForm({ ...addStaffForm, password: e.target.value })}
-                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-sky-500 transition-all font-mono"
+                                    className="w-full pl-12 pr-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-ocean-500 transition-all font-mono"
                                     placeholder="Leave blank to auto-generate"
                                 />
                             </div>
@@ -1496,7 +1510,7 @@ export default function SuperAdminPage() {
                         <div className="bg-slate-50 rounded-2xl p-6 border-2 border-dashed border-slate-200 mb-8 space-y-4">
                             <div>
                                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Temporary Password</div>
-                                <div className="text-3xl font-black text-sky-600 font-mono tracking-wider">
+                                <div className="text-3xl font-black text-ocean-600 font-mono tracking-wider">
                                     {staffCreationSuccess.tempPassword}
                                 </div>
                             </div>

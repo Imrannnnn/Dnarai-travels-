@@ -12,6 +12,7 @@ export function AppDataProvider({ children }) {
   const [notifications, setNotifications] = useState([])
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(false)
+  const [overlay, setOverlay] = useState({ show: false, message: '', status: 'loading' })
 
   const abortRef = useRef(null)
 
@@ -151,6 +152,21 @@ export function AppDataProvider({ children }) {
     )
   }
 
+  const triggerOverlay = async (message, action) => {
+    setOverlay({ show: true, message, status: 'loading' })
+    try {
+      await action()
+      setOverlay({ show: true, message: 'Success', status: 'success' })
+      await new Promise(r => setTimeout(r, 1500))
+    } catch (err) {
+      console.error(err)
+      setOverlay({ show: true, message: err.message || 'Action failed', status: 'error' })
+      await new Promise(r => setTimeout(r, 2000))
+    } finally {
+      setOverlay({ show: false, message: '', status: 'loading' })
+    }
+  }
+
   const uploadPassport = (data) => {
     console.log('Passport Upload:', data)
     // This would ideally hit an API endpoint like PATCH /api/passengers/:id/documents
@@ -168,7 +184,9 @@ export function AppDataProvider({ children }) {
       clearFlight,
       completeFlight,
       uploadPassport,
+      triggerOverlay,
       loading,
+      overlay,
     }),
     [
       passenger,
@@ -177,6 +195,7 @@ export function AppDataProvider({ children }) {
       documents,
       unreadCount,
       loading,
+      overlay,
     ]
   )
 

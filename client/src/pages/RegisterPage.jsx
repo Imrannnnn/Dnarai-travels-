@@ -2,15 +2,16 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Mail, ArrowRight } from 'lucide-react'
 import { register as apiRegister, getApiBaseUrl } from '../data/api'
+import { useAppData } from '../data/AppDataContext'
 
 export default function RegisterPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [role] = useState('passenger')
-    const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
+    const { triggerOverlay } = useAppData()
     const navigate = useNavigate()
 
     const handleSubmit = async (e) => {
@@ -19,18 +20,13 @@ export default function RegisterPage() {
             return setError('Passwords do not match')
         }
 
-        setLoading(true)
         setError('')
 
-        try {
+        triggerOverlay('Creating Your Account...', async () => {
             const baseUrl = getApiBaseUrl()
             await apiRegister({ email, password, role, baseUrl })
             navigate('/login', { state: { message: 'Account created successfully! Please log in.' } })
-        } catch (err) {
-            setError(err.message || 'Registration failed. Please try again.')
-        } finally {
-            setLoading(false)
-        }
+        })
     }
 
     return (
@@ -113,23 +109,10 @@ export default function RegisterPage() {
 
                         <button
                             type="submit"
-                            disabled={loading}
-                            className="w-full bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-ocean-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group/btn disabled:opacity-70 disabled:active:scale-100"
+                            className="w-full bg-gradient-to-r from-ocean-600 to-ocean-700 hover:from-ocean-700 hover:to-ocean-800 text-white font-black py-4 rounded-2xl shadow-xl shadow-ocean-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group/btn"
                         >
-                            {loading ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="h-5 w-5 animate-pulse-slow">
-                                        <img src="/D-NARAI_Logo 01.svg" alt="Loading" className="h-full w-full object-contain filter brightness-0 invert" />
-                                    </div>
-                                    <span>Creating Account...</span>
-                                </div>
-                            ) : (
-                                <>
-                                    <span>Create Account</span>
-                                    <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
-                                </>
-                            )}
-
+                            <span>Create Account</span>
+                            <ArrowRight size={20} className="group-hover/btn:translate-x-1 transition-transform" />
                         </button>
                     </form>
 

@@ -25,11 +25,16 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
-  const { loading } = useAppData()
+  const { loading, overlay } = useAppData()
 
   return (
     <>
-      {loading && <LoadingOverlay message="Fetching your travel data..." />}
+      {(loading || overlay.show) && (
+        <LoadingOverlay
+          message={overlay.show ? overlay.message : "Fetching your travel data..."}
+          status={overlay.show ? overlay.status : 'loading'}
+        />
+      )}
       <Routes>
         {/* Auth Pages */}
         <Route path="/login" element={<LoginPage />} />
