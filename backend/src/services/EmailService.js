@@ -17,15 +17,27 @@ const getTransporter = () => {
     return null;
   }
 
-  _transporter = nodemailer.createTransport({
+  transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 587,
-    secure: false,
+    secure: false, // IMPORTANT
     auth: {
       user: process.env.BREVO_SMTP_USER,
       pass: process.env.BREVO_SMTP_KEY,
     },
+    connectionTimeout: 10000, // 10s
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
   });
+
+  _transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ SMTP connection error:', error);
+    } else {
+      console.log('✅ SMTP server ready');
+    }
+  });
+
 
   return _transporter;
 };
