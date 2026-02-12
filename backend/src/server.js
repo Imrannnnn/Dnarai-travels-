@@ -61,8 +61,8 @@ async function main() {
   startSchedulers();
   EmailParserService.init();
 
-  app.listen(env.PORT, () => {
-    console.log(`[backend] listening on http://localhost:${env.PORT}`);
+  app.listen(process.env.PORT, () => {
+    console.log(`[backend] listening on http://localhost:${process.env.PORT}`);
   });
 }
 
