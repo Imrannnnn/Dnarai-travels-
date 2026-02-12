@@ -17,7 +17,7 @@ const getTransporter = () => {
     return null;
   }
 
-  transporter = nodemailer.createTransport({
+  _transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 587,
     secure: false, // IMPORTANT
@@ -30,7 +30,7 @@ const getTransporter = () => {
     socketTimeout: 10000,
   });
 
-  _transporter.verify((error, success) => {
+  _transporter.verify((error, _success) => {
     if (error) {
       console.error('❌ SMTP connection error:', error);
     } else {
