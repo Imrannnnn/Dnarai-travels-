@@ -18,7 +18,6 @@ backend/dist
 .env.test.local
 .env.production.local
 backend/.env
-backend/src/config/env.js
 
 # Debug
 npm-debug.log*
