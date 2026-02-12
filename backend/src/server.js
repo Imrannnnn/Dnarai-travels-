@@ -23,22 +23,33 @@ dotenv.config();
 const app = express();
 
 app.use(helmet());
-app.use(
-  cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-    credentials: true,
-  })
-);
+
+// ---------- CORS Setup ----------
+const allowedOrigins = [
+  'http://localhost:5173',                  // local dev
+  'https://dnaraitravels.netlify.app'      // deployed frontend
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow non-browser requests (Postman, cron jobs)
+    if (!allowedOrigins.includes(origin)) {
+      return callback(new Error(`CORS policy: Origin ${origin} not allowed`), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
+// --------------------------------
+
 app.use(express.json({ limit: '1mb' }));
 
-app.use(
-  rateLimit({
-    windowMs: 60 * 1000,
-    max: 120,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false
+}));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
@@ -60,8 +71,9 @@ async function main() {
   startSchedulers();
   EmailParserService.init();
 
-  app.listen(process.env.PORT, () => {
-    console.log(`[backend] listening on http://localhost:${process.env.PORT}`);
+  const PORT = process.env.PORT || 5000; // fallback for local dev
+  app.listen(PORT, () => {
+    console.log(`[backend] listening on port ${PORT}`);
   });
 }
 
