@@ -1,0 +1,41 @@
+{
+  "name": "skylink-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "seed": "node src/seed.js",
+    "create-super-admin": "node src/scripts/createSuperAdmin.js",
+    "lint": "eslint . --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.5"
+  },
+  "dependencies": {
+    "@google/genai": "^1.38.0",
+    "@google/generative-ai": "^0.24.1",
+    "axios": "^1.6.8",
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "html-to-text": "^9.0.5",
+    "jsonwebtoken": "^9.0.2",
+    "mailparser": "^3.9.1",
+    "mongoose": "^8.21.1",
+    "node-cron": "^3.0.3",
+    "node-imap": "^0.9.6",
+    "nodemailer": "^7.0.12",
+    "pdf-parse": "^2.4.5",
+    "zod": "^3.22.4"
+  }
+}

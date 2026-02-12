@@ -1,0 +1,4 @@
+C:\Users\user\Desktop\Dnarai travel\Dnarai-app\client\script.js:241:10: 'initializeSearch' is defined but never used. [Warning/no-unused-vars]
+C:\Users\user\Desktop\Dnarai travel\Dnarai-app\client\script.js:295:10: 'simulateFlightUpdates' is defined but never used. [Warning/no-unused-vars]
+
+2 problems

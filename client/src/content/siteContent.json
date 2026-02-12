@@ -1,0 +1,81 @@
+{
+  "brandName": "D.Narai Enterprise",
+  "motto": "Our services end when you arrive at your destination.",
+  "home": {
+    "hero": {
+      "title": "Your Journey, Perfected",
+      "subtitle": "Seamless orchestration of your global journeys. We bridge the gap between elite travelers and world-class airlines, ensuring punctuality, privacy, and precision.",
+      "primaryCta": {
+        "label": "Passenger Login",
+        "to": "/dashboard"
+      },
+      "secondaryCta": {
+        "label": "Our Expertise",
+        "to": "/about"
+      }
+    },
+    "highlights": [
+      {
+        "title": "Global Precision",
+        "description": "Real-time synchronization with international carriers for absolute itinerary accuracy."
+      },
+      {
+        "title": "Intelligent Concierge",
+        "description": "Automated, context-aware alerts for departures, boarding gates, and document validity."
+      },
+      {
+        "title": "Arrival Intelligence",
+        "description": "Comprehensive destination insights, from climatic conditions to terminal logistics."
+      }
+    ],
+    "services": [
+      {
+        "title": "Strategic Booking Management",
+        "description": "Centralized oversight of complex itineraries across multiple carriers and alliances."
+      },
+      {
+        "title": "Proactive Communication",
+        "description": "Immediate dissemination of schedule adjustments and critical travel advisories."
+      },
+      {
+        "title": "Identity Protection",
+        "description": "Bank-grade security protocols for managing sensitive travel documentation."
+      }
+    ],
+    "howItWorks": {
+      "title": "Our Protocol",
+      "steps": [
+        {
+          "title": "Secure Onboarding",
+          "description": "Your profile is established within our encrypted agency network."
+        },
+        {
+          "title": "Strategic Monitoring",
+          "description": "Our systems continuously validate your itinerary against global flight data."
+        },
+        {
+          "title": "Executive Reporting",
+          "description": "You receive precise, actionable intelligence exactly when needed."
+        }
+      ]
+    }
+  },
+  "about": {
+    "title": "The Agency Standard",
+    "subtitle": "D.Narai Enterprise is the premier infrastructure for modern travel management.",
+    "sections": [
+      {
+        "heading": "Our Mandate",
+        "body": "To provide an uncompromising layer of intelligence and support between the discerning traveler and the global aviation network."
+      },
+      {
+        "heading": "Our Capabilities",
+        "body": "We deploy advanced tracking algorithms and secure data vaults to ensure your journey is managed with the precision of a private flight operation."
+      },
+      {
+        "heading": "Our Promise",
+        "body": "We remain vigilant until you have safely arrived. Excellence is not a goal; it is our baseline."
+      }
+    ]
+  }
+}

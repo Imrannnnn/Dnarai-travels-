@@ -1,0 +1,227 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dnarai Enterprise Brand Colors */
+    --dnarai-navy: 15 76 117;        /* Primary: #0F4C75 */
+    --dnarai-navy-dark: 10 60 95;    /* Darker shade */
+    --dnarai-navy-light: 25 96 147;  /* Lighter shade */
+    --dnarai-gold: 244 162 97;       /* Accent: #F4A261 */
+    --dnarai-gold-light: 250 186 130; /* Lighter gold */
+    --dnarai-gold-dark: 230 140 70;  /* Darker gold */
+    
+    /* Legacy aliases for compatibility */
+    --ocean-teal: 15 76 117;         /* Maps to navy */
+    --ocean-teal-deep: 10 60 95;
+    --warm-sand: 250 245 235;
+    --sand-dark: 240 230 215;
+    --sunset-coral: 244 162 97;      /* Maps to gold */
+    --coral: 244 162 97;
+    --sky-light: 235 245 250;
+
+    /* Refined neutrals */
+    --slate-50: 248 250 252;
+    --slate-100: 241 245 249;
+    --slate-900: 15 23 42;
+    --slate-950: 2 6 23;
+
+    /* Semantic colors */
+    --success: 34 197 94;
+    --warning: 244 162 97;           /* Maps to gold */
+    --error: 239 68 68;
+  }
+
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    /* Slightly reduced from default 16px */
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: 'Outfit', sans-serif;
+  }
+
+  body {
+    @apply bg-slate-50 text-slate-900 selection:bg-sky-100 selection:text-sky-900 dark:bg-slate-950 dark:text-slate-100;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 900px;
+    height: 900px;
+    background-image: url('/D-NARAI_Logo 02.svg');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.025;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body > * {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.glass-card {
+  @apply border border-white/20 bg-white/70 backdrop-blur-2xl shadow-xl dark:border-white/10 dark:bg-slate-900/70;
+}
+
+.premium-shadow {
+  box-shadow: 
+    0 0 0 1px rgba(0,0,0,0.03),
+    0 2px 8px rgba(0,0,0,0.04),
+    0 12px 24px -6px rgba(0,0,0,0.08);
+}
+
+.text-gradient-premium {
+  @apply bg-gradient-to-br from-slate-900 via-slate-700 to-slate-800 bg-clip-text text-transparent dark:from-white dark:via-slate-200 dark:to-slate-400;
+}
+
+.gradient-text {
+  @apply bg-gradient-to-r from-sky-600 to-indigo-600 bg-clip-text text-transparent;
+}
+
+.animate-gradient-x {
+  background-size: 200% 200%;
+  animation: gradient-x 10s ease infinite;
+}
+
+@keyframes gradient-x {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.wave-line {
+  position: absolute;
+  left: -15%;
+  top: 50%;
+  width: 130%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(14, 165, 233, 0.6), transparent);
+  transform: translateY(-50%);
+  animation: waveLineMove 3s linear infinite;
+}
+
+.wave-plane {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: wavePlaneMove 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(14, 165, 233, 0.5));
+}
+
+@keyframes wavePlaneMove {
+  0% {
+    transform: translate(0%, -50%) translateY(0px) rotate(-3deg);
+  }
+
+  25% {
+    transform: translate(35%, -50%) translateY(-15px) rotate(2deg);
+  }
+
+  50% {
+    transform: translate(70%, -50%) translateY(0px) rotate(-2deg);
+  }
+
+  75% {
+    transform: translate(90%, -50%) translateY(15px) rotate(2deg);
+  }
+
+  100% {
+    transform: translate(110%, -50%) translateY(0px) rotate(-3deg);
+  }
+}
+
+@keyframes waveLineMove {
+  0% {
+    transform: translate(-10%, -50%);
+    opacity: 0.3;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: translate(10%, -50%);
+    opacity: 0.3;
+  }
+}
+
+/* Loading Spinner Animations */
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes shine {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 2s ease-in-out infinite;
+}
+
+.animate-shine {
+  animation: shine 2s linear infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply rounded-full bg-slate-300 hover:bg-slate-400 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors;
+}
