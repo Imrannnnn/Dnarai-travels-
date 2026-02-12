@@ -25,9 +25,7 @@ const getTransporter = () => {
       user: process.env.BREVO_SMTP_USER,
       pass: process.env.BREVO_SMTP_KEY,
     },
-    connectionTimeout: 10000, // 10s
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
+
   });
 
   _transporter.verify((error, _success) => {
