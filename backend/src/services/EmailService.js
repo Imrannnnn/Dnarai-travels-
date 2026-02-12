@@ -128,7 +128,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.BREVO_SMTP_USER}>`,
         to: email,
         subject: 'Welcome to Dnarai Travel - Account Activation',
         html: getEmailWrapper(content, 'Your account is ready.'),
@@ -161,7 +161,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai System" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai System" <${process.env.BREVO_SMTP_USER}>`,
         to: adminEmail,
         subject: `New Request: ${passengerName}`,
         html: getEmailWrapper(content, 'New booking request.'),
@@ -197,7 +197,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.BREVO_SMTP_USER}>`,
         to: passenger.email,
         subject: `Confirmed: ${booking.flightNumber}`,
         html: getEmailWrapper(content, 'Booking confirmed.'),
@@ -229,7 +229,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.BREVO_SMTP_USER}>`,
         to: passenger.email,
         subject: 'Travel Notification',
         html: getEmailWrapper(content, 'Travel update.'),
