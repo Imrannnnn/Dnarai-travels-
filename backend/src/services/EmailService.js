@@ -15,12 +15,14 @@ const getTransporter = () => {
   }
 
   _transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // TLS
     auth: {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD,
     },
-    tls: { rejectUnauthorized: false },
+    connectionTimeout: 10000, // prevent fast timeout
   });
   return _transporter;
 };
