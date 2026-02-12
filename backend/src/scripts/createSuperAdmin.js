@@ -1,11 +1,12 @@
 import { connectDb } from '../config/db.js';
 import { User } from '../models/User.js';
-import { env } from '../config/env.js'
+
 
 async function createSuperAdmin() {
   await connectDb();
-  const email = env.EMAIL
-  const password = env.SUPER_PASSWORD
+  const email = process.env.EMAIL;
+  const password = process.env.SUPER_PASSWORD;
+
 
   const exists = await User.findOne({ email });
   if (exists) {
