@@ -1,8 +1,8 @@
 import mongoose from 'mongoose';
-import { env } from './env.js';
 
 export async function connectDb() {
   mongoose.set('strictQuery', true);
-  await mongoose.connect(env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/skylink');
+
   console.log('[backend] mongodb connected');
 }

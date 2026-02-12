@@ -2,8 +2,6 @@ import nodemailer from 'nodemailer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { env } from '../config/env.js';
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Lazy transporter initialization
@@ -11,7 +9,7 @@ let _transporter = null;
 const getTransporter = () => {
   if (_transporter) return _transporter;
 
-  if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     console.warn('⚠️ [EmailService] Gmail credentials not configured.');
     return null;
   }
@@ -19,8 +17,8 @@ const getTransporter = () => {
   _transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: env.GMAIL_USER,
-      pass: env.GMAIL_APP_PASSWORD,
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
     },
     tls: { rejectUnauthorized: false },
   });
@@ -60,7 +58,7 @@ const getEmailWrapper = (content, previewText = '') => `
       <tr>
         <td align="center" style="padding: 40px 0 20px 0; text-align: center;">
           <center>
-            <a href="${env.CORS_ORIGIN || '#'}" style="text-decoration: none; display: inline-block;">
+            <a href="${process.env.CORS_ORIGIN || '#'}" style="text-decoration: none; display: inline-block;">
               <img src="cid:dnarai-logo" alt="DNARAI TRAVEL" width="200" style="display: block; border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 900; color: ${COLORS.NAVY}; letter-spacing: -1px; width: 200px; max-width: 200px;">
               <div style="margin-top: -5px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 800; color: ${COLORS.GOLD}; letter-spacing: 4px; text-transform: uppercase;">Executive Travel</div>
             </a>
@@ -125,7 +123,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
         to: email,
         subject: 'Welcome to Dnarai Travel - Account Activation',
         html: getEmailWrapper(content, 'Your account is ready.'),
@@ -158,7 +156,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai System" <${env.GMAIL_USER}>`,
+        from: `"Dnarai System" <${process.env.GMAIL_USER}>`,
         to: adminEmail,
         subject: `New Request: ${passengerName}`,
         html: getEmailWrapper(content, 'New booking request.'),
@@ -194,7 +192,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: `Confirmed: ${booking.flightNumber}`,
         html: getEmailWrapper(content, 'Booking confirmed.'),
@@ -226,7 +224,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: 'Travel Notification',
         html: getEmailWrapper(content, 'Travel update.'),

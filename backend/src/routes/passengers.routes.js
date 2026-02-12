@@ -9,7 +9,6 @@ import { Booking } from '../models/Booking.js';
 import { Notification } from '../models/Notification.js';
 import { AuditService } from '../services/AuditService.js';
 import { EmailService } from '../services/EmailService.js';
-import { env } from '../config/env.js';
 import crypto from 'crypto';
 
 const router = Router();
@@ -59,7 +58,7 @@ router.post('/', requireAgency, validate(createSchema), async (req, res, next) =
       email: user.email,
       fullName: passenger.fullName,
       password: tempPassword,
-      loginUrl: env.CORS_ORIGIN || 'http://localhost:5173',
+      loginUrl: process.env.CORS_ORIGIN || 'http://localhost:5173',
     });
 
     await AuditService.log({

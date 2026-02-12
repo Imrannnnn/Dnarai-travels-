@@ -1,20 +1,18 @@
 import axios from 'axios';
-import { env } from '../config/env.js';
-
 // Minimal weather service using OpenWeather.
 // For production, add caching (Redis/Mongo) and better geocoding.
 
 export const WeatherService = {
   async getCityForecast({ city }) {
-    if (!env.WEATHER_API_KEY) {
+    if (!process.env.WEATHER_API_KEY) {
       return { tempC: 18, desc: 'Partly Cloudy', type: 'cloudSun' };
     }
 
-    const url = `${env.WEATHER_API_BASE_URL}/weather`;
+    const url = `${process.env.WEATHER_API_BASE_URL || 'https://api.openweathermap.org/data/2.5'}/weather`;
     const { data } = await axios.get(url, {
       params: {
         q: city,
-        appid: env.WEATHER_API_KEY,
+        appid: process.env.WEATHER_API_KEY,
         units: 'metric',
       },
       timeout: 6000,

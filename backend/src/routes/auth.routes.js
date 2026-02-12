@@ -2,7 +2,6 @@ import { Router } from 'express';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 
-import { env } from '../config/env.js';
 import { validate } from '../middleware/validate.js';
 import { User } from '../models/User.js';
 
@@ -59,9 +58,9 @@ router.post('/login', validate(loginSchema), async (req, res, next) => {
 
     const token = jwt.sign(
       { sub: String(user._id), role: user.role, email: user.email },
-      env.JWT_SECRET,
+      process.env.JWT_SECRET || 'dev_secret_change_me',
       {
-        expiresIn: env.JWT_EXPIRES_IN,
+        expiresIn: process.env.JWT_EXPIRES_IN || '7d',
       }
     );
 

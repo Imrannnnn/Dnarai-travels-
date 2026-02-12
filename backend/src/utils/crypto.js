@@ -1,11 +1,10 @@
 import crypto from 'crypto';
-import { env } from '../config/env.js';
 
 function getKey() {
-  if (!env.DOC_ENCRYPTION_KEY_BASE64) {
+  if (!process.env.DOC_ENCRYPTION_KEY_BASE64) {
     throw new Error('Missing DOC_ENCRYPTION_KEY_BASE64');
   }
-  const key = Buffer.from(env.DOC_ENCRYPTION_KEY_BASE64, 'base64');
+  const key = Buffer.from(process.env.DOC_ENCRYPTION_KEY_BASE64, 'base64');
   if (key.length !== 32) {
     throw new Error('DOC_ENCRYPTION_KEY_BASE64 must decode to 32 bytes');
   }

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { env } from '../config/env.js';
+
 
 export function requireAuth(req, _res, next) {
   const header = req.headers.authorization || '';
@@ -10,7 +10,7 @@ export function requireAuth(req, _res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret_change_me');
     req.user = payload;
     return next();
   } catch {

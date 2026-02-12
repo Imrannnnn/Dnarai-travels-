@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 
-import { env } from './config/env.js';
+
 import { Passenger } from './models/Passenger.js';
 import { Booking } from './models/Booking.js';
 import { Notification } from './models/Notification.js';
@@ -13,7 +13,7 @@ function hoursFromNow(h) {
 }
 
 async function main() {
-  await mongoose.connect(env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/skylink');
 
   // Clear only demo collections (safe for demo use; remove if you want to preserve data)
   await Promise.all([
@@ -66,6 +66,7 @@ async function main() {
     sentAt: new Date(),
     dedupeKey: `seed:reminder:${booking1._id}`,
   });
+
 
   await Notification.create({
     passengerId: passenger._id,

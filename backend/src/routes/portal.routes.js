@@ -97,13 +97,12 @@ router.post('/booking-requests', async (req, res, next) => {
       return next({ status: 404, code: 'NOT_FOUND', message: 'Passenger not found' });
     }
 
-    const { env } = await import('../config/env.js');
     const { EmailService } = await import('../services/EmailService.js');
 
     // Send professional alert to Admin
     try {
       await EmailService.sendBookingRequestNotification({
-        adminEmail: env.GMAIL_USER, // Notifying the system admin
+        adminEmail: process.env.GMAIL_USER, // Notifying the system admin
         passengerName: passenger.fullName,
         requestDetails: { departureCity, destination, date, notes }
       });

@@ -5,7 +5,6 @@ import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 
 import { connectDb } from './config/db.js';
-import { env } from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 import authRoutes from './routes/auth.routes.js';
@@ -26,7 +25,7 @@ const app = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: env.CORS_ORIGIN,
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
     credentials: true,
   })
 );
@@ -50,7 +49,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/portal', portalRoutes);
 app.use('/api/agency', agencyRoutes);
 
-if (env.PUBLIC_DEMO) {
+if (process.env.PUBLIC_DEMO === 'true') {
   app.use('/', demoRoutes);
 }
 

@@ -2,7 +2,6 @@ import Imap from 'node-imap';
 import { simpleParser } from 'mailparser';
 import * as cheerio from 'cheerio';
 import { createRequire } from 'module';
-import { env } from '../config/env.js';
 import { Passenger } from '../models/Passenger.js';
 import { Booking } from '../models/Booking.js';
 import { NotificationService } from './NotificationService.js';
@@ -20,7 +19,7 @@ export const EmailParserService = {
   isConnecting: false,
 
   init() {
-    if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
       console.warn('⚠️ [EmailParser] Credentials missing in .env. Service disabled.');
       return;
     }
@@ -40,11 +39,11 @@ export const EmailParserService = {
     }
 
     this.imap = new Imap({
-      user: env.GMAIL_USER,
-      password: env.GMAIL_APP_PASSWORD,
-      host: env.IMAP_HOST,
-      port: env.IMAP_PORT,
-      tls: env.IMAP_TLS,
+      user: process.env.GMAIL_USER,
+      password: process.env.GMAIL_APP_PASSWORD,
+      host: process.env.IMAP_HOST || 'imap.gmail.com',
+      port: Number(process.env.IMAP_PORT || 993),
+      tls: (process.env.IMAP_TLS || 'true') === 'true',
       tlsOptions: { rejectUnauthorized: false },
       connTimeout: 10000,
       authTimeout: 5000,
