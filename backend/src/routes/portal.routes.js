@@ -213,7 +213,7 @@ router.post('/booking-requests', async (req, res, next) => {
         passenger: passenger.fullName,
         email: passenger.email,
         phone: passenger.phone,
-        wa_link: `https://wa.me/${passenger.phone?.replace(/[^0-9]/g, '')}`,
+        wa_link: `https://wa.me/${(passenger.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request`,
         requestDetails
       },
       deliveryMethod: 'in_app',

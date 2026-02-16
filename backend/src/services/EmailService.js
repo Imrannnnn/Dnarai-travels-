@@ -12,20 +12,22 @@ let _transporter = null;
 const getTransporter = () => {
   if (_transporter) return _transporter;
 
-  if (!process.env.BREVO_SMTP_USER || !process.env.BREVO_SMTP_KEY) {
+  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
     console.warn('⚠️ Brevo SMTP not configured');
     return null;
   }
 
   _transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
+    host: 'smtp.gmail.com',
     port: 587,
     secure: false, // IMPORTANT
     auth: {
-      user: process.env.BREVO_SMTP_USER,
-      pass: process.env.BREVO_SMTP_KEY,
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
     },
-
+    // tls: {
+    //   rejectUnauthorized: false,
+    // },
   });
 
   _transporter.verify((error, _success) => {
@@ -138,7 +140,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.BREVO_SMTP_USER}>`,
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
         to: email,
         subject: 'Welcome to Dnarai Travel - Account Activation',
         html: getEmailWrapper(content, 'Your account is ready.'),
@@ -187,7 +189,7 @@ export const EmailService = {
             </table>
 
             <div style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
-              <a href="https://wa.me/${passengerPhone?.replace(/[^0-9]/g, '')}" style="display: inline-block; padding: 12px 24px; background-color: ${COLORS.GOLD}; color: ${COLORS.NAVY}; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase;">Connect via WhatsApp</a>
+              <a href="https://wa.me/${(passengerPhone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request" style="display: inline-block; padding: 12px 24px; background-color: #25D366; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase;">Connect via WhatsApp</a>
               <a href="mailto:${passengerEmail}" style="display: inline-block; margin-left: 10px; padding: 12px 24px; background-color: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.2);">Send Email</a>
             </div>
           </div>
@@ -197,7 +199,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai System" <${process.env.BREVO_SMTP_USER}>`,
+        from: `"Dnarai System" <${process.env.GMAIL_USER}>`,
         to: adminEmail,
         subject: `New Request: ${passengerName}`,
         html: getEmailWrapper(content, 'New booking request.'),
@@ -233,7 +235,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.BREVO_SMTP_USER}>`,
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: `Confirmed: ${booking.flightNumber}`,
         html: getEmailWrapper(content, 'Booking confirmed.'),
@@ -265,7 +267,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.BREVO_SMTP_USER}>`,
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: 'Travel Notification',
         html: getEmailWrapper(content, 'Travel update.'),
