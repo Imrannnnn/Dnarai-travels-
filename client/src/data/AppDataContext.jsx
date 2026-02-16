@@ -117,6 +117,9 @@ export function AppDataProvider({ children }) {
         departureCity: booking.departureCity,
         destination: booking.destination,
         date: booking.date,
+        isReturn: booking.isReturn,
+        returnDate: booking.returnDate,
+        passengers: booking.passengers,
         notes: booking.notes,
         baseUrl
       })
@@ -141,6 +144,26 @@ export function AppDataProvider({ children }) {
     }
   }
 
+  const updatePassengerProfile = async ({ fullName, phone }) => {
+    const baseUrl = getApiBaseUrl()
+    try {
+      const { updateProfile } = await import('./api')
+      const result = await updateProfile({ fullName, phone, baseUrl })
+      if (result.ok && result.passenger) {
+        setPassenger({
+          name: result.passenger.fullName,
+          fullName: result.passenger.fullName,
+          email: result.passenger.email,
+          phone: result.passenger.phone,
+          membership: 'Premium Member',
+        })
+      }
+      return result
+    } catch (error) {
+      console.error('Failed to update passenger profile:', error)
+      throw error
+    }
+  }
 
   const clearFlight = (id) => {
     setFlights((prev) => prev.filter((f) => f.id !== id))
@@ -172,6 +195,7 @@ export function AppDataProvider({ children }) {
     // This would ideally hit an API endpoint like PATCH /api/passengers/:id/documents
   }
 
+
   const value = useMemo(
     () => ({
       passenger,
@@ -181,6 +205,7 @@ export function AppDataProvider({ children }) {
       setNotifications,
       unreadCount,
       addBooking,
+      updatePassengerProfile,
       clearFlight,
       completeFlight,
       uploadPassport,

@@ -1,6 +1,0 @@
-C:\Users\user\Desktop\Dnarai travel\Dnarai-app\client\src\pages\SuperAdminPage.jsx:2:10: 'useNavigate' is defined but never used. [Warning/no-unused-vars]
-C:\Users\user\Desktop\Dnarai travel\Dnarai-app\client\src\pages\SuperAdminPage.jsx:51:11: 'travelingTodayRef' is assigned a value but never used. [Warning/no-unused-vars]
-C:\Users\user\Desktop\Dnarai travel\Dnarai-app\client\src\pages\SuperAdminPage.jsx:57:8: React Hook useEffect has a missing dependency: 'fetchAllData'. Either include it or remove the dependency array. [Warning/react-hooks/exhaustive-deps]
-C:\Users\user\Desktop\Dnarai travel\Dnarai-app\client\src\pages\SuperAdminPage.jsx:312:14: 'handleBookingClick' is defined but never used. [Warning/no-unused-vars]
-
-4 problems

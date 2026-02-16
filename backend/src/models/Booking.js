@@ -39,6 +39,9 @@ const BookingSchema = new mongoose.Schema(
       referenceId: { type: String },
     },
 
+    bookingReference: { type: String }, // e.g. PNR
+    ticketNumber: { type: String }, // e.g. 123-4567890123
+
     lastNotifiedAt: { type: Date },
   },
   { timestamps: true }

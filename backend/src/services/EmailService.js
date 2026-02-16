@@ -152,19 +152,45 @@ export const EmailService = {
     }
   },
 
-  async sendBookingRequestNotification({ adminEmail, passengerName, requestDetails }) {
+  async sendBookingRequestNotification({ adminEmail, passengerName, requestDetails, passengerEmail, passengerPhone }) {
     const transporter = getTransporter();
     if (!transporter) return { ok: false, error: 'Transporter not configured' };
 
     const content = `
       <tr>
         <td style="padding: 40px;">
-          <h2 style="color: ${COLORS.NAVY};">New Flight Request</h2>
-          <p>Request from <strong>${passengerName}</strong></p>
-          <p><strong>From:</strong> ${requestDetails.departureCity}</p>
-          <p><strong>To:</strong> ${requestDetails.destination}</p>
-          <p><strong>Date:</strong> ${requestDetails.date}</p>
-          <p><strong>Notes:</strong> ${requestDetails.notes || 'None'}</p>
+          <h2 style="margin: 0 0 20px 0; font-size: 20px; font-weight: 800; color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: -0.5px;">New Journey Requested</h2>
+          
+          <div style="background-color: #f8fafc; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+            <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">Itinerary Details</p>
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>From:</strong> ${requestDetails.departureCity}</td></tr>
+              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>To:</strong> ${requestDetails.destination}</td></tr>
+              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Date:</strong> ${requestDetails.date}</td></tr>
+              ${requestDetails.isReturn && requestDetails.returnDate ? `<tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Return Date:</strong> ${requestDetails.returnDate}</td></tr>` : ''}
+              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Passengers:</strong> 
+                ${requestDetails.passengers?.adults || 1} Adults
+                ${requestDetails.passengers?.children ? `, ${requestDetails.passengers.children} Children` : ''}
+                ${requestDetails.passengers?.infants ? `, ${requestDetails.passengers.infants} Infants` : ''}
+              </td></tr>
+              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY}; font-style: italic;"><strong>Special Notes:</strong> ${requestDetails.notes || 'No specific notes provided.'}</td></tr>
+            </table>
+          </div>
+
+          <div style="background-color: ${COLORS.NAVY}; border-radius: 16px; padding: 24px; color: white;">
+            <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: ${COLORS.GOLD}; text-transform: uppercase; letter-spacing: 1px;">Passenger Identity</p>
+            <p style="margin: 0 0 20px 0; font-size: 22px; font-weight: 800;">${passengerName}</p>
+            
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr><td style="padding: 5px 0; font-size: 14px; opacity: 0.9;"><strong>Email:</strong> ${passengerEmail}</td></tr>
+              <tr><td style="padding: 5px 0; font-size: 14px; opacity: 0.9;"><strong>Phone:</strong> ${passengerPhone}</td></tr>
+            </table>
+
+            <div style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
+              <a href="https://wa.me/${passengerPhone?.replace(/[^0-9]/g, '')}" style="display: inline-block; padding: 12px 24px; background-color: ${COLORS.GOLD}; color: ${COLORS.NAVY}; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase;">Connect via WhatsApp</a>
+              <a href="mailto:${passengerEmail}" style="display: inline-block; margin-left: 10px; padding: 12px 24px; background-color: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.2);">Send Email</a>
+            </div>
+          </div>
         </td>
       </tr>
     `;

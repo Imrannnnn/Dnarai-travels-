@@ -6,6 +6,95 @@ import clsx from 'clsx'
 import { convertTo12Hour } from '../utils/time'
 import { useAppData } from '../data/AppDataContext'
 import ActionButton from '../components/ActionButton'
+import airportData from '../../airports.json'
+
+function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIata }) {
+    const [query, setQuery] = useState('')
+    const [suggestions, setSuggestions] = useState([])
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const wrapperRef = useRef(null)
+
+    useEffect(() => {
+        if (initialCity && initialIata) {
+            setQuery(`${initialCity} (${initialIata})`)
+        } else if (initialCity) {
+            setQuery(initialCity)
+        }
+    }, [initialCity, initialIata])
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (wrapperRef.current && !wrapperRef.current.contains(event.target)) {
+                setShowSuggestions(false)
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    }, [wrapperRef])
+
+    const handleSearch = (e) => {
+        const value = e.target.value
+        setQuery(value)
+        if (onChange) onChange(value)
+
+        if (value.length < 2) {
+            setSuggestions([])
+            setShowSuggestions(false)
+            return
+        }
+
+        const filtered = airportData.filter(item =>
+            item.city?.toLowerCase().includes(value.toLowerCase()) ||
+            item.iata?.toLowerCase().includes(value.toLowerCase()) ||
+            item.airport_name?.toLowerCase().includes(value.toLowerCase())
+        ).slice(0, 10)
+
+        setSuggestions(filtered)
+        setShowSuggestions(true)
+    }
+
+    const handleSelect = (airport) => {
+        setQuery(`${airport.city} (${airport.iata})`)
+        onSelect(airport)
+        setShowSuggestions(false)
+    }
+
+    return (
+        <div className="relative" ref={wrapperRef}>
+            <label className="block text-sm font-bold text-slate-700 mb-2">{label}</label>
+            <div className="relative">
+                <Lucide.MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <input
+                    type="text"
+                    value={query}
+                    onChange={handleSearch}
+                    onFocus={() => query.length >= 2 && setShowSuggestions(true)}
+                    className="w-full pl-12 pr-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500 truncate"
+                    placeholder="Search city, airport or IATA..."
+                />
+            </div>
+            {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-60 overflow-y-auto">
+                    {suggestions.map((airport, idx) => (
+                        <div
+                            key={idx}
+                            onClick={() => handleSelect(airport)}
+                            className="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0"
+                        >
+                            <div className="flex justify-between items-center">
+                                <span className="font-bold text-slate-900">{airport.city}</span>
+                                <span className="text-xs font-black bg-slate-100 text-slate-600 px-2 py-1 rounded">{airport.iata}</span>
+                            </div>
+                            <div className="text-xs text-slate-500 truncate">{airport.airport_name}</div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
 
 export default function SuperAdminPage() {
     const [token, setToken] = useState(localStorage.getItem('admin_token') || null)
@@ -40,11 +129,16 @@ export default function SuperAdminPage() {
     const [addStaffForm, setAddStaffForm] = useState({ email: '', role: 'staff', password: '' })
     const [staffCreationSuccess, setStaffCreationSuccess] = useState(null)
 
+    // New Modals State
+    const [isTravelingTodayModalOpen, setIsTravelingTodayModalOpen] = useState(false)
+    const [isActiveBookingsModalOpen, setIsActiveBookingsModalOpen] = useState(false)
+
     const [editForm, setEditForm] = useState({})
     const [createPassengerForm, setCreatePassengerForm] = useState({ fullName: '', email: '', phone: '' })
     const [createBookingForm, setCreateBookingForm] = useState({
         airlineName: '', flightNumber: '', originCity: '', originIata: '',
-        destCity: '', destIata: '', departureDate: '', departureTime: ''
+        destCity: '', destIata: '', departureDate: '', departureTime: '',
+        bookingReference: '', ticketNumber: ''
     })
     const [editBookingForm, setEditBookingForm] = useState({})
     const [isBookingDetailsModalOpen, setIsBookingDetailsModalOpen] = useState(false)
@@ -52,6 +146,7 @@ export default function SuperAdminPage() {
 
     // Refs for scrolling
     const passengerListRef = useRef(null)
+    const bookingsListRef = useRef(null)
 
     const baseUrl = getApiBaseUrl()
 
@@ -188,7 +283,9 @@ export default function SuperAdminPage() {
                 origin: { city: createBookingForm.originCity, iata: createBookingForm.originIata.toUpperCase() },
                 destination: { city: createBookingForm.destCity, iata: createBookingForm.destIata.toUpperCase() },
                 departureDateTimeUtc: new Date(`${createBookingForm.departureDate}T${createBookingForm.departureTime || '00:00'}:00Z`).toISOString(),
-                departureTime24: createBookingForm.departureTime || undefined
+                departureTime24: createBookingForm.departureTime || undefined,
+                bookingReference: createBookingForm.bookingReference || undefined,
+                ticketNumber: createBookingForm.ticketNumber || undefined
             }
 
             const res = await fetch(`${baseUrl}/api/bookings`, {
@@ -202,7 +299,11 @@ export default function SuperAdminPage() {
 
             setBookings([data, ...bookings])
             setIsCreateBookingModalOpen(false)
-            setCreateBookingForm({ airlineName: '', flightNumber: '', originCity: '', originIata: '', destCity: '', destIata: '', departureDate: '', departureTime: '' })
+            setCreateBookingForm({
+                airlineName: '', flightNumber: '', originCity: '', originIata: '',
+                destCity: '', destIata: '', departureDate: '', departureTime: '',
+                bookingReference: '', ticketNumber: ''
+            })
         })
     }
 
@@ -217,7 +318,9 @@ export default function SuperAdminPage() {
                 destination: { city: editBookingForm.destCity, iata: editBookingForm.destIata?.toUpperCase() },
                 departureDateTimeUtc: new Date(`${editBookingForm.departureDate}T${editBookingForm.departureTime || '00:00'}:00Z`).toISOString(),
                 departureTime24: editBookingForm.departureTime || undefined,
-                status: editBookingForm.status
+                status: editBookingForm.status,
+                bookingReference: editBookingForm.bookingReference || undefined,
+                ticketNumber: editBookingForm.ticketNumber || undefined
             }
 
             const res = await fetch(`${baseUrl}/api/bookings/${editBookingForm.id || editBookingForm._id}`, {
@@ -251,7 +354,9 @@ export default function SuperAdminPage() {
             originCity: b.origin?.city || '',
             originIata: b.origin?.iata || '',
             destCity: b.destination?.city || '',
-            destIata: b.destination?.iata || ''
+            destIata: b.destination?.iata || '',
+            bookingReference: b.bookingReference || '',
+            ticketNumber: b.ticketNumber || ''
         });
         setIsEditBookingModalOpen(true);
     }
@@ -321,6 +426,8 @@ export default function SuperAdminPage() {
     function scrollToPassengerList() {
         passengerListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
+
+
 
 
 
@@ -441,10 +548,10 @@ export default function SuperAdminPage() {
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     {[
-                        { label: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'bg-ocean-500', bgLight: 'bg-ocean-50' },
-                        { label: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'bg-green-500', bgLight: 'bg-green-50' },
-                        { label: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'bg-purple-500', bgLight: 'bg-purple-50', onClick: () => { setActiveView('today'); scrollToPassengerList(); } },
-                        { label: 'Notifications', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'bg-amber-500', bgLight: 'bg-amber-50' },
+                        { label: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'bg-ocean-500', bgLight: 'bg-ocean-50', onClick: () => { setActiveView('all'); scrollToPassengerList(); } },
+                        { label: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'bg-green-500', bgLight: 'bg-green-50', onClick: () => setIsActiveBookingsModalOpen(true) },
+                        { label: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'bg-purple-500', bgLight: 'bg-purple-50', onClick: () => setIsTravelingTodayModalOpen(true) },
+                        { label: 'Notifications', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'bg-amber-500', bgLight: 'bg-amber-50', onClick: () => setIsAllNotificationsModalOpen(true) },
                     ].map(stat => (
                         <div
                             key={stat.label}
@@ -649,7 +756,7 @@ export default function SuperAdminPage() {
                         </div>
 
                         {/* Recent Bookings */}
-                        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+                        <div ref={bookingsListRef} className="bg-white rounded-2xl border border-slate-200 p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
                                     {bookingFilter === 'recent' ? 'Recent Bookings' : 'All Bookings'}
@@ -1031,24 +1138,52 @@ export default function SuperAdminPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Origin City</label>
-                            <input type="text" required value={createBookingForm.originCity} onChange={e => setCreateBookingForm({ ...createBookingForm, originCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Origin IATA</label>
-                            <input type="text" required maxLength={3} value={createBookingForm.originIata} onChange={e => setCreateBookingForm({ ...createBookingForm, originIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
-                        </div>
+                        <AirportAutocomplete
+                            label="Origin"
+                            initialCity={createBookingForm.originCity}
+                            initialIata={createBookingForm.originIata}
+                            onChange={(val) => setCreateBookingForm({ ...createBookingForm, originCity: val, originIata: '' })}
+                            onSelect={(airport) => setCreateBookingForm({
+                                ...createBookingForm,
+                                originCity: airport.city,
+                                originIata: airport.iata
+                            })}
+                        />
+                        <AirportAutocomplete
+                            label="Destination"
+                            initialCity={createBookingForm.destCity}
+                            initialIata={createBookingForm.destIata}
+                            onChange={(val) => setCreateBookingForm({ ...createBookingForm, destCity: val, destIata: '' })}
+                            onSelect={(airport) => setCreateBookingForm({
+                                ...createBookingForm,
+                                destCity: airport.city,
+                                destIata: airport.iata
+                            })}
+                        />
                     </div>
+
+                    {/* Hidden inputs to maintain required check integrity if needed, or we rely on state check in handler */}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Destination City</label>
-                            <input type="text" required value={createBookingForm.destCity} onChange={e => setCreateBookingForm({ ...createBookingForm, destCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Booking Reference (PNR)</label>
+                            <input
+                                type="text"
+                                value={createBookingForm.bookingReference}
+                                onChange={e => setCreateBookingForm({ ...createBookingForm, bookingReference: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500 font-mono uppercase"
+                                placeholder="e.g. XJ59LZ"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Destination IATA</label>
-                            <input type="text" required maxLength={3} value={createBookingForm.destIata} onChange={e => setCreateBookingForm({ ...createBookingForm, destIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Ticket Number</label>
+                            <input
+                                type="text"
+                                value={createBookingForm.ticketNumber}
+                                onChange={e => setCreateBookingForm({ ...createBookingForm, ticketNumber: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500 font-mono"
+                                placeholder="e.g. 176-238471923"
+                            />
                         </div>
                     </div>
 
@@ -1165,24 +1300,50 @@ export default function SuperAdminPage() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Origin City</label>
-                            <input type="text" required value={editBookingForm.originCity || ''} onChange={e => setEditBookingForm({ ...editBookingForm, originCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Origin IATA</label>
-                            <input type="text" required maxLength={3} value={editBookingForm.originIata || ''} onChange={e => setEditBookingForm({ ...editBookingForm, originIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
-                        </div>
+                        <AirportAutocomplete
+                            label="Origin"
+                            initialCity={editBookingForm.originCity}
+                            initialIata={editBookingForm.originIata}
+                            onChange={(val) => setEditBookingForm({ ...editBookingForm, originCity: val, originIata: '' })}
+                            onSelect={(airport) => setEditBookingForm({
+                                ...editBookingForm,
+                                originCity: airport.city,
+                                originIata: airport.iata
+                            })}
+                        />
+                        <AirportAutocomplete
+                            label="Destination"
+                            initialCity={editBookingForm.destCity}
+                            initialIata={editBookingForm.destIata}
+                            onChange={(val) => setEditBookingForm({ ...editBookingForm, destCity: val, destIata: '' })}
+                            onSelect={(airport) => setEditBookingForm({
+                                ...editBookingForm,
+                                destCity: airport.city,
+                                destIata: airport.iata
+                            })}
+                        />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Destination City</label>
-                            <input type="text" required value={editBookingForm.destCity || ''} onChange={e => setEditBookingForm({ ...editBookingForm, destCity: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Booking Reference (PNR)</label>
+                            <input
+                                type="text"
+                                value={editBookingForm.bookingReference || ''}
+                                onChange={e => setEditBookingForm({ ...editBookingForm, bookingReference: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500 font-mono uppercase"
+                                placeholder="e.g. XJ59LZ"
+                            />
                         </div>
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Destination IATA</label>
-                            <input type="text" required maxLength={3} value={editBookingForm.destIata || ''} onChange={e => setEditBookingForm({ ...editBookingForm, destIata: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Ticket Number</label>
+                            <input
+                                type="text"
+                                value={editBookingForm.ticketNumber || ''}
+                                onChange={e => setEditBookingForm({ ...editBookingForm, ticketNumber: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500 font-mono"
+                                placeholder="e.g. 176-238471923"
+                            />
                         </div>
                     </div>
 
@@ -1266,12 +1427,36 @@ export default function SuperAdminPage() {
                                         </div>
                                         <p className="text-sm font-semibold leading-relaxed">{note.message}</p>
                                         {note.meta && (
-                                            <div className="mt-3 text-[11px] font-mono bg-white/50 p-2 rounded-lg border border-black/5 flex flex-wrap gap-2">
-                                                {Object.entries(note.meta).map(([k, v]) => (
-                                                    <span key={k} className="bg-white px-1.5 py-0.5 rounded border border-slate-100">
-                                                        <span className="opacity-50">{k}:</span> {String(v)}
-                                                    </span>
-                                                ))}
+                                            <div className="mt-3">
+                                                <div className="text-[11px] font-mono bg-white/50 p-2 rounded-lg border border-black/5 flex flex-wrap gap-2 mb-3">
+                                                    {Object.entries(note.meta).map(([k, v]) => (
+                                                        k !== 'wa_link' && (
+                                                            <span key={k} className="bg-white px-1.5 py-0.5 rounded border border-slate-100">
+                                                                <span className="opacity-50">{k}:</span> {String(v)}
+                                                            </span>
+                                                        )
+                                                    ))}
+                                                </div>
+                                                {note.type === 'booking_request' && note.meta.phone && (
+                                                    <div className="flex gap-2">
+                                                        <a
+                                                            href={note.meta.wa_link || `https://wa.me/${note.meta.phone.replace(/[^0-9]/g, '')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-bold uppercase rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5"
+                                                        >
+                                                            <Lucide.Phone size={12} />
+                                                            WhatsApp
+                                                        </a>
+                                                        <a
+                                                            href={`mailto:${note.meta.email}`}
+                                                            className="px-3 py-1.5 bg-ocean-600 text-white text-[10px] font-bold uppercase rounded-lg hover:bg-ocean-700 transition-all flex items-center gap-1.5"
+                                                        >
+                                                            <Lucide.Mail size={12} />
+                                                            Email
+                                                        </a>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
                                     </div>
@@ -1498,6 +1683,134 @@ export default function SuperAdminPage() {
             </Modal>
 
             {/* Staff Creation Success Feedback */}
+            {/* Traveling Today Modal */}
+            <Modal
+                open={isTravelingTodayModalOpen}
+                title={`Traveling Passengers (${travelingPassengers.length})`}
+                onClose={() => setIsTravelingTodayModalOpen(false)}
+                footer={
+                    <div className="flex justify-end p-4 border-t border-slate-200">
+                        <button
+                            onClick={() => setIsTravelingTodayModalOpen(false)}
+                            className="px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800"
+                        >
+                            Close
+                        </button>
+                    </div>
+                }
+            >
+                <div className="p-0">
+                    {travelingPassengers.length > 0 ? (
+                        <div className="overflow-x-auto max-h-[60vh]">
+                            <table className="w-full">
+                                <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Passenger</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase">Flight</th>
+                                        <th className="px-6 py-3 text-right text-xs font-bold text-slate-600 uppercase">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {travelingPassengers.map(p => (
+                                        <tr key={p.id || p._id} className="hover:bg-slate-50">
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-900">{p.fullName}</div>
+                                                <div className="text-xs text-slate-500">{p.email}</div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                {p.bookings && p.bookings[0] ? (
+                                                    <div>
+                                                        <div className="font-bold text-ocean-600">{p.bookings[0].flightNumber}</div>
+                                                        <div className="text-xs text-slate-500">{p.bookings[0].origin?.city} → {p.bookings[0].destination?.city}</div>
+                                                    </div>
+                                                ) : <span className="text-xs text-slate-400">N/A</span>}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <button
+                                                    onClick={() => {
+                                                        setIsTravelingTodayModalOpen(false);
+                                                        setSelectedPassenger(p);
+                                                        scrollToPassengerList();
+                                                    }}
+                                                    className="text-xs font-bold text-ocean-600 hover:text-ocean-700"
+                                                >
+                                                    View Details
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                            <Lucide.CalendarX size={48} className="text-slate-200 mb-4" />
+                            <p className="font-medium">No passengers traveling on this date.</p>
+                        </div>
+                    )}
+                </div>
+            </Modal>
+
+            {/* Active Bookings Modal */}
+            <Modal
+                open={isActiveBookingsModalOpen}
+                title={`Active Bookings (${bookings.filter(b => b.status === 'confirmed').length})`}
+                onClose={() => setIsActiveBookingsModalOpen(false)}
+                footer={
+                    <div className="flex justify-end p-4 border-t border-slate-200">
+                        <button
+                            onClick={() => setIsActiveBookingsModalOpen(false)}
+                            className="px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800"
+                        >
+                            Close
+                        </button>
+                    </div>
+                }
+            >
+                <div className="p-6 max-h-[70vh] overflow-y-auto">
+                    {bookings.filter(b => b.status === 'confirmed').length > 0 ? (
+                        <div className="space-y-3">
+                            {bookings.filter(b => b.status === 'confirmed').map(b => (
+                                <div
+                                    key={b.id || b._id}
+                                    onClick={() => {
+                                        setIsActiveBookingsModalOpen(false);
+                                        handleViewBookingDetails(b);
+                                    }}
+                                    className="border border-slate-200 rounded-xl p-4 hover:border-ocean-300 hover:shadow-md transition-all cursor-pointer group bg-white"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-10 w-10 bg-green-100 text-green-700 rounded-lg flex items-center justify-center font-bold text-xs">
+                                                {(b.airlineName || '??').slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-900">{b.airlineName} <span className="text-slate-400 font-normal">({b.flightNumber})</span></div>
+                                                <div className="text-xs text-slate-500 font-medium">
+                                                    {b.origin?.city} ({b.origin?.iata}) → {b.destination?.city} ({b.destination?.iata})
+                                                </div>
+                                                <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
+                                                    <Lucide.Calendar size={10} />
+                                                    {new Date(b.departureDateTimeUtc).toLocaleString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-slate-400 group-hover:text-ocean-600 transition-colors">
+                                            <Lucide.ChevronRight size={20} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="p-12 text-center text-slate-500 flex flex-col items-center">
+                            <Lucide.Plane size={48} className="text-slate-200 mb-4 opacity-50" />
+                            <p className="font-medium">No Active Booking</p>
+                        </div>
+                    )}
+                </div>
+            </Modal>
+
             {staffCreationSuccess && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-8 text-center animate-in zoom-in-95 duration-300">

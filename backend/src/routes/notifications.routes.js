@@ -9,7 +9,8 @@ router.use(requireAgency);
 router.get('/', async (req, res, next) => {
   try {
     const { unread, type } = req.query;
-    const q = {};
+    // Default to system notifications (passengerId: null) for the agency dashboard
+    const q = { passengerId: null };
 
     if (type) q.type = type;
     if (unread === 'true') q.read = false;

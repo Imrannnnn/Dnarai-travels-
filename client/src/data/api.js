@@ -1,11 +1,25 @@
-const DEFAULT_TIMEOUT_MS = 10000
+const DEFAULT_TIMEOUT_MS = 30000
 
 function withTimeout(signal, ms) {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), ms)
 
-  const onAbort = () => controller.abort()
-  if (signal) signal.addEventListener('abort', onAbort)
+  // If parent signal is already aborted, abort immediately
+  if (signal?.aborted) {
+    controller.abort(signal.reason)
+    return { signal: controller.signal, cleanup: () => { } }
+  }
+
+  const timeoutId = setTimeout(() => {
+    controller.abort(new Error('Request Timeout'))
+  }, ms)
+
+  const onAbort = () => {
+    controller.abort(signal?.reason)
+  }
+
+  if (signal) {
+    signal.addEventListener('abort', onAbort)
+  }
 
   return {
     signal: controller.signal,
@@ -18,6 +32,7 @@ function withTimeout(signal, ms) {
 
 async function request(path, { method = 'GET', body, baseUrl, signal } = {}) {
   const url = `${baseUrl?.replace(/\/$/, '') || ''}${path}`
+  console.log(`[API] ${method} ${url}`, { body });
   const token = localStorage.getItem('token')
 
   const headers = {
@@ -94,12 +109,20 @@ export async function fetchNotifications({ baseUrl, signal } = {}) {
   return request('/api/portal/notifications', { baseUrl, signal })
 }
 
-export async function submitBookingRequest({ departureCity, destination, date, notes, baseUrl, signal } = {}) {
+export async function submitBookingRequest({ departureCity, destination, date, notes, isReturn, returnDate, passengers, baseUrl, signal } = {}) {
   return request('/api/portal/booking-requests', {
     method: 'POST',
-    body: { departureCity, destination, date, notes },
+    body: { departureCity, destination, date, notes, isReturn, returnDate, passengers },
     baseUrl,
     signal
+  })
+}
+
+export async function updateProfile({ fullName, phone, baseUrl }) {
+  return request('/api/portal/update-profile', {
+    method: 'POST',
+    body: { fullName, phone },
+    baseUrl
   })
 }
 

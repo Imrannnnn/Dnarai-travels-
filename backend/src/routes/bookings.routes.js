@@ -42,6 +42,8 @@ const createSchema = z.object({
       iata: z.string().min(2),
       countryCode: z.string().optional(),
     }),
+    bookingReference: z.string().optional(),
+    ticketNumber: z.string().optional(),
     departureDateTimeUtc: z.string().datetime(),
     departureTime24: z
       .string()
@@ -120,6 +122,8 @@ const updateSchema = z.object({
         countryCode: z.string().optional(),
       })
       .optional(),
+    bookingReference: z.string().optional(),
+    ticketNumber: z.string().optional(),
     status: z.enum(['confirmed', 'updated', 'cancelled', 'completed']).optional(),
   }),
   params: z.object({ id: z.string() }),
@@ -142,6 +146,10 @@ router.patch('/:id', validate(updateSchema), async (req, res, next) => {
     if (req.validated.body.origin !== undefined) booking.origin = req.validated.body.origin;
     if (req.validated.body.destination !== undefined)
       booking.destination = req.validated.body.destination;
+    if (req.validated.body.bookingReference !== undefined)
+      booking.bookingReference = req.validated.body.bookingReference;
+    if (req.validated.body.ticketNumber !== undefined)
+      booking.ticketNumber = req.validated.body.ticketNumber;
 
     if (req.validated.body.departureDateTimeUtc !== undefined) {
       booking.departureDateTimeUtc = new Date(req.validated.body.departureDateTimeUtc);

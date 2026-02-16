@@ -1,4 +1,0 @@
-﻿C:\Users\user\Desktop\Dnarai travel\Dnarai-app\backend\src\services\EmailService.js:210:41: 'type' is defined but never used. Allowed unused args must match /^_/u. [Warning/no-unused-vars]
-C:\Users\user\Desktop\Dnarai travel\Dnarai-app\backend\src\services\EmailService.js:210:56: 'bookingId' is defined but never used. Allowed unused args must match /^_/u. [Warning/no-unused-vars]
-
-2 problems

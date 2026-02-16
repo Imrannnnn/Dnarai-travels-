@@ -70,17 +70,25 @@ if (process.env.PUBLIC_DEMO === 'true') {
 app.use(errorHandler);
 
 async function main() {
-  await connectDb();
-  startSchedulers();
-  EmailParserService.init();
+  try {
+    await connectDb();
+    startSchedulers();
+    EmailParserService.init();
 
-  const PORT = process.env.PORT || 5000; // fallback for local dev
-  app.listen(PORT, () => {
-    console.log(`[backend] listening on port ${PORT}`);
-  });
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`[backend] SUCCESS: Server is running on port ${PORT}`);
+    });
+  } catch (err) {
+    if (err.name === 'MongooseServerSelectionError') {
+      console.error('\n[backend] FATAL ERROR: Could not connect to MongoDB Atlas.');
+      console.error('[backend] REASON: ReplicaSetNoPrimary. This usually means your IP is not whitelisted in Atlas.');
+      console.error('[backend] ACTION: Please go to MongoDB Atlas -> Network Access -> Add Current IP Address.\n');
+    } else {
+      console.error('[backend] fatal error during startup', err);
+    }
+    process.exit(1);
+  }
 }
 
-main().catch((err) => {
-  console.error('[backend] fatal error', err);
-  process.exit(1);
-});
+main();

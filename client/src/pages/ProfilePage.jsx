@@ -3,7 +3,7 @@ import DocumentCard from '../components/DocumentCard'
 import clsx from 'clsx'
 import * as Lucide from 'lucide-react'
 import PassportUploadModal from '../components/PassportUploadModal'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAppData } from '../data/AppDataContext'
 import { useAuth } from '../data/AuthContext'
 import { getApiBaseUrl } from '../data/api'
@@ -13,9 +13,31 @@ const FallbackIcon = () => null
 const ShieldCheck = Lucide.ShieldCheck || FallbackIcon
 
 export default function ProfilePage() {
-  const { documents, passenger, uploadPassport, triggerOverlay } = useAppData()
+  const { documents, passenger, uploadPassport, triggerOverlay, updatePassengerProfile } = useAppData()
   const { user } = useAuth()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editFormData, setEditFormData] = useState({
+    fullName: passenger?.fullName || '',
+    phone: passenger?.phone || ''
+  })
+
+  // Update edit form data when passenger loads
+  useEffect(() => {
+    if (passenger) {
+      setEditFormData({
+        fullName: passenger.fullName || '',
+        phone: passenger.phone || ''
+      })
+    }
+  }, [passenger])
+
+  const handleSaveProfile = async () => {
+    triggerOverlay('Updating Profile...', async () => {
+      await updatePassengerProfile(editFormData)
+      setIsEditing(false)
+    })
+  }
 
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -59,6 +81,27 @@ export default function ProfilePage() {
         title="Personal Profile"
         subtitle="Manage your identity, travel documents, and elite preferences."
       />
+
+      {!passenger && (
+        <div className="animate-in fade-in slide-in-from-top-4 duration-700 bg-gradient-to-r from-ocean-600 to-indigo-600 rounded-3xl p-8 text-white shadow-premium relative overflow-hidden">
+          <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black uppercase tracking-tight">Account Not Linked</h3>
+              <p className="text-ocean-100 font-medium max-w-xl">
+                Your login is not yet connected to a passenger identity. Link your account now to enable booking requests and itinerary management.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-8 py-3 text-sm font-black text-ocean-700 shadow-xl transition-all hover:scale-105 active:scale-95"
+            >
+              <Lucide.Link size={18} />
+              <span>Link Account Now</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_2fr]">
         <aside className="space-y-8">
@@ -113,21 +156,65 @@ export default function ProfilePage() {
                 <div className="h-8 w-1.5 rounded-full bg-slate-900 dark:bg-white" />
                 <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight font-display">Identity Details</h3>
               </div>
+              <button
+                onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
+                className={clsx(
+                  "text-[10px] font-black uppercase py-1.5 px-4 rounded-full border transition-all",
+                  isEditing
+                    ? "bg-ocean-600 border-ocean-600 text-white hover:bg-ocean-700"
+                    : "text-ocean-600 border-ocean-600/20 hover:bg-ocean-50"
+                )}
+              >
+                {isEditing ? 'Save Changes' : 'Edit Profile'}
+              </button>
             </div>
 
             <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-              {[
-                { label: 'Display Name', value: name },
-                { label: 'Email Address', value: user?.email },
-                { label: 'Phone Number', value: passenger?.phone || 'Not provided' },
-                { label: 'Member Since', value: 'February 2026' },
-              ].map((row) => (
-                <div key={row.label} className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{row.label}</div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-white">{row.value}</div>
-                </div>
-              ))}
+              <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Full Name</div>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    className="w-full bg-transparent border-b border-ocean-500/50 focus:border-ocean-500 text-sm font-bold text-slate-900 dark:text-white outline-none"
+                    value={editFormData.fullName}
+                    onChange={e => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                  />
+                ) : (
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">{passenger?.fullName || name}</div>
+                )}
+              </div>
+              <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Email Address</div>
+                <div className="text-sm font-bold text-slate-400 truncate cursor-not-allowed">{user?.email}</div>
+              </div>
+              <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">WhatsApp Number</div>
+                {isEditing ? (
+                  <input
+                    type="tel"
+                    className="w-full bg-transparent border-b border-ocean-500/50 focus:border-ocean-500 text-sm font-bold text-slate-900 dark:text-white outline-none"
+                    value={editFormData.phone}
+                    onChange={e => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  />
+                ) : (
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">{passenger?.phone || 'Not provided'}</div>
+                )}
+              </div>
+              <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Member Since</div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white">February 2026</div>
+              </div>
             </div>
+            {isEditing && (
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="text-[10px] font-black uppercase text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </section>
 
           <section className="rounded-[2.5rem] border border-sand-200/60 bg-white p-8 shadow-card dark:border-slate-800 dark:bg-slate-900/40">

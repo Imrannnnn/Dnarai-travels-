@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import FlightCard from '../components/FlightCard'
 import * as Lucide from 'lucide-react'
@@ -12,6 +13,7 @@ const Plane = Lucide.Plane || FallbackIcon
 import BookingModal from '../components/BookingModal'
 
 export default function DashboardPage() {
+  const navigate = useNavigate()
   const { flights, passenger, addBooking, clearFlight, completeFlight } = useAppData()
   const [selectedFlight, setSelectedFlight] = useState(null)
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
@@ -39,6 +41,29 @@ export default function DashboardPage() {
           </button>
         </div>
       </div>
+
+      {!passenger && (
+        <div className="animate-in fade-in slide-in-from-top-4 duration-700 bg-gradient-to-r from-ocean-600 to-indigo-600 rounded-3xl p-8 text-white shadow-premium relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+            <Lucide.UserCheck size={120} />
+          </div>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2">
+              <h3 className="text-2xl font-black uppercase tracking-tight font-display">Link Your Account</h3>
+              <p className="text-white/80 font-medium max-w-xl">
+                Your account is currently not linked to a passenger profile. Link your account now to see your travel details, history, and request new bookings seamlessly.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/profile')}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-8 py-3 text-sm font-black text-ocean-700 shadow-xl transition-all hover:scale-105 active:scale-95"
+            >
+              <span>Setup Profile Now</span>
+              <Lucide.ArrowRight size={18} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-10">
         <div className="space-y-8">
@@ -160,6 +185,6 @@ export default function DashboardPage() {
           setSelectedFlight(null)
         }}
       />
-    </div >
+    </div>
   )
 }
