@@ -8,8 +8,8 @@ export const WeatherService = {
   /**
    * Translates temperature and description into actionable clothing advice.
    */
-  getClothingAdvice(tempC, description) {
-    const desc = (description || '').toLowerCase();
+  getClothingAdvice(tempC) {
+    // Temperature-based advice
 
     if (tempC <= 0) {
       return "Extremely cold. Wear a heavy thermal coat, gloves, a scarf, and a hat. Layering is essential.";
@@ -80,7 +80,7 @@ export const WeatherService = {
       const tempC = Math.round(current.temperature);
 
       // 3. Generate Advice
-      const advice = this.getClothingAdvice(tempC, desc);
+      const advice = this.getClothingAdvice(tempC);
 
       return {
         tempC,
