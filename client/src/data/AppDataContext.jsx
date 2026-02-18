@@ -76,7 +76,7 @@ export function AppDataProvider({ children }) {
             duration: '6h 45m',
             seat: '24A',
             bags: '2 Bags',
-            weather: { label: `${b.destination?.city} Weather`, tempC: 18, desc: 'Partly Cloudy', type: 'cloudSun' },
+            weather: b.weather || { label: 'Weather', tempC: 22, desc: 'Fair', type: 'cloudSun', advice: 'Enjoy your flight!' },
           })))
         }
 

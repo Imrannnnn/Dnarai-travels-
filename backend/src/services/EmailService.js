@@ -278,5 +278,88 @@ export const EmailService = {
       console.error('Email failed:', error);
       return { ok: false, error: error.message };
     }
+  },
+
+  async send24HourReminder({ booking, passenger }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const { WeatherService } = await import('./WeatherService.js');
+    const weather = await WeatherService.getCityForecast({ city: booking.destination?.city || 'the destination' });
+
+    const content = `
+      <tr>
+        <td style="padding: 40px;">
+          <h2 style="color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: 1px; font-size: 18px;">24-Hour Flight Reminder</h2>
+          <p style="color: ${COLORS.SLATE}; font-size: 16px;">Hello ${passenger.fullName}, your flight <strong>${booking.flightNumber}</strong> to <strong>${booking.destination?.city}</strong> is scheduled to depart in approximately 24 hours.</p>
+          
+          <div style="margin: 30px 0; padding: 25px; background-color: ${COLORS.NAVY}; border-radius: 20px; color: white;">
+            <p style="margin: 0 0 15px 0; font-size: 13px; font-weight: 700; color: ${COLORS.GOLD}; text-transform: uppercase;">Destination Climate Brief</p>
+            <div style="font-size: 24px; font-weight: 800; margin-bottom: 5px;">${weather.tempC}°C - ${weather.desc}</div>
+            <p style="margin: 0; font-size: 14px; opacity: 0.9; line-height: 1.6;"><strong>Travel Advice:</strong> ${weather.advice}</p>
+          </div>
+
+          <div style="border-left: 4px solid ${COLORS.GOLD}; padding-left: 20px; font-size: 14px; color: ${COLORS.SLATE}; margin-bottom: 30px;">
+            <p style="margin: 5px 0;"><strong>Departure:</strong> ${booking.origin?.city} (${booking.origin?.iata})</p>
+            <p style="margin: 5px 0;"><strong>Arrival:</strong> ${booking.destination?.city} (${booking.destination?.iata})</p>
+          </div>
+
+          <p style="font-size: 14px; color: ${COLORS.SLATE};">Please ensure you have all your travel documents ready. We look forward to your journey.</p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        to: passenger.email,
+        subject: `24h Reminder: Journey to ${booking.destination?.city}`,
+        html: getEmailWrapper(content, `Preparing for your trip to ${booking.destination?.city}`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('Email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  async send3HourReminder({ booking, passenger }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const { WeatherService } = await import('./WeatherService.js');
+    const weather = await WeatherService.getCityForecast({ city: booking.destination?.city || 'the destination' });
+
+    const content = `
+      <tr>
+        <td style="padding: 40px;">
+          <h2 style="color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: 1px; font-size: 18px;">Final Departure Reminder</h2>
+          <p style="color: ${COLORS.SLATE}; font-size: 16px;">Hello ${passenger.fullName}, your flight <strong>${booking.flightNumber}</strong> is departing in approximately 3 hours. We hope you are ready for boarding!</p>
+          
+          <div style="margin: 30px 0; padding: 25px; border: 2px dashed ${COLORS.NAVY}; border-radius: 20px;">
+            <p style="margin: 0 0 10px 0; font-size: 12px; font-weight: 800; color: ${COLORS.SLATE}; text-transform: uppercase;">At your destination right now</p>
+            <div style="font-size: 20px; font-weight: 800; color: ${COLORS.NAVY};">${weather.tempC}°C - ${weather.desc}</div>
+            <p style="margin: 10px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Quick Gear Check:</strong> ${weather.advice}</p>
+          </div>
+
+          <p style="font-size: 14px; color: ${COLORS.SLATE};">Safe travels! Our service ends only when you arrive at your destination.</p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        to: passenger.email,
+        subject: `Upcoming Boarding: ${booking.flightNumber}`,
+        html: getEmailWrapper(content, `Final boarding reminder for ${booking.flightNumber}`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('Email failed:', error);
+      return { ok: false, error: error.message };
+    }
   }
 };

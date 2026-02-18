@@ -100,10 +100,25 @@ router.get('/bookings', async (req, res, next) => {
     if (!req.passengerId) {
       return next({ status: 403, code: 'FORBIDDEN', message: 'Passenger account not linked' });
     }
+    const { WeatherService } = await import('../services/WeatherService.js');
+
     const bookings = await Booking.find({ passengerId: req.passengerId })
       .sort({ departureDateTimeUtc: 1 })
       .limit(500);
-    res.json(bookings);
+
+    // Enriched with real-time weather advice
+    const data = await Promise.all(bookings.map(async (b) => {
+      const bObj = b.toObject();
+      try {
+        const weather = await WeatherService.getCityForecast({ city: b.destination?.city });
+        bObj.weather = weather;
+      } catch (err) {
+        bObj.weather = { tempC: 22, desc: 'Fair', type: 'cloudSun', advice: 'Standard travel attire is appropriate.' };
+      }
+      return bObj;
+    }));
+
+    res.json(data);
   } catch (err) {
     next(err);
   }

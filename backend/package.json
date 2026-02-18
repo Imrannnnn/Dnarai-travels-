@@ -36,6 +36,7 @@
     "node-cron": "^3.0.3",
     "node-imap": "^0.9.6",
     "nodemailer": "^7.0.12",
+    "openmeteo": "^1.2.3",
     "pdf-parse": "^2.4.5",
     "zod": "^3.22.4"
   }

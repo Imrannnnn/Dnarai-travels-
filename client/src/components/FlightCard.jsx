@@ -100,33 +100,50 @@ export default function FlightCard({ flight, onSelect }) {
 
       {/* --- Bottom Section: Details --- */}
       <div className="bg-slate-50/50 dark:bg-slate-900/50 p-6 md:p-8 backdrop-blur-sm">
-        <div className="grid grid-cols-3 gap-2 md:gap-4">
-          {/* Date */}
-          <div className="flex flex-col gap-1">
-            <span className="text-[9px] md:text-[10px] uppercase font-black text-slate-400 tracking-wider">Date</span>
-            <div className="flex items-center gap-1.5 md:gap-2 text-slate-900 dark:text-white font-bold text-xs md:text-sm">
-              <Calendar size={14} className="text-ocean-500" />
-              <span className="truncate">{flight.date}</span>
+        <div className="flex flex-col gap-6">
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
+            {/* Date */}
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] md:text-[10px] uppercase font-black text-slate-400 tracking-wider">Date</span>
+              <div className="flex items-center gap-1.5 md:gap-2 text-slate-900 dark:text-white font-bold text-xs md:text-sm">
+                <Calendar size={14} className="text-ocean-500" />
+                <span className="truncate">{flight.date}</span>
+              </div>
+            </div>
+
+            {/* Seat */}
+            <div className="flex flex-col gap-1 border-l border-slate-200 dark:border-slate-800 pl-3 md:pl-6">
+              <span className="text-[9px] md:text-[10px] uppercase font-black text-slate-400 tracking-wider">Seat</span>
+              <div className="flex items-center gap-1.5 md:gap-2 text-slate-900 dark:text-white font-bold text-xs md:text-sm">
+                <Armchair size={14} className="text-ocean-500" />
+                <span>{flight.seat}</span>
+              </div>
+            </div>
+
+            {/* Weather */}
+            <div className="flex flex-col gap-1 border-l border-slate-200 dark:border-slate-800 pl-3 md:pl-6">
+              <span className="text-[9px] md:text-[10px] uppercase font-black text-slate-400 tracking-wider">Climate</span>
+              <div className="flex items-center gap-1.5 md:gap-2 text-slate-900 dark:text-white font-bold text-xs md:text-sm">
+                <WeatherIcon type={flight.weather.type} />
+                <span>{flight.weather.tempC}°C</span>
+              </div>
             </div>
           </div>
 
-          {/* Boarding */}
-          <div className="flex flex-col gap-1 border-l border-slate-200 dark:border-slate-800 pl-3 md:pl-6">
-            <span className="text-[9px] md:text-[10px] uppercase font-black text-slate-400 tracking-wider">Seat</span>
-            <div className="flex items-center gap-1.5 md:gap-2 text-slate-900 dark:text-white font-bold text-xs md:text-sm">
-              <Armchair size={14} className="text-ocean-500" />
-              <span>{flight.seat}</span>
+          {/* Concierge Advice */}
+          {flight.weather.advice && (
+            <div className="rounded-2xl bg-white dark:bg-slate-950/50 p-4 border border-slate-100 dark:border-white/5 flex items-start gap-3 shadow-sm group-hover:bg-ocean-50/30 dark:group-hover:bg-ocean-900/10 transition-colors duration-300">
+              <div className="mt-0.5 p-1.5 rounded-lg bg-ocean-100 dark:bg-ocean-950 text-ocean-600 dark:text-ocean-400">
+                <Lucide.Sparkles size={14} />
+              </div>
+              <div className="flex-1">
+                <div className="text-[10px] font-black uppercase tracking-wider text-ocean-600 dark:text-ocean-400 mb-1">Traveler&apos;s Attire Advice</div>
+                <div className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed font-medium">
+                  {flight.weather.advice}
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* Weather */}
-          <div className="flex flex-col gap-1 border-l border-slate-200 dark:border-slate-800 pl-3 md:pl-6">
-            <span className="text-[9px] md:text-[10px] uppercase font-black text-slate-400 tracking-wider">Status</span>
-            <div className="flex items-center gap-1.5 md:gap-2 text-slate-900 dark:text-white font-bold text-xs md:text-sm">
-              <WeatherIcon type={flight.weather.type} />
-              <span>{flight.weather.tempC}°C</span>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </button>
