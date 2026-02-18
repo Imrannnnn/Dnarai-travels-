@@ -259,8 +259,8 @@ export default function BookingModal({ open, onClose, onSubmit }) {
                                         disabled={!formData.isReturn}
                                         required={formData.isReturn}
                                         className={`w-full rounded-2xl border bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:bg-slate-900 dark:text-white transition-all ${formData.isReturn
-                                                ? 'border-sand-200 text-slate-900 dark:border-slate-800'
-                                                : 'border-transparent text-slate-400 bg-slate-100 dark:bg-slate-800/50 cursor-not-allowed'
+                                            ? 'border-sand-200 text-slate-900 dark:border-slate-800'
+                                            : 'border-transparent text-slate-400 bg-slate-100 dark:bg-slate-800/50 cursor-not-allowed'
                                             }`}
                                         value={formData.returnDate}
                                         onChange={(e) => setFormData({ ...formData, returnDate: e.target.value })}

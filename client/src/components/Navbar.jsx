@@ -178,66 +178,88 @@ export default function Navbar() {
       {/* Mobile Menu Overlay */}
       <div
         className={clsx(
-          'fixed inset-0 z-30 bg-white/80 dark:bg-slate-950/90 backdrop-blur-xl transition-all duration-500 md:hidden flex flex-col pt-24 px-6 pb-10',
-          isMenuOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-4'
+          'fixed inset-0 z-30 bg-white/95 dark:bg-slate-950/98 backdrop-blur-2xl transition-all duration-500 md:hidden flex flex-col',
+          isMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
         )}
       >
-        {/* Mobile Navigation List */}
-        <nav className="flex-1 flex flex-col gap-2 overflow-y-auto">
-          <div className="space-y-1 py-2">
-            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4 px-2">Menu</h3>
-            {menuItems.map((item) => (
-              <NavItem key={item.to} {...item} onClick={() => setIsMenuOpen(false)} />
-            ))}
-          </div>
-
-          {!isAuthenticated && (
-            <div className="mt-8 border-t border-slate-200 dark:border-slate-800 pt-8">
-              <Link
-                to="/login"
-                onClick={() => setIsMenuOpen(false)}
-                className="flex w-full items-center justify-center gap-3 bg-ocean-600 text-white px-6 py-4 rounded-xl font-bold text-lg shadow-xl shadow-ocean-600/30 active:scale-95 transition-all"
-              >
-                <LogIn size={20} />
-                <span>Login to Account</span>
-              </Link>
-            </div>
-          )}
-        </nav>
-
-        {/* Mobile User Profile Check */}
-        {isAuthenticated && (
-          <div className="mt-auto pt-6 border-t border-slate-200 dark:border-slate-800">
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800">
-              <div className="h-12 w-12 rounded-full bg-gradient-to-br from-ocean-500 to-ocean-600 flex items-center justify-center text-white font-bold text-xl shadow-md">
-                {initials}
+        <div className="flex-1 flex flex-col pt-24 px-8 pb-10 overflow-y-auto">
+          {/* Mobile Navigation List */}
+          <nav className="flex flex-col gap-6">
+            <div className="space-y-1">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-6 px-2">Navigation</h3>
+              <div className="grid gap-2">
+                {menuItems.map((item) => (
+                  <NavItem key={item.to} {...item} onClick={() => setIsMenuOpen(false)} />
+                ))}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-slate-900 dark:text-white truncate text-lg">
-                  {passenger?.name || user?.email?.split('@')[0]}
-                </div>
-                <div className="text-xs font-medium text-ocean-600 dark:text-ocean-400 uppercase tracking-wide">
-                  {user?.role || 'Traveler Account'}
-                </div>
-              </div>
-              <button
-                onClick={() => {
-                  logout()
-                  setIsMenuOpen(false)
-                }}
-                className="h-10 w-10 flex items-center justify-center rounded-xl bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400 active:scale-95 transition-all"
-                title="Logout"
-              >
-                <LogOut size={18} />
-              </button>
             </div>
 
-            <div className="mt-4 flex justify-between items-center px-2">
-              <span className="text-xs text-slate-400 font-medium">v1.0.2 Mobile Build</span>
-              <span className="text-xs text-slate-400 font-medium">Secure Connection</span>
+            {!isAuthenticated ? (
+              <div className="mt-8 pt-8 border-t border-slate-200/60 dark:border-slate-800/60">
+                <Link
+                  to="/login"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="group flex w-full items-center justify-center gap-3 bg-ocean-600 text-white px-6 py-4 rounded-[1.25rem] font-black uppercase tracking-widest text-sm shadow-xl shadow-ocean-600/20 active:scale-95 transition-all hover:bg-ocean-700"
+                >
+                  <LogIn size={20} />
+                  <span>Sign In</span>
+                </Link>
+                <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Access your travel portal</p>
+              </div>
+            ) : (
+              <div className="mt-8 pt-8 border-t border-slate-200/60 dark:border-slate-800/60">
+                <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-ocean-500 to-indigo-600 flex items-center justify-center text-white font-black text-2xl shadow-lg ring-4 ring-white dark:ring-slate-800">
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-black text-slate-900 dark:text-white truncate text-xl tracking-tight leading-tight font-display">
+                        {passenger?.name || user?.email?.split('@')[0]}
+                      </div>
+                      <div className="text-[10px] font-black text-ocean-600 dark:text-ocean-400 uppercase tracking-[0.2em] mt-1">
+                        {user?.role || 'Verified Traveler'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => {
+                        navigate('/profile')
+                        setIsMenuOpen(false)
+                      }}
+                      className="flex items-center justify-center gap-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-3 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 shadow-sm transition-all active:scale-95"
+                    >
+                      <UserRound size={16} />
+                      Profile
+                    </button>
+                    <button
+                      onClick={() => {
+                        logout()
+                        setIsMenuOpen(false)
+                      }}
+                      className="flex items-center justify-center gap-2 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 py-3 rounded-xl text-xs font-bold border border-red-100 dark:border-red-900/30 transition-all active:scale-95"
+                    >
+                      <LogOut size={16} />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </nav>
+
+          <div className="mt-auto pt-10 flex flex-col items-center gap-4">
+            <div className="flex gap-4">
+              {/* Dark mode toggle here if desired, but already in header */}
+            </div>
+            <div className="text-center space-y-1">
+              <div className="text-[10px] text-slate-400 font-black uppercase tracking-[0.4em]">Dnarai Enterprise</div>
+              <div className="text-[9px] text-slate-400 font-bold uppercase tracking-widest opacity-50">v1.2.0 • Secure Cloud Build</div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </>
   )

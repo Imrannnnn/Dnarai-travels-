@@ -30,6 +30,7 @@ const NotificationSchema = new mongoose.Schema(
     deliveryMethod: { type: String, enum: ['email', 'in_app'], required: true },
 
     read: { type: Boolean, default: false, index: true },
+    isAdminOnly: { type: Boolean, default: false, index: true },
     sentAt: { type: Date },
 
     dedupeKey: { type: String, required: true, index: true },

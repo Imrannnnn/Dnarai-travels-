@@ -2,10 +2,12 @@ import { Link } from 'react-router-dom'
 import content from '../content/siteContent.json'
 import WavePlane from '../components/WavePlane'
 import * as Lucide from 'lucide-react'
+import { useAuth } from '../data/AuthContext'
 
 
 export default function HomePage() {
   const { brandName, home } = content
+  const { isAuthenticated, logout } = useAuth()
 
   return (
     <div className="flex flex-col min-h-screen pb-24 md:pb-0">
@@ -41,15 +43,25 @@ export default function HomePage() {
                 to="/dashboard"
                 className="group relative inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-8 py-4 text-sm font-bold uppercase tracking-wide text-ocean-700 shadow-card-hover transition-all duration-300 hover:shadow-[0_12px_40px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-100"
               >
-                <span>{home.hero.primaryCta.label}</span>
+                <span>{isAuthenticated ? 'Manage My Travel' : home.hero.primaryCta.label}</span>
                 <Lucide.ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
               </Link>
-              <Link
-                to="/about"
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-white/30 bg-white/5 backdrop-blur-xl px-8 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-soft transition-all duration-300 hover:bg-white/15 hover:border-white/50 active:scale-95"
-              >
-                {home.hero.secondaryCta.label}
-              </Link>
+              {isAuthenticated ? (
+                <button
+                  onClick={logout}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-white/30 bg-white/5 backdrop-blur-xl px-8 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-soft transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/40 active:scale-95"
+                >
+                  <Lucide.LogOut size={18} />
+                  Sign Out
+                </button>
+              ) : (
+                <Link
+                  to="/about"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-white/30 bg-white/5 backdrop-blur-xl px-8 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-soft transition-all duration-300 hover:bg-white/15 hover:border-white/50 active:scale-95"
+                >
+                  {home.hero.secondaryCta.label}
+                </Link>
+              )}
             </div>
           </div>
 
@@ -241,15 +253,25 @@ export default function HomePage() {
                 to="/dashboard"
                 className="group inline-flex items-center justify-center gap-3 bg-white text-ocean-700 px-8 py-4 rounded-2xl text-sm font-bold uppercase tracking-wide shadow-card-hover transition-all duration-300 hover:shadow-[0_12px_40px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-100"
               >
-                <span>Get Started</span>
+                <span>{isAuthenticated ? 'Enter Dashboard' : 'Get Started'}</span>
                 <Lucide.ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
               </Link>
-              <Link
-                to="/about"
-                className="inline-flex items-center justify-center gap-2 border-2 border-white/40 bg-white/10 backdrop-blur-xl text-white px-8 py-4 rounded-2xl text-sm font-bold uppercase tracking-wide shadow-soft transition-all duration-300 hover:bg-white/20 hover:border-white/60 active:scale-95"
-              >
-                Learn More
-              </Link>
+              {isAuthenticated ? (
+                <button
+                  onClick={logout}
+                  className="inline-flex items-center justify-center gap-2 border-2 border-white/40 bg-white/10 backdrop-blur-xl text-white px-8 py-4 rounded-2xl text-sm font-bold uppercase tracking-wide shadow-soft transition-all duration-300 hover:bg-red-500/20 hover:border-red-500/60 active:scale-95"
+                >
+                  <Lucide.LogOut size={18} />
+                  Sign Out
+                </button>
+              ) : (
+                <Link
+                  to="/about"
+                  className="inline-flex items-center justify-center gap-2 border-2 border-white/40 bg-white/10 backdrop-blur-xl text-white px-8 py-4 rounded-2xl text-sm font-bold uppercase tracking-wide shadow-soft transition-all duration-300 hover:bg-white/20 hover:border-white/60 active:scale-95"
+                >
+                  Learn More
+                </Link>
+              )}
             </div>
           </div>
         </div>

@@ -114,11 +114,8 @@ router.get('/notifications', async (req, res, next) => {
     if (!req.passengerId) {
       return next({ status: 403, code: 'FORBIDDEN', message: 'Passenger account not linked' });
     }
-    const { unread, type } = req.query;
-    const q = { passengerId: req.passengerId };
-
-    if (type) q.type = type;
-    if (unread === 'true') q.read = false;
+    // req.query is available but unread/type are not currently used for filtering
+    const q = { passengerId: req.passengerId, isAdminOnly: { $ne: true } };
 
     const items = await Notification.find(q).sort({ createdAt: -1 }).limit(500);
     res.json(items);
@@ -142,6 +139,18 @@ router.patch('/notifications/:id/read', async (req, res, next) => {
     item.sentAt = item.sentAt || new Date();
     await item.save();
 
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/notifications/read-all', async (req, res, next) => {
+  try {
+    if (!req.passengerId) {
+      return next({ status: 403, code: 'FORBIDDEN', message: 'Passenger account not linked' });
+    }
+    await Notification.updateMany({ passengerId: req.passengerId, read: false }, { $set: { read: true } });
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -204,9 +213,10 @@ router.post('/booking-requests', async (req, res, next) => {
       read: false,
     });
 
-    // Create a system-level notification for Admins
+    // Create a system-level notification for Admins (but linked to passenger)
     await Notification.create({
-      passengerId: null, // System notification
+      passengerId: req.passengerId,
+      isAdminOnly: true,
       type: 'booking_request',
       message: `New Request: ${passenger.fullName} - ${departureCity} to ${destination} on ${date}. ${isReturn ? `Return: ${returnDate}.` : ''} (${passengers?.adults || 1} Pax)`,
       meta: {

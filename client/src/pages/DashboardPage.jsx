@@ -1,16 +1,15 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import clsx from 'clsx'
 import PageHeader from '../components/PageHeader'
 import FlightCard from '../components/FlightCard'
 import * as Lucide from 'lucide-react'
 import { useAppData } from '../data/AppDataContext'
-import { useState } from 'react'
+import BookingModal from '../components/BookingModal'
 import FlightDetailsModal from '../components/FlightDetailsModal'
 
-const FallbackIcon = () => null
-const Plus = Lucide.Plus || FallbackIcon
-const Plane = Lucide.Plane || FallbackIcon
-
-import BookingModal from '../components/BookingModal'
+const Plus = Lucide.Plus
+const Plane = Lucide.Plane
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -67,53 +66,65 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-10">
         <div className="space-y-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-8 w-1.5 rounded-full bg-gradient-to-b from-ocean-400 to-ocean-600" />
-              <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white uppercase font-display">My Journeys</h2>
-            </div>
-            <div className="flex rounded-xl bg-white dark:bg-slate-900 p-1.5 shadow-sm border border-slate-100 dark:border-slate-800">
-              <button
-                onClick={() => setViewMode('upcoming')}
-                className={`rounded-lg px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all ${viewMode === 'upcoming'
-                  ? 'bg-ocean-600 text-white shadow-md'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-              >
-                Upcoming
-              </button>
-              <button
-                onClick={() => setViewMode('history')}
-                className={`rounded-lg px-5 py-2 text-xs font-bold uppercase tracking-wider transition-all ${viewMode === 'history'
-                  ? 'bg-ocean-600 text-white shadow-md'
-                  : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800'
-                  }`}
-              >
-                History
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-8">
-            {displayedFlights.length > 0 ? (
-              displayedFlights.map((f) => (
-                <FlightCard key={f.id} flight={f} onSelect={setSelectedFlight} />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 rounded-[2.5rem] border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
-                <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-slate-800">
-                  <Plane size={48} className="text-ocean-200 dark:text-ocean-900" />
+          <div className="space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="h-4 w-1 md:h-6 md:w-1.5 rounded-full bg-ocean-600" />
+                  <h2 className="text-xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-white uppercase font-display">My Journeys</h2>
                 </div>
-                <div className="space-y-2">
-                  <p className="font-bold text-lg text-slate-900 dark:text-white font-display uppercase tracking-wide">No {viewMode} flights</p>
-                  <p className="text-sm text-slate-500 max-w-xs mx-auto">
-                    {viewMode === 'upcoming'
-                      ? 'Your schedule is clear. Ready to plan your next adventure?'
-                      : 'Your travel history is currently empty.'}
-                  </p>
-                </div>
+                <p className="text-[10px] md:text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-4 md:ml-5">
+                  Your curated travel itineraries
+                </p>
               </div>
-            )}
+
+              <div className="p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center self-start sm:self-auto shadow-inner border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+                <button
+                  onClick={() => setViewMode('upcoming')}
+                  className={clsx(
+                    'relative rounded-xl px-6 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-[0.1em] transition-all duration-300 whitespace-nowrap',
+                    viewMode === 'upcoming'
+                      ? 'bg-white dark:bg-slate-900 text-ocean-600 shadow-premium dark:text-ocean-400 ring-1 ring-black/5 dark:ring-white/5'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+                  )}
+                >
+                  Upcoming
+                </button>
+                <button
+                  onClick={() => setViewMode('history')}
+                  className={clsx(
+                    'relative rounded-xl px-6 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-[0.1em] transition-all duration-300 whitespace-nowrap',
+                    viewMode === 'history'
+                      ? 'bg-white dark:bg-slate-900 text-ocean-600 shadow-premium dark:text-ocean-400 ring-1 ring-black/5 dark:ring-white/5'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+                  )}
+                >
+                  History
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-8">
+              {displayedFlights.length > 0 ? (
+                displayedFlights.map((f) => (
+                  <FlightCard key={f.id} flight={f} onSelect={setSelectedFlight} />
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 rounded-[2.5rem] border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50">
+                  <div className="rounded-2xl bg-white p-6 shadow-sm dark:bg-slate-800">
+                    <Plane size={48} className="text-ocean-200 dark:text-ocean-900" />
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-bold text-lg text-slate-900 dark:text-white font-display uppercase tracking-wide">No {viewMode} flights</p>
+                    <p className="text-sm text-slate-500 max-w-xs mx-auto">
+                      {viewMode === 'upcoming'
+                        ? 'Your schedule is clear. Ready to plan your next adventure?'
+                        : 'Your travel history is currently empty.'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

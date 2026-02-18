@@ -12,7 +12,7 @@ function isoDay(d) {
 }
 
 export const NotificationService = {
-  async createInApp({ passengerId, bookingId, type, message, dedupeKey, meta }) {
+  async createInApp({ passengerId, bookingId, type, message, dedupeKey, meta, isAdminOnly = false }) {
     try {
       const notif = await Notification.create({
         passengerId,
@@ -21,6 +21,7 @@ export const NotificationService = {
         message,
         deliveryMethod: 'in_app',
         read: false,
+        isAdminOnly,
         sentAt: new Date(),
         dedupeKey,
         meta,
@@ -33,10 +34,10 @@ export const NotificationService = {
             to: user.email,
             subject: 'D.Narai Enterprise Notification',
             body: message,
-          }).catch(() => {});
+          }).catch(() => { });
         }
         if (process.env.WHATSAPP_WEBHOOK_URL) {
-          WhatsAppService.send({ to: user.email, message }).catch(() => {});
+          WhatsAppService.send({ to: user.email, message }).catch(() => { });
         }
       }
       return notif;
@@ -143,6 +144,7 @@ export const NotificationService = {
       type: 'unrecognized_booking',
       message,
       dedupeKey,
+      isAdminOnly: true,
     });
   },
 };

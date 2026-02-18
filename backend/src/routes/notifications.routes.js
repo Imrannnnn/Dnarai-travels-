@@ -8,14 +8,18 @@ router.use(requireAgency);
 
 router.get('/', async (req, res, next) => {
   try {
-    const { unread, type } = req.query;
-    // Default to system notifications (passengerId: null) for the agency dashboard
-    const q = { passengerId: null };
+    // SuperAdmins receive literally all notifications (passenger alerts + admin alerts)
+    // with full details of the linked passenger.
+    const q = {};
 
+    const { unread, type } = req.query;
     if (type) q.type = type;
     if (unread === 'true') q.read = false;
 
-    const items = await Notification.find(q).sort({ createdAt: -1 }).limit(500);
+    const items = await Notification.find(q)
+      .populate('passengerId', 'fullName email phone')
+      .sort({ createdAt: -1 })
+      .limit(500);
     res.json(items);
   } catch (err) {
     next(err);
@@ -31,6 +35,19 @@ router.patch('/:id/read', async (req, res, next) => {
     item.sentAt = item.sentAt || new Date();
     await item.save();
 
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/read-all', async (req, res, next) => {
+  try {
+    // Mark all notifications as read when admin clicks Mark All as Read
+    await Notification.updateMany(
+      { read: false },
+      { $set: { read: true } }
+    );
     res.json({ ok: true });
   } catch (err) {
     next(err);

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchFlights, fetchNotifications, fetchPassenger, getApiBaseUrl, submitBookingRequest } from './api'
 import { useAuth } from './AuthContext'
 
@@ -108,7 +108,7 @@ export function AppDataProvider({ children }) {
     [notifications]
   )
 
-  const addBooking = async (booking) => {
+  const addBooking = useCallback(async (booking) => {
     console.log('📋 AppDataContext: addBooking called with:', booking)
     const baseUrl = getApiBaseUrl()
     try {
@@ -142,9 +142,9 @@ export function AppDataProvider({ children }) {
       console.error('📋 Failed to submit booking request:', error)
       throw error // Re-throw to let the modal handle it
     }
-  }
+  }, [])
 
-  const updatePassengerProfile = async ({ fullName, phone }) => {
+  const updatePassengerProfile = useCallback(async ({ fullName, phone }) => {
     const baseUrl = getApiBaseUrl()
     try {
       const { updateProfile } = await import('./api')
@@ -163,19 +163,51 @@ export function AppDataProvider({ children }) {
       console.error('Failed to update passenger profile:', error)
       throw error
     }
-  }
+  }, [])
 
-  const clearFlight = (id) => {
+  const clearFlight = useCallback((id) => {
     setFlights((prev) => prev.filter((f) => f.id !== id))
-  }
+  }, [])
 
-  const completeFlight = (id) => {
+  const completeFlight = useCallback((id) => {
     setFlights((prev) =>
       prev.map((f) => (f.id === id ? { ...f, status: 'Completed' } : f))
     )
-  }
+  }, [])
 
-  const triggerOverlay = async (message, action) => {
+  const markAsRead = useCallback(async (id) => {
+    const baseUrl = getApiBaseUrl()
+    try {
+      const res = await fetch(`${baseUrl}/api/portal/notifications/${id}/read`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
+        )
+      }
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err)
+    }
+  }, [token])
+
+  const markAllAsRead = useCallback(async () => {
+    const baseUrl = getApiBaseUrl()
+    try {
+      const res = await fetch(`${baseUrl}/api/portal/notifications/read-all`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
+      }
+    } catch (err) {
+      console.error('Failed to mark all as read:', err)
+    }
+  }, [token])
+
+  const triggerOverlay = useCallback(async (message, action) => {
     setOverlay({ show: true, message, status: 'loading' })
     try {
       await action()
@@ -188,12 +220,12 @@ export function AppDataProvider({ children }) {
     } finally {
       setOverlay({ show: false, message: '', status: 'loading' })
     }
-  }
+  }, [])
 
-  const uploadPassport = (data) => {
+  const uploadPassport = useCallback((data) => {
     console.log('Passport Upload:', data)
     // This would ideally hit an API endpoint like PATCH /api/passengers/:id/documents
-  }
+  }, [])
 
 
   const value = useMemo(
@@ -208,6 +240,8 @@ export function AppDataProvider({ children }) {
       updatePassengerProfile,
       clearFlight,
       completeFlight,
+      markAsRead,
+      markAllAsRead,
       uploadPassport,
       triggerOverlay,
       loading,
@@ -221,6 +255,14 @@ export function AppDataProvider({ children }) {
       unreadCount,
       loading,
       overlay,
+      addBooking,
+      updatePassengerProfile,
+      clearFlight,
+      completeFlight,
+      markAsRead,
+      markAllAsRead,
+      uploadPassport,
+      triggerOverlay,
     ]
   )
 
