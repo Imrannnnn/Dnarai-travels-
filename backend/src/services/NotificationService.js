@@ -5,6 +5,7 @@ import { User } from '../models/User.js';
 import { WeatherService } from './WeatherService.js';
 import { EmailService } from './EmailService.js';
 import { WhatsAppService } from './WhatsAppService.js';
+import { PushService } from './PushService.js';
 import { to12Hour, timePeriod } from '../utils/time.js';
 
 function isoDay(d) {
@@ -37,8 +38,16 @@ export const NotificationService = {
           }).catch(() => { });
         }
         if (process.env.WHATSAPP_WEBHOOK_URL) {
-          WhatsAppService.send({ to: user.email, message }).catch(() => { });
+          WhatsAppService.sendNotification({ passengerId, type, message, bookingId }).catch(() => { });
         }
+
+        // Push notification via Web Push (Service Worker)
+        PushService.sendPushNotification(user, {
+          title: 'D.Narai Flight Update',
+          body: message,
+          url: '/notifications',
+          type,
+        }).catch((err) => console.error('Push notification error:', err));
       }
       return notif;
     } catch (err) {

@@ -6,6 +6,7 @@ import { useAppData } from '../data/AppDataContext'
 import { useAuth } from '../data/AuthContext'
 import { useTheme } from '../theme/ThemeContext'
 import content from '../content/siteContent.json'
+import PushNotificationToggle from './PushNotificationToggle'
 
 const Plane = Lucide.Plane
 const Bell = Lucide.Bell
@@ -137,6 +138,7 @@ export default function Navbar() {
                 </Link>
               ) : (
                 <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700 ml-2">
+                  <PushNotificationToggle />
                   <div className="hidden lg:block text-right">
                     <div className="text-sm font-bold text-slate-900 dark:text-white font-display">{passenger?.name?.split(' ')[0] || user?.email?.split('@')[0]}</div>
                     <div className="text-[10px] font-bold text-ocean-600 dark:text-ocean-400 uppercase tracking-tighter">
@@ -220,6 +222,12 @@ export default function Navbar() {
                       <div className="text-[10px] font-black text-ocean-600 dark:text-ocean-400 uppercase tracking-[0.2em] mt-1">
                         {user?.role || 'Verified Traveler'}
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="flex items-center justify-center gap-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all">
+                      <PushNotificationToggle />
                     </div>
                   </div>
 

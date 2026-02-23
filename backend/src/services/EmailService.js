@@ -25,9 +25,9 @@ const getTransporter = () => {
       user: process.env.GMAIL_USER,
       pass: process.env.GMAIL_APP_PASSWORD,
     },
-    // tls: {
-    //   rejectUnauthorized: false,
-    // },
+    tls: {
+      rejectUnauthorized: false,
+    },
   });
 
   _transporter.verify((error, _success) => {

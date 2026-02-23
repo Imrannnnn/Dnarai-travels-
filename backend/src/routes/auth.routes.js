@@ -192,4 +192,39 @@ router.post(
   }
 );
 
+const pushSubscriptionSchema = z.object({
+  body: z.object({
+    subscription: z.object({
+      endpoint: z.string().url(),
+      keys: z.object({
+        p256dh: z.string(),
+        auth: z.string()
+      })
+    })
+  })
+});
+
+router.post(
+  '/web-push/subscribe',
+  requireAuth,
+  validate(pushSubscriptionSchema),
+  async (req, res, next) => {
+    try {
+      const user = await User.findById(req.user.sub);
+      if (!user) return next({ status: 404, message: 'User not found' });
+
+      const { subscription } = req.validated.body;
+      // Check if subscription already exists for this endpoint
+      const exists = user.pushSubscriptions.some(sub => sub.endpoint === subscription.endpoint);
+      if (!exists) {
+        user.pushSubscriptions.push(subscription);
+        await user.save();
+      }
+      res.json({ ok: true, message: 'Subscribed to push notifications' });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 export default router;

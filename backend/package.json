@@ -38,6 +38,7 @@
     "nodemailer": "^7.0.12",
     "openmeteo": "^1.2.3",
     "pdf-parse": "^2.4.5",
+    "web-push": "^3.6.7",
     "zod": "^3.22.4"
   }
 }

@@ -56,7 +56,7 @@ export async function runFlightReminderJob() {
         });
       }
     } catch (err) {
-      console.error(`Failed to send 3h reminder for booking ${booking._id}:`, err);
+      console.error(`Failed to send 3h reminder for booking ${booking._id}:`, err.message);
     }
   }
 
