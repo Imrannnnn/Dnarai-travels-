@@ -92,6 +92,7 @@ export function AppDataProvider({ children }) {
           })))
         }
       } catch (err) {
+        if (err.name === 'AbortError') return; // Ignore intentional aborts on unmount
         console.error('Failed to fetch data:', err)
       } finally {
         setLoading(false)
