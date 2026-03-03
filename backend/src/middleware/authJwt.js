@@ -29,4 +29,4 @@ export function requireRole(roles = []) {
   };
 }
 
-export const requireAgency = requireRole(['admin', 'agent']);
+export const requireAgency = requireRole(['admin', 'agent', 'staff']);

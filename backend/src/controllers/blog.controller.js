@@ -1,0 +1,214 @@
+import { Blog } from '../models/Blog.js';
+import { User } from '../models/User.js';
+import { NotificationService } from '../services/NotificationService.js';
+import { PushService } from '../services/PushService.js';
+
+/**
+ * Controller for blog operations
+ */
+export const blogController = {
+    /**
+     * Fetches all blogs for the public list
+     */
+    getAll: async (req, res, next) => {
+        try {
+            // Find all blogs, sorted newest first
+            const blogs = await Blog.find()
+                .populate('author', 'email role')
+                .sort({ createdAt: -1 });
+
+            res.json(blogs);
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Fetches a single blog by its slug (unique URL based on title)
+     */
+    getBySlug: async (req, res, next) => {
+        try {
+            const { slug } = req.params;
+            const blog = await Blog.findOne({ slug }).populate('author', 'email role');
+
+            if (!blog) {
+                return next({ status: 404, message: 'Blog post not found' });
+            }
+
+            res.json(blog);
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Creates a new blog post (Requires Auth - Admin/Agent)
+     */
+    create: async (req, res, next) => {
+        try {
+            // Permission check: Allow any non-passenger (admin, staff, agent, etc.)
+            if (req.user.role === 'passenger') {
+                return next({ status: 403, message: 'Not authorized: Passengers cannot create travel insights.' });
+            }
+
+            const { title, content } = req.validated.body;
+
+            // Create a slug from the title (lowercase, no symbols, dashes instead of spaces)
+            const slug = title
+                .toLowerCase()
+                .replace(/[^\w ]+/g, '')
+                .replace(/ +/g, '-');
+
+            // Check if slug already exists
+            const existing = await Blog.findOne({ slug });
+            if (existing) {
+                return next({
+                    status: 400,
+                    message: 'A blog with a similar title already exists. Please change the title.'
+                });
+            }
+
+            // Automated airline-related image generation
+            const keyword = title.split(' ')[0] || slug;
+            const imageUrl = `https://source.unsplash.com/featured/1600x900?airline,airplane,${keyword}`;
+
+            const blog = await Blog.create({
+                title,
+                slug,
+                content,
+                author: req.user.sub,
+                imageUrl
+            });
+
+            // BROADCAST: Notify all passengers/users about the new post
+            // This runs in the background to avoid delaying the response
+            (async () => {
+                try {
+                    const allUsers = await User.find({ role: 'passenger' });
+
+                    for (const user of allUsers) {
+                        // 1. Create In-App Notification
+                        await NotificationService.createInApp({
+                            passengerId: user.passengerId,
+                            type: 'blog_update',
+                            message: `New Insight: "${title}". Read the latest travel update from Dnarai.`,
+                            meta: { slug: blog.slug, title: blog.title }
+                        }).catch(() => { });
+
+                        // 2. Send Web Push if subscriber exists
+                        if (user.pushSubscriptions && user.pushSubscriptions.length > 0) {
+                            await PushService.sendPushNotification(user, {
+                                title: 'New Travel Insight',
+                                body: title,
+                                url: `/blog/${blog.slug}`,
+                                type: 'blog'
+                            }).catch(() => { });
+                        }
+                    }
+                } catch (broadcastErr) {
+                    console.error('Failed to broadcast blog notification:', broadcastErr);
+                }
+            })();
+
+            res.status(201).json(blog);
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Allows anyone to comment on a blog post (No Auth required)
+     */
+    addComment: async (req, res, next) => {
+        try {
+            const { slug } = req.params;
+            const { text, authorName } = req.validated.body;
+
+            const blog = await Blog.findOne({ slug });
+            if (!blog) {
+                return next({ status: 404, message: 'Blog post not found' });
+            }
+
+            // Append comment
+            blog.comments.push({
+                text,
+                author: authorName || 'Anonymous'
+            });
+
+            await blog.save();
+
+            res.json({ ok: true, message: 'Comment added successfully', comment: blog.comments[blog.comments.length - 1] });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Updates an existing blog post (Requires Auth)
+     */
+    update: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+            const { title, content } = req.validated.body;
+
+            // Permission check
+            if (req.user.role === 'passenger') {
+                return next({ status: 403, message: 'Not authorized' });
+            }
+
+            const blog = await Blog.findById(id);
+            if (!blog) {
+                return next({ status: 404, message: 'Blog post not found' });
+            }
+
+            if (title && title !== blog.title) {
+                blog.title = title;
+                // Update slug if title changes
+                blog.slug = title
+                    .toLowerCase()
+                    .replace(/[^\w ]+/g, '')
+                    .replace(/ +/g, '-');
+
+                // Ensure unique slug
+                const existing = await Blog.findOne({ slug: blog.slug, _id: { $ne: id } });
+                if (existing) {
+                    return next({ status: 400, message: 'Slug already in use by another post' });
+                }
+
+                // Update automated image on title change
+                const keyword = blog.title.split(' ')[0] || blog.slug;
+                blog.imageUrl = `https://source.unsplash.com/featured/1600x900?airline,airplane,${keyword}`;
+            }
+
+            if (content) blog.content = content;
+            await blog.save();
+
+            res.json(blog);
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Deletes a blog post (Requires Auth)
+     */
+    delete: async (req, res, next) => {
+        try {
+            const { id } = req.params;
+
+            // Permission check
+            if (req.user.role === 'passenger') {
+                return next({ status: 403, message: 'Not authorized' });
+            }
+
+            const blog = await Blog.findByIdAndDelete(id);
+            if (!blog) {
+                return next({ status: 404, message: 'Blog post not found' });
+            }
+
+            res.json({ ok: true, message: 'Blog post deleted' });
+        } catch (err) {
+            next(err);
+        }
+    }
+};

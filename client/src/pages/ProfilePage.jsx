@@ -76,7 +76,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container mx-auto px-6 py-10 max-w-[1600px] space-y-10 pb-20">
+    <div className="container mx-auto px-5 md:px-8 py-8 md:py-10 max-w-7xl space-y-10 pb-20">
       <PageHeader
         title="Personal Profile"
         subtitle="Manage your identity, travel documents, and elite preferences."

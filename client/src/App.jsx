@@ -9,6 +9,8 @@ import SuperAdminPage from './pages/SuperAdminPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import BlogListPage from './pages/BlogListPage'
+import BlogPostPage from './pages/BlogPostPage'
 import { useAuth } from './data/AuthContext'
 import { useAppData } from './data/AppDataContext'
 import LoadingOverlay from './components/LoadingOverlay'
@@ -56,6 +58,8 @@ export default function App() {
                 {/* Public Routes */}
                 <Route path="/" element={<HomePage />} />
                 <Route path="/about" element={<AboutPage />} />
+                <Route path="/blog" element={<BlogListPage />} />
+                <Route path="/blog/:slug" element={<BlogPostPage />} />
 
                 {/* Protected Routes */}
                 <Route

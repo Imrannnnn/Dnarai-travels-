@@ -7,6 +7,7 @@ import { convertTo12Hour } from '../utils/time'
 import { useAppData } from '../data/AppDataContext'
 import ActionButton from '../components/ActionButton'
 import airportData from '../../airports.json'
+import { createBlog } from '../data/api'
 
 function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIata }) {
     const [query, setQuery] = useState('')
@@ -128,6 +129,11 @@ export default function SuperAdminPage() {
     const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false)
     const [addStaffForm, setAddStaffForm] = useState({ email: '', role: 'staff', password: '' })
     const [staffCreationSuccess, setStaffCreationSuccess] = useState(null)
+    const [isCreateBlogModalOpen, setIsCreateBlogModalOpen] = useState(false)
+    const [isBlogManagerModalOpen, setIsBlogManagerModalOpen] = useState(false)
+    const [createBlogForm, setCreateBlogForm] = useState({ title: '', content: '' })
+    const [blogs, setBlogs] = useState([])
+    const [editingBlog, setEditingBlog] = useState(null)
 
     // New Modals State
     const [isTravelingTodayModalOpen, setIsTravelingTodayModalOpen] = useState(false)
@@ -155,21 +161,30 @@ export default function SuperAdminPage() {
             setLoading(true)
             try {
                 const headers = { Authorization: `Bearer ${token}` }
-                const [resP, resB, resN] = await Promise.all([
-                    fetch(`${baseUrl}/api/passengers`, { headers }),
+                const [passengersRes, bookingsRes, notifsRes, blogsRes] = await Promise.all([
+                    fetch(`${baseUrl}/api/agency/passengers`, { headers }),
                     fetch(`${baseUrl}/api/bookings`, { headers }),
-                    fetch(`${baseUrl}/api/notifications`, { headers })
+                    fetch(`${baseUrl}/api/notifications`, { headers }),
+                    fetch(`${baseUrl}/api/blogs`)
                 ])
 
-                if (resP.status === 401 || resB.status === 401 || resN.status === 401) {
+                if (passengersRes.status === 401 || bookingsRes.status === 401 || notifsRes.status === 401) {
                     handleLogout()
                     return
                 }
 
-                const [dataP, dataB, dataN] = await Promise.all([resP.json(), resB.json(), resN.json()])
-                setPassengers(Array.isArray(dataP) ? dataP : [])
-                setBookings(Array.isArray(dataB) ? dataB : [])
-                setNotifications(Array.isArray(dataN) ? dataN : [])
+                const [pData, bData, nData, blData] = await Promise.all([
+                    passengersRes.json(),
+                    bookingsRes.json(),
+                    notifsRes.json(),
+                    blogsRes.json()
+                ])
+
+                if (passengersRes.ok) setPassengers(pData)
+                if (bookingsRes.ok) setBookings(bData)
+                if (notifsRes.ok) setNotifications(Array.isArray(nData) ? nData : [])
+                if (blogsRes.ok) setBlogs(blData)
+
             } catch (err) {
                 console.error('Failed to fetch admin data', err)
             } finally {
@@ -417,6 +432,52 @@ export default function SuperAdminPage() {
         })
     }
 
+    async function handleCreateBlog(e) {
+        if (e) e.preventDefault()
+        triggerOverlay('Publishing Insight...', async () => {
+            const blog = await createBlog({ ...createBlogForm, baseUrl, token })
+            setIsCreateBlogModalOpen(false)
+            setCreateBlogForm({ title: '', content: '' })
+            setBlogs([blog, ...blogs])
+            // Refresh notifications... to show the broadcast worked
+            const headers = { Authorization: `Bearer ${token}` }
+            const resN = await fetch(`${baseUrl}/api/notifications`, { headers })
+            const dataN = await resN.json()
+            setNotifications(Array.isArray(dataN) ? dataN : [])
+        })
+    }
+
+    async function handleUpdateBlog(e) {
+        if (e) e.preventDefault()
+        triggerOverlay('Updating Insight...', async () => {
+            const res = await fetch(`${baseUrl}/api/blogs/${editingBlog._id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(editingBlog)
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.message || 'Update failed')
+
+            setBlogs(blogs.map(b => b._id === data._id ? data : b))
+            setEditingBlog(null)
+        })
+    }
+
+    async function handleDeleteBlog(blogId) {
+        if (!confirm('Are you sure you want to delete this insight?')) return
+        triggerOverlay('Deleting Insight...', async () => {
+            const res = await fetch(`${baseUrl}/api/blogs/${blogId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            if (!res.ok) throw new Error('Delete failed')
+            setBlogs(blogs.filter(b => b._id !== blogId))
+        })
+    }
+
     // Get passengers traveling on selected date
     const travelingPassengers = useMemo(() => {
         const targetDate = new Date(selectedDate).toISOString().split('T')[0]
@@ -522,7 +583,7 @@ export default function SuperAdminPage() {
         <div className="min-h-screen bg-slate-50">
             {/* Top Navigation Bar */}
             <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-                <div className="max-w-[1600px] mx-auto px-6 py-4">
+                <div className="max-w-7xl mx-auto px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-3">
@@ -536,7 +597,7 @@ export default function SuperAdminPage() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 md:gap-6">
                             <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
                                 <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
                                 {stats.pendingNotifications > 0 && (
@@ -557,6 +618,22 @@ export default function SuperAdminPage() {
                             )}
 
                             <button
+                                onClick={() => setIsBlogManagerModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                            >
+                                <Lucide.BookOpen size={16} />
+                                Manage Insights
+                            </button>
+
+                            <button
+                                onClick={() => setIsCreateBlogModalOpen(true)}
+                                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
+                            >
+                                <Lucide.PlusCircle size={16} />
+                                New Insight
+                            </button>
+
+                            <button
                                 onClick={handleLogout}
                                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
                             >
@@ -569,7 +646,7 @@ export default function SuperAdminPage() {
             </nav>
 
             {/* Main Content */}
-            <div className="max-w-[1600px] mx-auto px-6 py-8">
+            <div className="max-w-7xl mx-auto px-6 py-8">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 mt-4 md:mt-0">
                     {[
@@ -1963,6 +2040,175 @@ export default function SuperAdminPage() {
                     </div>
                 </div>
             )}
+
+            {/* Create Blog Modal */}
+            <Modal
+                open={isCreateBlogModalOpen}
+                title="Publish Travel Insight"
+                onClose={() => setIsCreateBlogModalOpen(false)}
+                footer={
+                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                        <button
+                            onClick={() => setIsCreateBlogModalOpen(false)}
+                            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
+                        >
+                            Cancel
+                        </button>
+                        <ActionButton
+                            onClick={handleCreateBlog}
+                            className="bg-ocean-600 hover:bg-ocean-700 shadow-ocean-600/30"
+                            loadingMessage="Publishing..."
+                            successMessage="Insight Live!"
+                        >
+                            Publish Broadcast
+                        </ActionButton>
+                    </div>
+                }
+            >
+                <form onSubmit={handleCreateBlog} className="p-6 space-y-6">
+                    <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                        Publishing a blog post will automatically notify all registered passengers via in-app alerts and
+                        <span className="text-ocean-600 font-bold"> Web Push Notifications</span>.
+                    </p>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Headline / Title</label>
+                            <input
+                                type="text"
+                                required
+                                value={createBlogForm.title}
+                                onChange={e => setCreateBlogForm({ ...createBlogForm, title: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-ocean-500 transition-all font-bold text-slate-900"
+                                placeholder="e.g. New Executive Route: Lagos to London"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Content</label>
+                            <textarea
+                                required
+                                rows={8}
+                                value={createBlogForm.content}
+                                onChange={e => setCreateBlogForm({ ...createBlogForm, content: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-ocean-500 transition-all text-sm font-medium leading-relaxed"
+                                placeholder="Write your insight here..."
+                            />
+                        </div>
+                    </div>
+                </form>
+            </Modal>
+
+            {/* Blog Manager Modal */}
+            <Modal
+                open={isBlogManagerModalOpen}
+                title="Manage Travel Insights"
+                onClose={() => setIsBlogManagerModalOpen(false)}
+            >
+                <div className="p-0 max-h-[70vh] overflow-y-auto">
+                    {blogs.length === 0 ? (
+                        <div className="p-12 text-center text-slate-400 font-medium">No insights published yet.</div>
+                    ) : (
+                        <div className="divide-y divide-slate-100">
+                            {blogs.map(blog => (
+                                <div key={blog._id} className="p-6 hover:bg-slate-50 transition-colors">
+                                    <div className="flex justify-between items-start gap-4">
+                                        <div className="h-16 w-24 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                                            <img
+                                                src={blog.imageUrl || `https://source.unsplash.com/featured/100x100?airline,airplane,${blog.slug}`}
+                                                className="w-full h-full object-cover"
+                                                alt="Insight Thumbnail"
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-slate-900 truncate">{blog.title}</h4>
+                                            <p className="text-xs text-slate-500 mt-1">Slug: {blog.slug}</p>
+                                            <div className="mt-3 flex items-center gap-3">
+                                                <a
+                                                    href={`/blog/${blog.slug}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-[10px] font-black uppercase text-ocean-600 hover:underline"
+                                                >
+                                                    View Public Link
+                                                </a>
+                                                <span className="text-slate-300">•</span>
+                                                <span className="text-[10px] font-bold text-slate-400">
+                                                    {new Date(blog.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setEditingBlog(blog)}
+                                                className="p-2 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
+                                                title="Edit"
+                                            >
+                                                <Lucide.Edit size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteBlog(blog._id)}
+                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                title="Delete"
+                                            >
+                                                <Lucide.Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </Modal>
+
+            {/* Edit Blog Modal */}
+            <Modal
+                open={!!editingBlog}
+                title="Edit Travel Insight"
+                onClose={() => setEditingBlog(null)}
+                footer={
+                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                        <button
+                            onClick={() => setEditingBlog(null)}
+                            className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
+                        >
+                            Cancel
+                        </button>
+                        <ActionButton
+                            onClick={handleUpdateBlog}
+                            className="bg-ocean-600 hover:bg-ocean-700"
+                            loadingMessage="Saving..."
+                            successMessage="Updated!"
+                        >
+                            Save Changes
+                        </ActionButton>
+                    </div>
+                }
+            >
+                <form onSubmit={handleUpdateBlog} className="p-6 space-y-6">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Headline / Title</label>
+                            <input
+                                type="text"
+                                required
+                                value={editingBlog?.title || ''}
+                                onChange={e => setEditingBlog({ ...editingBlog, title: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-ocean-500 transition-all font-bold text-slate-900"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Content</label>
+                            <textarea
+                                required
+                                rows={8}
+                                value={editingBlog?.content || ''}
+                                onChange={e => setEditingBlog({ ...editingBlog, content: e.target.value })}
+                                className="w-full px-4 py-3 bg-slate-50 border-2 border-slate-100 rounded-xl focus:outline-none focus:border-ocean-500 transition-all text-sm font-medium leading-relaxed"
+                            />
+                        </div>
+                    </div>
+                </form>
+            </Modal>
 
         </div>
     )

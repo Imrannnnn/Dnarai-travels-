@@ -13,7 +13,8 @@ import bookingRoutes from './routes/bookings.routes.js';
 import notificationRoutes from './routes/notifications.routes.js';
 import portalRoutes from './routes/portal.routes.js';
 import agencyRoutes from './routes/agency.routes.js';
-import demoRoutes from './routes/demo.routes.js';
+import blogRoutes from './routes/blog.routes.js';
+
 
 import { startSchedulers } from './jobs/scheduler.js';
 import { EmailParserService } from './services/EmailParserService.js';
@@ -62,10 +63,9 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/portal', portalRoutes);
 app.use('/api/agency', agencyRoutes);
+app.use('/api/blogs', blogRoutes);
 
-if (process.env.PUBLIC_DEMO === 'true') {
-  app.use('/', demoRoutes);
-}
+
 
 app.use(errorHandler);
 

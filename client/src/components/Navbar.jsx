@@ -18,8 +18,9 @@ const LogIn = Lucide.LogIn
 const LogOut = Lucide.LogOut
 const Menu = Lucide.Menu
 const X = Lucide.X
-const Home = Lucide.Home || Lucide.LayoutDashboard || Lucide.Plane
+const Home = Lucide.Home || Lucide.Plane
 const Info = Lucide.Info || Lucide.BadgeInfo || Lucide.HelpCircle || Lucide.Plane
+const BookOpen = Lucide.BookOpen
 
 function NavItem({ to, icon: Icon, label, badge, onClick }) {
   const SafeIcon = Icon || Plane
@@ -29,7 +30,7 @@ function NavItem({ to, icon: Icon, label, badge, onClick }) {
       onClick={onClick}
       className={({ isActive }) =>
         clsx(
-          'relative inline-flex items-center gap-3 px-5 py-3 md:py-2.5 rounded-xl md:rounded-full text-sm font-semibold transition-all duration-300 w-full md:w-auto',
+          'relative inline-flex items-center gap-2 px-3 py-2 md:py-1.5 rounded-xl md:rounded-full text-xs font-bold transition-all duration-300 w-full md:w-auto whitespace-nowrap',
           isActive
             ? 'bg-ocean-600 text-white shadow-lg shadow-ocean-600/30'
             : 'text-slate-600 dark:text-slate-300 hover:bg-ocean-50 hover:text-ocean-700 dark:hover:bg-white/5 dark:hover:text-white'
@@ -86,25 +87,26 @@ export default function Navbar() {
       { to: '/notifications', icon: Bell, label: 'Alerts', badge: unread },
       { to: '/profile', icon: UserRound, label: 'Profile' },
     ] : []),
+    { to: '/blog', icon: BookOpen, label: 'Insights' },
     { to: '/about', icon: Info, label: 'Support' },
   ]
 
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-sand-200/60 bg-white/95 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/95 shadow-soft">
-        <div className="w-full flex items-center justify-between px-6 lg:px-10 py-4 max-w-[1920px] mx-auto">
+        <div className="w-full flex items-center justify-between px-6 lg:px-8 py-4 max-w-7xl mx-auto">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group cursor-pointer z-50 relative">
-            <div className="h-20 w-20 transition-transform duration-300 group-hover:scale-105 active:scale-95">
+            <div className="h-12 w-12 md:h-14 md:w-14 transition-transform duration-300 group-hover:scale-105 active:scale-95">
               <img
                 src="/D-NARAI_Logo 01.svg"
                 alt="Dnarai Enterprise"
                 className="h-full w-full object-contain"
               />
             </div>
-            <div className="hidden sm:block leading-tight">
-              <div className="text-lg font-black tracking-tight text-slate-900 dark:text-white font-display uppercase">{brandName}</div>
-              <div className="text-[10px] uppercase tracking-widest font-bold text-dnarai-navy-500 dark:text-dnarai-gold-400">Travel Portal</div>
+            <div className="hidden lg:block leading-tight">
+              <div className="text-sm font-black tracking-tight text-slate-900 dark:text-white font-display uppercase">{brandName}</div>
+              <div className="text-[9px] uppercase tracking-widest font-bold text-dnarai-navy-500 dark:text-dnarai-gold-400">Travel Portal</div>
             </div>
           </Link>
 
@@ -116,7 +118,7 @@ export default function Navbar() {
           </nav>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-3 z-50 relative">
+          <div className="flex items-center gap-2 z-50 relative">
             <button
               type="button"
               onClick={toggleTheme}
@@ -131,17 +133,17 @@ export default function Navbar() {
               {!isAuthenticated ? (
                 <Link
                   to="/login"
-                  className="inline-flex items-center gap-2 bg-ocean-600 hover:bg-ocean-700 text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-ocean-600/20 transition-all active:scale-95 ml-2"
+                  className="inline-flex items-center gap-2 bg-ocean-600 hover:bg-ocean-700 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-lg shadow-ocean-600/20 transition-all active:scale-95 ml-1"
                 >
                   <LogIn size={18} />
                   <span>Login</span>
                 </Link>
               ) : (
-                <div className="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700 ml-2">
+                <div className="flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-800 ml-1">
                   <PushNotificationToggle />
-                  <div className="hidden lg:block text-right">
-                    <div className="text-sm font-bold text-slate-900 dark:text-white font-display">{passenger?.name?.split(' ')[0] || user?.email?.split('@')[0]}</div>
-                    <div className="text-[10px] font-bold text-ocean-600 dark:text-ocean-400 uppercase tracking-tighter">
+                  <div className="hidden xl:block text-right">
+                    <div className="text-xs font-bold text-slate-900 dark:text-white font-display">{passenger?.name?.split(' ')[0] || user?.email?.split('@')[0]}</div>
+                    <div className="text-[9px] font-bold text-ocean-600 dark:text-ocean-400 uppercase tracking-tighter">
                       {user?.role || 'Traveler'}
                     </div>
                   </div>
@@ -150,13 +152,13 @@ export default function Navbar() {
                     className="relative group cursor-pointer outline-none"
                     title="Profile"
                   >
-                    <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 text-sm font-bold text-slate-700 dark:text-slate-300 ring-2 ring-white dark:ring-slate-900 shadow-md group-hover:ring-ocean-500 transition-all">
+                    <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 text-[10px] font-bold text-slate-700 dark:text-slate-300 ring-2 ring-white dark:ring-slate-900 shadow-md group-hover:ring-ocean-500 transition-all">
                       {initials}
                     </div>
                   </button>
                   <button
                     onClick={logout}
-                    className="h-10 w-10 grid place-items-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                    className="h-9 w-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all active:scale-95"
                     title="Logout"
                   >
                     <LogOut size={18} />
@@ -225,8 +227,17 @@ export default function Navbar() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="flex items-center justify-center gap-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all">
+                  <div className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-4 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm transition-all mb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-ocean-50 dark:bg-ocean-900/30 flex items-center justify-center text-ocean-600">
+                          <Bell size={20} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold">Push Notifications</p>
+                          <p className="text-[10px] text-slate-400">Travel updates & alerts</p>
+                        </div>
+                      </div>
                       <PushNotificationToggle />
                     </div>
                   </div>

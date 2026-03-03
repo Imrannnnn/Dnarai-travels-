@@ -30,18 +30,18 @@ function withTimeout(signal, ms) {
   }
 }
 
-async function request(path, { method = 'GET', body, baseUrl, signal } = {}) {
+async function request(path, { method = 'GET', body, baseUrl, signal, token } = {}) {
   const url = `${baseUrl?.replace(/\/$/, '') || ''}${path}`
   console.log(`[API] ${method} ${url}`, { body });
-  const token = localStorage.getItem('token')
+  const authToken = token || localStorage.getItem('token')
 
   const headers = {
     Accept: 'application/json',
     'Content-Type': 'application/json',
   }
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
   }
 
   const { signal: timeoutSignal, cleanup } = withTimeout(signal, DEFAULT_TIMEOUT_MS)
@@ -123,6 +123,15 @@ export async function updateProfile({ fullName, phone, baseUrl }) {
     method: 'POST',
     body: { fullName, phone },
     baseUrl
+  })
+}
+
+export async function createBlog({ title, content, baseUrl, token }) {
+  return request('/api/blogs', {
+    method: 'POST',
+    body: { title, content },
+    baseUrl,
+    token
   })
 }
 

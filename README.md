@@ -1,75 +1,75 @@
-# Dnarai Enterprise - Global Flight Management Infrastructure
+# Dnarai Enterprise — Global Travel Intelligence & Flight Orchestration
 
-Dnarai Enterprise is a professional, high-fidelity flight orchestration platform designed for travel agencies and elite passengers. It acts as an intelligent middle-man, synchronizing external airline data into a unified, encrypted, and automated dashboard system.
+Dnarai Enterprise is a high-fidelity flight management ecosystem designed for elite travel agencies and their passengers. We bridge the gap between complex airline logistics and a premium, human-centric user experience, providing an intelligent "Command Center" for the modern traveler.
 
 ---
 
-## 🏗️ System Architecture
+## 🌟 Premium Features
 
-### 1. Agency Headquarters (Super Admin)
-The operational backbone where agencies manage their global client base and flight logistics.
-- **Automated Client Onboarding**: Single-click creation of passenger accounts with auto-generated security credentials.
-- **Data Injection Terminal**: Manual and batch synchronization of flight details from external airline websites.
-- **Operational Analytics**: Real-time tracking of passenger flux and fleet itineraries.
-- **Identity Orchestration**: Deep management of passenger travel documents (Passports/IDs) with automated expiry monitoring.
-- **Satellite Intel Feed**: Global notifications and system alerts (Weather, Flight status, Document warnings).
+### 1. Unified Agency Control (Super Admin & Staff)
+The operational heart of the system, where multi-role staff manage global travel logistics with surgical precision.
+- **Intelligent Onboarding**: Instantly generate passenger accounts with secure, auto-expiring credentials and automated welcome packets.
+- **Live Flight Injection**: A high-speed terminal for manual or batch synchronization of complex flight itineraries.
+- **Comprehensive Staff Management**: Multi-tiered permissions (Admin, Agent, Staff) to ensure secure operational delegation.
+- **Identity & Compliance**: Automated tracking of travel documents (Passports/IDs) with proactive expiry alerts.
+- **Operations Dashboard**: Real-time analytics on active bookings, passenger flux, and daily departures.
 
-### 2. Passenger Private Terminal (User Dashboard)
-A high-end, personalized interface for travelers to monitor their journeys.
-- **High-Fidelity Flight Cards**: Beautifully rendered route visualizations with 12-hour temporal conversion.
-- **Secure Document Vault**: Identity-masked storage of travel documents with proximity alerts for expiry.
-- **Real-Time Intelligence**: Integration of destination weather, airline status, and system reminders.
-- **Premium Aesthetics**: Glassmorphism UI with smooth micro-interactions and high-density information display.
+### 2. Travel Insights & Global Broadcast (New)
+A powerful broadcasting system that keeps everyone informed beyond just their flight status.
+- **Travel Insights Hub**: Staff can publish beautifully rendered travel updates, destination guides, and emergency alerts.
+- **Automated AI Branding**: Every post is instantly paired with contextually relevant, airline-specific imagery based on title keywords.
+- **Omnichannel Notifications**: One-click publishing triggers instant **In-App Alerts** and **Web Push Notifications** to all passengers.
+- **Public Resilience**: Every insight generates a permanent, unique public URL (slug) for external sharing and SEO-friendly accessibility.
+
+### 3. The Passenger Experience (User Terminal)
+A personalized, glassmorphism-inspired interface that makes travel information feel high-end and effortless.
+- **Dynamic Flight Cards**: High-fidelity visualizations of upcoming journeys with automated 24h/12h time conversions.
+- **Smart Flight Reminders**: Automated intelligence checks (24-hour and 3-hour before departure) sent via Email and Web Push.
+- **Destination Intelligence**: Real-time weather data and personalized clothing advice based on the destination's climate.
+- **Secure Vault**: End-to-end encrypted storage for travel documents with visual masks to protect privacy.
+- **Zero-Latency Interaction**: Optimistic UI updates ensure the dashboard feels alive and responsive.
+
+---
+
+## 🛠️ Technical Stack (The "Steel" Behind the Silk)
+
+### Frontend: React + Vite + Tailwind
+- **UI Architecture**: React 18 with a centralized `AppDataContext` for real-time state synchronization.
+- **Tactical Design**: Tailwind CSS powers a high-density, "Tactical Terminal" aesthetic (Slate-950, Ocean-600, Gold-400).
+- **Iconography**: Premium vector navigation via Lucide-React.
+
+### Backend: Node.js + Express + MongoDB
+- **Security**: JWT-based authentication with strict RBAC (Role-Based Access Control) and Zod-enforced schema validation.
+- **Broadcast Engine**: Integrated Web Push (VAPID), Email (Nodemailer), and WhatsApp-ready notification services.
+- **Intelligence Layer**: Cron-driven background jobs for flight reminders, weather polling, and automated cleanup.
 
 ---
 
 ## 🎨 Design Philosophy
-Dnarai Enterprise follows an **Enterprise-Grade Terminal** aesthetic:
-- **Palette**: Slate-950 background for focus, Sky-Blue and Indigo for tactical accents, and High-Contrast White for clarity.
-- **Typography**: Heavy, italicized black-weights for titles to convey speed and authority; bold tracking-wide uppercase for operational labels.
-- **Interactions**: Smooth scale-transitions, glassmorphism overlays, and animated "Operational Inbound" visuals.
+Dnarai Enterprise is built on the **"Tactical Luxury"** principle:
+- **Speed**: Heavy, italicized black-weights denote authority and movement.
+- **Clarity**: High-contrast typography and tracking-wide labels for operational readability.
+- **Elegance**: Glassmorphism, smooth micro-interactions, and premium color palettes (Ocean Blue, Tactical Slate, Executive Gold).
 
 ---
 
-## 🛠️ Technical Stack
-
-### Frontend (React + Vite)
-- **Framework**: React 18 with high-performance routing via React Router 6.
-- **Styling**: Tailwind CSS for high-speed, utility-first design implementation.
-- **State & Context**: Centralized `AppDataContext` for synchronized state across dashboard modules.
-- **Iconography**: Lucide-React for professional vector-based tactical indicators.
-
-### Backend (Node.js + Express)
-- **Runtime**: Node.js with ESM module support.
-- **Database**: MongoDB for persistent passenger, booking, and notification storage.
-- **Authentication**: JWT-based security with tiered role access (Admin, Agent, Passenger).
-- **Automation**: Integrated services for automated email transmissions (Welcome credentials, Flight updates).
-
----
-
-## 🚀 Performance & Security
-- **Data Masking**: Passenger ID/Passport numbers are encrypted and masked (showing only last 4 digits) to prevent data leak.
-- **Strict Role RBAC**: Passenger terminals are strictly read-only; operational overrides are limited to authorized Agency Admin identity keys.
-- **Zero-Latency Design**: Optimistic UI updates and efficient data fetching protocols ensure a responsive "Command Center" feel.
-
----
-
-## 📂 Project Structure
+## 📁 Project Portfolio
 ```bash
 dnarai-enterprise/
-├── src/                # React Frontend
-│   ├── pages/          # Tactical Page Modules (HomePage, SuperAdmin, Dashboard)
-│   ├── components/     # High-fidelity UI Elements
-│   ├── data/           # API handlers and Global State
-│   └── utils/          # Temporal and String utilities
-├── backend/            # Express Hub
-│   ├── src/models/     # DB Schema (Passengers, User, Booking, Notification)
-│   ├── src/routes/     # API Endpoints & Validations (Zod-enforced)
-│   ├── src/services/   # Automation (Email, Weather, Notifications)
-│   └── src/middleware/ # Security (JWT Auth, RBAC)
-└── package.json        # Global Orchestration
+├── client/             # React User & Admin Terminals
+│   ├── src/pages/      # Dedicated modules: SuperAdmin, Blog, Profile, Dashboard
+│   ├── src/components/ # Reusable High-Fidelity UI elements
+│   └── src/theme/      # Centralized design system and tokens
+├── backend/            # Express Orchestration Hub
+│   ├── src/controllers/# Business Logic (Auth, Blog, Bookings, Passengers)
+│   ├── src/services/   # Automated Intelligence (Push, Weather, Email)
+│   ├── src/routes/     # Zod-validated tactical endpoints
+│   └── src/models/     # Encrypted Schemas (User, Blog, Passport, Flight)
+└── README.md           # This Intelligence Paper
 ```
 
 ---
 
-**Dnarai Enterprise** — Engineering global travel infrastructure, one mission at a time.
+**Dnarai Enterprise** — Engineering the future of global travel infrastructure.  
+*Every journey is a mission. Every passenger is a priority.*
+
