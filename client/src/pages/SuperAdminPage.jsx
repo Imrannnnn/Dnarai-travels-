@@ -162,7 +162,7 @@ export default function SuperAdminPage() {
             try {
                 const headers = { Authorization: `Bearer ${token}` }
                 const [passengersRes, bookingsRes, notifsRes, blogsRes] = await Promise.all([
-                    fetch(`${baseUrl}/api/agency/passengers`, { headers }),
+                    fetch(`${baseUrl}/api/passengers`, { headers }),
                     fetch(`${baseUrl}/api/bookings`, { headers }),
                     fetch(`${baseUrl}/api/notifications`, { headers }),
                     fetch(`${baseUrl}/api/blogs`)
