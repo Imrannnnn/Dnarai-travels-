@@ -82,8 +82,13 @@ export default function BlogListPage() {
                                 <div className="h-56 relative overflow-hidden">
                                     <div className="absolute inset-0 bg-dnarai-navy-800/20 group-hover:bg-transparent transition-colors duration-500 z-10" />
                                     <img
-                                        src={blog.imageUrl || `https://source.unsplash.com/featured/800x600?airline,airplane,${blog.slug}`}
+                                        src={blog.imageUrl || `https://picsum.photos/seed/${blog.slug}/800/600`}
                                         alt={blog.title}
+                                        onError={(e) => {
+                                            e.target.onerror = null;
+                                            e.target.src = "/D-NARAI_Logo 01.svg";
+                                            e.target.className = "w-full h-full object-contain p-8 bg-slate-50 dark:bg-slate-800 group-hover:scale-110 transition-transform duration-700";
+                                        }}
                                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                     />
                                     <div className="absolute top-4 left-4 z-20">

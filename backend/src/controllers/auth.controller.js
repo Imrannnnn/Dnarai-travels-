@@ -56,7 +56,7 @@ export const authController = {
                 return next({
                     status: 401,
                     code: 'INVALID_CREDENTIALS',
-                    message: 'Invalid credentials'
+                    message: 'User not found, create account first'
                 });
             }
 

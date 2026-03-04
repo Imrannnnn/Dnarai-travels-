@@ -145,8 +145,13 @@ export default function BlogPostPage() {
                 {/* Featured Image */}
                 <div className="aspect-[21/9] rounded-[2.5rem] overflow-hidden shadow-premium bg-slate-100 dark:bg-slate-900">
                     <img
-                        src={blog.imageUrl || `https://source.unsplash.com/featured/1200x600?airline,airplane,${blog.slug}`}
+                        src={blog.imageUrl || `https://picsum.photos/seed/${blog.slug}/1200/600`}
                         alt={blog.title}
+                        onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "/D-NARAI_Logo 01.svg";
+                            e.target.className = "w-full h-full object-contain p-12 bg-slate-50 dark:bg-slate-800";
+                        }}
                         className="w-full h-full object-cover"
                     />
                 </div>
