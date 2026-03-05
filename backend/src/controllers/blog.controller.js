@@ -68,9 +68,8 @@ export const blogController = {
                 });
             }
 
-            // Automated airline-related image generation
-            const keyword = title.split(' ')[0] || slug;
-            const imageUrl = `https://source.unsplash.com/featured/1600x900?airline,airplane,${keyword}`;
+            // Automated aviation-themed image generation (High quality airplane/airline visuals)
+            const imageUrl = `https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1600`;
 
             const blog = await Blog.create({
                 title,
@@ -175,9 +174,8 @@ export const blogController = {
                     return next({ status: 400, message: 'Slug already in use by another post' });
                 }
 
-                // Update automated image on title change
-                const keyword = blog.title.split(' ')[0] || blog.slug;
-                blog.imageUrl = `https://source.unsplash.com/featured/1600x900?airline,airplane,${keyword}`;
+                // Update automated image on title change (Always aviation themed)
+                blog.imageUrl = `https://images.unsplash.com/photo-1544016768-982d1554f0b9?auto=format&fit=crop&q=80&w=1600`;
             }
 
             if (content) blog.content = content;

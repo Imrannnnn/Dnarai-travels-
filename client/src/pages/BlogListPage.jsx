@@ -82,7 +82,7 @@ export default function BlogListPage() {
                                 <div className="h-56 relative overflow-hidden">
                                     <div className="absolute inset-0 bg-dnarai-navy-800/20 group-hover:bg-transparent transition-colors duration-500 z-10" />
                                     <img
-                                        src={blog.imageUrl || `https://picsum.photos/seed/${blog.slug}/800/600`}
+                                        src={blog.imageUrl || "https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=800"}
                                         alt={blog.title}
                                         onError={(e) => {
                                             e.target.onerror = null;

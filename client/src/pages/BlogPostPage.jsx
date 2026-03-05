@@ -145,7 +145,7 @@ export default function BlogPostPage() {
                 {/* Featured Image */}
                 <div className="aspect-[21/9] rounded-[2.5rem] overflow-hidden shadow-premium bg-slate-100 dark:bg-slate-900">
                     <img
-                        src={blog.imageUrl || `https://picsum.photos/seed/${blog.slug}/1200/600`}
+                        src={blog.imageUrl || "https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200"}
                         alt={blog.title}
                         onError={(e) => {
                             e.target.onerror = null;
