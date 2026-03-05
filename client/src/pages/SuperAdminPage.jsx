@@ -504,7 +504,7 @@ export default function SuperAdminPage() {
 
     const stats = useMemo(() => ({
         totalPassengers: passengers.length,
-        activeBookings: bookings.filter(b => b.status === 'confirmed').length,
+        activeBookings: bookings.filter(b => b.status === 'confirmed' && new Date(b.departureDateTimeUtc) >= new Date()).length,
         pendingNotifications: notifications.filter(n => !n.read).length,
         travelingToday: travelingPassengers.length
     }), [passengers, bookings, notifications, travelingPassengers])
@@ -1952,7 +1952,7 @@ export default function SuperAdminPage() {
             {/* Active Bookings Modal */}
             <Modal
                 open={isActiveBookingsModalOpen}
-                title={`Active Bookings (${bookings.filter(b => b.status === 'confirmed').length})`}
+                title={`Active Bookings (${bookings.filter(b => b.status === 'confirmed' && new Date(b.departureDateTimeUtc) >= new Date()).length})`}
                 onClose={() => setIsActiveBookingsModalOpen(false)}
                 footer={
                     <div className="flex justify-end p-4 border-t border-slate-200">
@@ -1966,9 +1966,9 @@ export default function SuperAdminPage() {
                 }
             >
                 <div className="p-6 max-h-[70vh] overflow-y-auto">
-                    {bookings.filter(b => b.status === 'confirmed').length > 0 ? (
+                    {bookings.filter(b => b.status === 'confirmed' && new Date(b.departureDateTimeUtc) >= new Date()).length > 0 ? (
                         <div className="space-y-3">
-                            {bookings.filter(b => b.status === 'confirmed').map(b => (
+                            {bookings.filter(b => b.status === 'confirmed' && new Date(b.departureDateTimeUtc) >= new Date()).map(b => (
                                 <div
                                     key={b.id || b._id}
                                     onClick={() => {
