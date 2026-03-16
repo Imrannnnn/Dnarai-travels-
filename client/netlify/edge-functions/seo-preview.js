@@ -44,8 +44,23 @@ export default async (request, context) => {
             const safeTitle = blog.title.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
             const safeDesc = description.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
 
+            // Ensure the URL is absolute for OpenGraph compatibility
+            // Default to the site logo as a fallback
+            let siteOrigin = "https://dnaraitravels.netlify.app";
+            if (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get("URL")) {
+                siteOrigin = Netlify.env.get("URL");
+            } else if (typeof Deno !== "undefined" && Deno.env && Deno.env.get("URL")) {
+                siteOrigin = Deno.env.get("URL");
+            }
+
+            let rawImageUrl = blog.imageUrl;
+            if (!rawImageUrl) {
+                rawImageUrl = `${siteOrigin}/D-NARAI_Logo%2001.svg`;
+            } else if (rawImageUrl.startsWith('/')) {
+                rawImageUrl = `${siteOrigin}${rawImageUrl}`;
+            }
+
             // WhatsApp and other parsers frequently break if ampersands in URLs aren't escaped to &amp; in raw HTML
-            const rawImageUrl = blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?fm=jpg&fit=crop&q=60&w=800';
             const safeImageUrl = rawImageUrl.replace(/&/g, '&amp;');
 
             const metaTags = `

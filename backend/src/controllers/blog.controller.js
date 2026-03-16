@@ -41,12 +41,20 @@ export const blogController = {
 
             const safeTitle = blog.title.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
             const safeDesc = description.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
-            const rawImageUrl = blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?fm=jpg&fit=crop&q=60&w=800';
-            const safeImageUrl = rawImageUrl.replace(/&/g, '&amp;');
-
             // Assume the frontend URL is allowedOrigin[1] or from env
             const frontendUrl = process.env.FRONTEND_URL || 'https://dnaraitravels.netlify.app';
             const redirectUrl = `${frontendUrl}/blog/${slug}`;
+
+            let rawImageUrl = blog.imageUrl;
+            if (!rawImageUrl) {
+                rawImageUrl = `${frontendUrl}/D-NARAI_Logo%2001.svg`;
+            } else if (rawImageUrl.startsWith('/')) {
+                rawImageUrl = `${frontendUrl}${rawImageUrl}`;
+            }
+
+            const safeImageUrl = rawImageUrl.replace(/&/g, '&amp;');
+
+            // Removed duplicate declarations of frontendUrl and redirectUrl
 
             const html = `
 <!DOCTYPE html>

@@ -62,16 +62,25 @@ export default function BlogPostPage() {
             let description = plainText.substring(0, 150);
             if (plainText.length > 150) description += '...';
 
+            let imageUrl = blog.imageUrl;
+            if (!imageUrl) {
+                // Determine absolute URL for logo fallback
+                imageUrl = `${window.location.origin}/D-NARAI_Logo%2001.svg`;
+            } else if (imageUrl.startsWith('/')) {
+                // Ensure any relative URL is absolute
+                imageUrl = `${window.location.origin}${imageUrl}`;
+            }
+
             setMeta('og:title', blog.title);
             setMeta('og:description', description);
-            setMeta('og:image', blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200');
+            setMeta('og:image', imageUrl);
             setMeta('og:url', window.location.href);
             setMeta('og:type', 'article');
 
             setMeta('twitter:card', 'summary_large_image');
             setMeta('twitter:title', blog.title);
             setMeta('twitter:description', description);
-            setMeta('twitter:image', blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200');
+            setMeta('twitter:image', imageUrl);
             setMeta('description', description);
         }
     }, [blog]);
