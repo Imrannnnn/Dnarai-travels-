@@ -1,3 +1,4 @@
+/* global Netlify, Deno */
 export default async (request, context) => {
     // Check if it's a blog URL: /blog/slug
     const url = new URL(request.url);
@@ -40,10 +41,13 @@ export default async (request, context) => {
             let description = plainText.substring(0, 150);
             if (plainText.length > 150) description += '...';
 
-            // Escape quotes
-            const safeTitle = blog.title.replace(/"/g, '&quot;');
-            const safeDesc = description.replace(/"/g, '&quot;');
-            const imageUrl = blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200';
+            // Escape quotes and ampersands
+            const safeTitle = blog.title.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+            const safeDesc = description.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+
+            // WhatsApp and other parsers frequently break if ampersands in URLs aren't escaped to &amp; in raw HTML
+            const rawImageUrl = blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?fm=jpg&fit=crop&q=60&w=800';
+            const safeImageUrl = rawImageUrl.replace(/&/g, '&amp;');
 
             const metaTags = `
     <!-- Dynamic Open Graph Tags from Edge Function -->
@@ -51,13 +55,18 @@ export default async (request, context) => {
     <meta name="description" content="${safeDesc}" />
     <meta property="og:title" content="${safeTitle}" />
     <meta property="og:description" content="${safeDesc}" />
-    <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image" content="${safeImageUrl}" />
+    <meta property="og:image:secure_url" content="${safeImageUrl}" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="800" />
+    <meta property="og:image:height" content="600" />
     <meta property="og:url" content="${url.href}" />
     <meta property="og:type" content="article" />
+    
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${safeTitle}" />
     <meta name="twitter:description" content="${safeDesc}" />
-    <meta name="twitter:image" content="${imageUrl}" />
+    <meta name="twitter:image" content="${safeImageUrl}" />
             `;
 
             // Insert meta tags before </head>

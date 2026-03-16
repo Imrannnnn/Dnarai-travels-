@@ -39,9 +39,10 @@ export const blogController = {
             let description = plainText.substring(0, 150);
             if (plainText.length > 150) description += '...';
 
-            const safeTitle = blog.title.replace(/"/g, '&quot;');
-            const safeDesc = description.replace(/"/g, '&quot;');
-            const imageUrl = blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200';
+            const safeTitle = blog.title.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+            const safeDesc = description.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+            const rawImageUrl = blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?fm=jpg&fit=crop&q=60&w=800';
+            const safeImageUrl = rawImageUrl.replace(/&/g, '&amp;');
 
             // Assume the frontend URL is allowedOrigin[1] or from env
             const frontendUrl = process.env.FRONTEND_URL || 'https://dnaraitravels.netlify.app';
@@ -60,14 +61,18 @@ export const blogController = {
     <meta property="og:url" content="${redirectUrl}" />
     <meta property="og:title" content="${safeTitle}" />
     <meta property="og:description" content="${safeDesc}" />
-    <meta property="og:image" content="${imageUrl}" />
+    <meta property="og:image" content="${safeImageUrl}" />
+    <meta property="og:image:secure_url" content="${safeImageUrl}" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="800" />
+    <meta property="og:image:height" content="600" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:url" content="${redirectUrl}" />
     <meta name="twitter:title" content="${safeTitle}" />
     <meta name="twitter:description" content="${safeDesc}" />
-    <meta name="twitter:image" content="${imageUrl}" />
+    <meta name="twitter:image" content="${safeImageUrl}" />
 
     <!-- JS Redirect for Users -->
     <script>
