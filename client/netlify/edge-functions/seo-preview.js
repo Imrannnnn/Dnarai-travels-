@@ -54,35 +54,49 @@ export default async (request, context) => {
             }
 
             let rawImageUrl = blog.imageUrl;
+
+            // Ensure we always have an image
             if (!rawImageUrl) {
                 rawImageUrl = `${siteOrigin}/D-NARAI_Logo-04.png`;
             } else if (rawImageUrl.startsWith('/')) {
                 rawImageUrl = `${siteOrigin}${rawImageUrl}`;
             }
 
-            // WhatsApp and other parsers frequently break if ampersands in URLs aren't escaped to &amp; in raw HTML
-            const safeImageUrl = rawImageUrl.replace(/&/g, '&amp;');
+            // Detect image type
+            let imageType = "image/jpeg";
 
+            if (rawImageUrl.endsWith(".png")) {
+                imageType = "image/png";
+            } else if (rawImageUrl.endsWith(".svg")) {
+                imageType = "image/svg+xml";
+            } else if (rawImageUrl.endsWith(".webp")) {
+                imageType = "image/webp";
+            }
+
+            // Escape ampersands for HTML
+            const safeImageUrl = rawImageUrl.replace(/&/g, "&amp;");
+
+            // Create meta tags
             const metaTags = `
-    <!-- Dynamic Open Graph Tags from Edge Function -->
-    <title>${safeTitle} | D.Narai Insight</title>
-    <meta name="description" content="${safeDesc}" />
-    <meta property="og:title" content="${safeTitle}" />
-    <meta property="og:description" content="${safeDesc}" />
-    <meta property="og:image" content="${safeImageUrl}" />
-    <meta property="og:image:secure_url" content="${safeImageUrl}" />
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="800" />
-    <meta property="og:image:height" content="600" />
-    <meta property="og:url" content="${url.href}" />
-    <meta property="og:type" content="article" />
-    
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="${safeTitle}" />
-    <meta name="twitter:description" content="${safeDesc}" />
-    <meta name="twitter:image" content="${safeImageUrl}" />
-            `;
+<!-- Dynamic Open Graph Tags from Edge Function -->
+<title>${safeTitle} | D.Narai Insight</title>
+<meta name="description" content="${safeDesc}" />
 
+<meta property="og:title" content="${safeTitle}" />
+<meta property="og:description" content="${safeDesc}" />
+<meta property="og:image" content="${safeImageUrl}" />
+<meta property="og:image:secure_url" content="${safeImageUrl}" />
+<meta property="og:image:type" content="${imageType}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="${url.href}" />
+<meta property="og:type" content="article" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="${safeTitle}" />
+<meta name="twitter:description" content="${safeDesc}" />
+<meta name="twitter:image" content="${safeImageUrl}" />
+`;
             // Insert meta tags before </head>
             html = html.replace('</head>', `${metaTags}\n</head>`);
         }
