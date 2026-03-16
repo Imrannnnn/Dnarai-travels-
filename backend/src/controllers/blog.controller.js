@@ -24,6 +24,68 @@ export const blogController = {
     },
 
     /**
+     * Generate HTML with Open Graph tags for social media previews
+     */
+    getSharePreview: async (req, res, next) => {
+        try {
+            const { slug } = req.params;
+            const blog = await Blog.findOne({ slug });
+
+            if (!blog) {
+                return res.status(404).send('Insight not found');
+            }
+
+            const plainText = (blog.content || '').replace(/<[^>]*>?/gm, '');
+            let description = plainText.substring(0, 150);
+            if (plainText.length > 150) description += '...';
+
+            const safeTitle = blog.title.replace(/"/g, '&quot;');
+            const safeDesc = description.replace(/"/g, '&quot;');
+            const imageUrl = blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200';
+
+            // Assume the frontend URL is allowedOrigin[1] or from env
+            const frontendUrl = process.env.FRONTEND_URL || 'https://dnaraitravels.netlify.app';
+            const redirectUrl = `${frontendUrl}/blog/${slug}`;
+
+            const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>${safeTitle} | D.Narai Insight</title>
+    <meta name="description" content="${safeDesc}" />
+
+    <!-- Open Graph for Facebook/WhatsApp/LinkedIn -->
+    <meta property="og:type" content="article" />
+    <meta property="og:url" content="${redirectUrl}" />
+    <meta property="og:title" content="${safeTitle}" />
+    <meta property="og:description" content="${safeDesc}" />
+    <meta property="og:image" content="${imageUrl}" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="${redirectUrl}" />
+    <meta name="twitter:title" content="${safeTitle}" />
+    <meta name="twitter:description" content="${safeDesc}" />
+    <meta name="twitter:image" content="${imageUrl}" />
+
+    <!-- JS Redirect for Users -->
+    <script>
+        window.location.replace("${redirectUrl}");
+    </script>
+</head>
+<body>
+    <p>Redirecting to <a href="${redirectUrl}">${safeTitle}</a>...</p>
+</body>
+</html>`;
+            res.setHeader('Content-Type', 'text/html');
+            res.send(html);
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
      * Fetches a single blog by its slug (unique URL based on title)
      */
     getBySlug: async (req, res, next) => {

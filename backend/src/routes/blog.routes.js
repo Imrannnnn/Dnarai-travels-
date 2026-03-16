@@ -27,6 +27,9 @@ const commentSchema = z.object({
 // GET /api/blogs - List all blogs
 router.get('/', blogController.getAll);
 
+// GET /api/blogs/:slug/share - Get an HTML page with Open Graph tags for parsing by Facebook/WhatsApp bots
+router.get('/:slug/share', blogController.getSharePreview);
+
 // GET /api/blogs/:slug - Get a single blog by unique URL (slug)
 router.get('/:slug', blogController.getBySlug);
 

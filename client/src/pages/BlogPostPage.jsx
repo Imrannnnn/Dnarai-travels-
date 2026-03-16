@@ -40,6 +40,42 @@ export default function BlogPostPage() {
         fetchBlog();
     }, [slug, baseUrl]);
 
+    useEffect(() => {
+        if (blog) {
+            document.title = `${blog.title} | D.Narai Insight`;
+
+            const setMeta = (property, content) => {
+                let element = document.querySelector(`meta[property="${property}"]`) || document.querySelector(`meta[name="${property}"]`);
+                if (!element) {
+                    element = document.createElement('meta');
+                    if (property.startsWith('og:')) {
+                        element.setAttribute('property', property);
+                    } else {
+                        element.setAttribute('name', property);
+                    }
+                    document.head.appendChild(element);
+                }
+                element.setAttribute('content', content);
+            };
+
+            const plainText = (blog.content || '').replace(/<[^>]*>?/gm, '');
+            let description = plainText.substring(0, 150);
+            if (plainText.length > 150) description += '...';
+
+            setMeta('og:title', blog.title);
+            setMeta('og:description', description);
+            setMeta('og:image', blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200');
+            setMeta('og:url', window.location.href);
+            setMeta('og:type', 'article');
+
+            setMeta('twitter:card', 'summary_large_image');
+            setMeta('twitter:title', blog.title);
+            setMeta('twitter:description', description);
+            setMeta('twitter:image', blog.imageUrl || 'https://images.unsplash.com/photo-1436491865332-7a61a109c055?auto=format&fit=crop&q=80&w=1200');
+            setMeta('description', description);
+        }
+    }, [blog]);
+
     const handleCopyLink = () => {
         navigator.clipboard.writeText(window.location.href);
         setCopySuccess(true);
