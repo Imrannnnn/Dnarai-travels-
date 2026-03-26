@@ -118,6 +118,14 @@ export async function submitBookingRequest({ departureCity, destination, date, n
   })
 }
 
+export async function cancelBookingAPI({ id, baseUrl, signal }) {
+  return request(`/api/portal/bookings/${id}/cancel`, {
+    method: 'POST',
+    baseUrl,
+    signal
+  })
+}
+
 export async function updateProfile({ fullName, phone, baseUrl }) {
   return request('/api/portal/update-profile', {
     method: 'POST',

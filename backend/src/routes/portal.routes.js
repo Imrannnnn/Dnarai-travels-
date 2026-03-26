@@ -21,6 +21,7 @@ router.get('/me', portalController.getMe);
 
 // Flight Itineraries (With Weather Service)
 router.get('/bookings', portalController.getBookings);
+router.post('/bookings/:id/cancel', portalController.cancelBooking);
 
 // Passenger Notifications
 router.get('/notifications', portalController.getNotifications);

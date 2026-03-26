@@ -331,5 +331,77 @@ export const portalController = {
         } catch (err) {
             next(err);
         }
+    },
+
+    /**
+     * Cancels a booking, notifying both admin and passenger
+     */
+    cancelBooking: async (req, res, next) => {
+        try {
+            if (!req.passengerId) {
+                return next({ status: 403, code: 'FORBIDDEN', message: 'Passenger account not linked' });
+            }
+
+            const booking = await Booking.findById(req.params.id);
+            if (!booking) {
+                return next({ status: 404, code: 'NOT_FOUND', message: 'Booking not found' });
+            }
+
+            if (String(booking.passengerId) !== String(req.passengerId)) {
+                return next({ status: 403, code: 'FORBIDDEN', message: 'Unauthorized modification' });
+            }
+
+            if (booking.status === 'cancelled') {
+                return res.json({ ok: true, message: 'Booking already cancelled' });
+            }
+
+            booking.status = 'cancelled';
+            await booking.save();
+
+            const passenger = await Passenger.findById(req.passengerId);
+            const { EmailService } = await import('../services/EmailService.js');
+            
+            const flightDetailsStr = `${booking.airlineName} Flight ${booking.flightNumber} from ${booking.origin.city} (${booking.origin.iata}) to ${booking.destination.city} (${booking.destination.iata}) on ${new Date(booking.departureDateTimeUtc).toLocaleDateString()}`;
+
+            // 1. Admin In-App
+            await Notification.create({
+                passengerId: req.passengerId,
+                isAdminOnly: true,
+                type: 'booking_alert',
+                message: `Cancellation Alert: ${passenger.fullName} cancelled their booking ${booking.flightNumber} (${booking.origin.iata} ➝ ${booking.destination.iata}).`,
+                meta: { passenger: passenger.fullName, email: passenger.email, phone: passenger.phone, flight: flightDetailsStr },
+                deliveryMethod: 'in_app'
+            });
+
+            // 2. Admin Email
+            try {
+                await EmailService.send({
+                    to: process.env.EMAIL || process.env.BREVO_SMTP_USER,
+                    subject: `Urgent: Flight Cancellation by ${passenger.fullName}`,
+                    text: `Agency Admin,\n\nPassenger ${passenger.fullName} (${passenger.email}, ${passenger.phone}) has just cancelled their booking via the Dnarai portal.\n\nFlight Details:\n${flightDetailsStr}\n\nPlease take necessary administrative actions.`
+                });
+            } catch(e) { console.error('Admin cancellation email failed', e) }
+
+            // 3. Passenger In-App
+            await Notification.create({
+                passengerId: req.passengerId,
+                type: 'booking_alert',
+                message: `You have successfully cancelled your flight: ${booking.flightNumber} (${booking.origin.iata} ➝ ${booking.destination.iata}).`,
+                deliveryMethod: 'in_app'
+            });
+
+            // 4. Passenger Email
+            try {
+                await EmailService.send({
+                    to: passenger.email,
+                    subject: 'Dnarai Travel - Booking Cancellation Confirmed',
+                    text: `Dear ${passenger.fullName},\n\nYour booking has been successfully cancelled.\n\nFlight Details:\n${flightDetailsStr}\n\nIf you have any questions or need to rebook, please contact us or login to your Dnarai Enterprise dashboard.\n\nBest regards,\nDnarai Enterprise`
+                });
+            } catch(e) { console.error('Passenger cancellation email failed', e) }
+
+            res.json({ ok: true, message: 'Booking successfully cancelled' });
+        } catch (err) {
+            next(err);
+        }
     }
 };

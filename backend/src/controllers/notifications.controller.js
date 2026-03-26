@@ -9,7 +9,7 @@ export const notificationsController = {
      */
     getAll: async (req, res, next) => {
         try {
-            const q = {};
+            const q = { isAdminOnly: true };
             const { unread, type } = req.query;
 
             if (type) q.type = type;
@@ -57,7 +57,7 @@ export const notificationsController = {
     markAllAsRead: async (req, res, next) => {
         try {
             await Notification.updateMany(
-                { read: false },
+                { read: false, isAdminOnly: true },
                 { $set: { read: true } }
             );
             res.json({ ok: true });
@@ -71,7 +71,7 @@ export const notificationsController = {
      */
     deleteAll: async (req, res, next) => {
         try {
-            await Notification.deleteMany({});
+            await Notification.deleteMany({ isAdminOnly: true });
             res.json({ ok: true });
         } catch (err) {
             next(err);

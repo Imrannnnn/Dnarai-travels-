@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import * as Lucide from 'lucide-react';
 import { getApiBaseUrl } from '../data/api';
@@ -10,7 +10,18 @@ import { getApiBaseUrl } from '../data/api';
 export default function BlogListPage() {
     const [blogs, setBlogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
+    const postsPerPage = 6;
     const baseUrl = getApiBaseUrl();
+
+    // Calculate current posts
+    const currentPosts = useMemo(() => {
+        const indexOfLastPost = currentPage * postsPerPage;
+        const indexOfFirstPost = indexOfLastPost - postsPerPage;
+        return blogs.slice(indexOfFirstPost, indexOfLastPost);
+    }, [blogs, currentPage]);
+
+    const totalPages = Math.ceil(blogs.length / postsPerPage);
 
     useEffect(() => {
         async function fetchBlogs() {
@@ -73,7 +84,7 @@ export default function BlogListPage() {
                     </div>
                 ) : (
                     <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {blogs.map((blog) => (
+                        {currentPosts.map((blog) => (
                             <Link
                                 key={blog._id}
                                 to={`/blog/${blog.slug}`}
@@ -120,6 +131,41 @@ export default function BlogListPage() {
                                 </div>
                             </Link>
                         ))}
+                    </div>
+                )}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="mt-16 flex justify-center items-center gap-2">
+                        <button
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:text-dnarai-navy-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-premium"
+                        >
+                            <Lucide.ChevronLeft size={20} />
+                        </button>
+                        
+                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(number => (
+                            <button
+                                key={number}
+                                onClick={() => setCurrentPage(number)}
+                                className={`w-14 h-14 rounded-2xl text-sm font-black uppercase tracking-widest transition-all ${
+                                    currentPage === number 
+                                        ? 'bg-dnarai-navy-900 border-2 border-dnarai-gold-400 text-dnarai-gold-400 shadow-[0_0_20px_rgba(250,204,21,0.2)]' 
+                                        : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-500 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-premium'
+                                }`}
+                            >
+                                {number}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:text-dnarai-navy-900 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:shadow-premium"
+                        >
+                            <Lucide.ChevronRight size={20} />
+                        </button>
                     </div>
                 )}
             </section>

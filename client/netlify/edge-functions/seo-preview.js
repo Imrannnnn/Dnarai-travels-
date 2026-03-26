@@ -56,7 +56,7 @@ export default async (request, context) => {
             let rawImageUrl = blog.imageUrl;
 
             // Ensure we always have an image
-            if (!rawImageUrl) {
+            if (!rawImageUrl || rawImageUrl === "") {
                 rawImageUrl = `${siteOrigin}/D-NARAI_Logo-04.png`;
             } else if (rawImageUrl.startsWith('/')) {
                 rawImageUrl = `${siteOrigin}${rawImageUrl}`;
