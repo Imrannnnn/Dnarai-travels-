@@ -47,7 +47,7 @@ export const blogController = {
 
             let rawImageUrl = blog.imageUrl;
             if (!rawImageUrl) {
-                rawImageUrl = `${frontendUrl}/D-NARAI_Logo%2001.svg`;
+                rawImageUrl = `${frontendUrl}/D-NARAI_Logo-04.png`;
             } else if (rawImageUrl.startsWith('/')) {
                 rawImageUrl = `${frontendUrl}${rawImageUrl}`;
             }
@@ -72,8 +72,8 @@ export const blogController = {
     <meta property="og:image" content="${safeImageUrl}" />
     <meta property="og:image:secure_url" content="${safeImageUrl}" />
     <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="800" />
-    <meta property="og:image:height" content="600" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
