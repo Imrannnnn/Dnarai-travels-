@@ -361,5 +361,38 @@ export const EmailService = {
       console.error('Email failed:', error);
       return { ok: false, error: error.message };
     }
+  },
+
+  async sendCancellationEmail({ to, subject, body, previewText }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const content = `
+      <tr>
+        <td style="padding: 40px;">
+          <h2 style="color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: 1px; font-size: 18px;">Booking Cancellation</h2>
+          <div style="margin: 20px 0; font-size: 16px; color: ${COLORS.SLATE}; line-height: 1.6; white-space: pre-line;">
+            ${body}
+          </div>
+          <div style="margin-top: 30px; padding: 20px; background-color: #fef2f2; border-radius: 12px; border: 1px solid #fee2e2;">
+            <p style="margin: 0; font-size: 13px; color: #b91c1c; font-weight: 700;">Status: CANCELLED</p>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        to,
+        subject,
+        html: getEmailWrapper(content, previewText || 'A booking has been cancelled.'),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('Email failed:', error);
+      return { ok: false, error: error.message };
+    }
   }
 };

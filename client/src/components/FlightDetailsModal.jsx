@@ -51,7 +51,7 @@ export default function FlightDetailsModal({ open, flight, onClose, onClear, onC
             {content.brandName} manages this booking and automates passenger communication.
           </div>
           <div className="flex gap-2 flex-wrap justify-end">
-            {flight?.status !== 'Completed' && (
+            {flight?.status !== 'Completed' && flight?.status !== 'Cancelled' && (
               <button
                 onClick={onComplete}
                 className="rounded-xl bg-ocean-100 px-4 py-2 text-sm font-bold text-ocean-700 transition hover:bg-ocean-200 dark:bg-ocean-900/40 dark:text-ocean-300 dark:hover:bg-ocean-900/60"
@@ -59,12 +59,14 @@ export default function FlightDetailsModal({ open, flight, onClose, onClear, onC
                 Move to History
               </button>
             )}
-            <button
-              onClick={onClear}
-              className="rounded-xl border border-coral-200 bg-white px-4 py-2 text-sm font-bold text-coral-600 transition hover:bg-coral-50 dark:border-coral-900/50 dark:bg-slate-950 dark:text-coral-400 dark:hover:bg-coral-900/20"
-            >
-              {flight?.status !== 'Completed' ? 'Cancel Flight' : 'Remove'}
-            </button>
+            {flight?.status !== 'Cancelled' && (
+              <button
+                onClick={onClear}
+                className="rounded-xl border border-coral-200 bg-white px-4 py-2 text-sm font-bold text-coral-600 transition hover:bg-coral-50 dark:border-coral-900/50 dark:bg-slate-950 dark:text-coral-400 dark:hover:bg-coral-900/20"
+              >
+                {flight?.status !== 'Completed' ? 'Cancel Flight' : 'Remove'}
+              </button>
+            )}
             <button className="rounded-xl bg-ocean-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-ocean-700 shadow-md shadow-ocean-600/20">
               Contact Support
             </button>
