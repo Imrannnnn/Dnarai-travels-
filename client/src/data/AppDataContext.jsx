@@ -114,7 +114,9 @@ export function AppDataProvider({ children }) {
               airline: b.airlineName,
               flightNumber: b.flightNumber,
               logoUrl: `https://picsum.photos/seed/${encodeURIComponent(b.airlineName)}/64/64`,
-              status: (b.status === 'completed' || new Date(b.departureDateTimeUtc) < new Date()) ? 'Completed' : (b.status === 'updated' ? 'Updated' : 'On Time'),
+              status: (b.status === 'completed' || new Date(b.departureDateTimeUtc) < new Date()) 
+                ? 'Completed' 
+                : (b.status === 'cancelled' ? 'Cancelled' : (b.status === 'updated' ? 'Updated' : 'On Time')),
               date: new Date(b.departureDateTimeUtc).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
               fromCity: b.origin?.city,
               fromCode: b.origin?.iata,

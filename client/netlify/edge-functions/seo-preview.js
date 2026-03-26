@@ -1,29 +1,138 @@
+// /* global Netlify, Deno */
+// export default async (request, context) => {
+//     const url = new URL(request.url);
+//     const path = url.pathname;
+//     const match = path.match(/^\/blog\/([^/]+)\/?$/);
+
+//     if (!match) {
+//         return context.next();
+//     }
+
+//     const slug = match[1];
+
+//     // Fetch the standard index.html from Netlify
+//     const response = await context.next();
+
+//     // Make sure we're only modifying HTML
+//     const contentType = response.headers.get("content-type");
+//     if (!contentType || !contentType.includes("text/html")) {
+//         return response;
+//     }
+
+//     let html = await response.text();
+
+//     try {
+//         // Try getting the backend URL from environment variables
+//         // We look for VITE_API_BASE_URL, but fallback to known production URLs if needed
+//         let apiUrl = "http://localhost:5000";
+//         if (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get) {
+//             apiUrl = Netlify.env.get("VITE_API_BASE_URL") || apiUrl;
+//         } else if (typeof Deno !== "undefined" && Deno.env && Deno.env.get) {
+//             apiUrl = Deno.env.get("VITE_API_BASE_URL") || apiUrl;
+//         }
+
+//         const res = await fetch(`${apiUrl}/api/blogs/${slug}`);
+//         if (res.ok) {
+//             const blog = await res.json();
+
+//             // Clean content for description
+//             const plainText = (blog.content || '').replace(/<[^>]*>?/gm, '');
+//             let description = plainText.substring(0, 150);
+//             if (plainText.length > 150) description += '...';
+
+//             // Escape quotes and ampersands
+//             const safeTitle = blog.title.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+//             const safeDesc = description.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+
+//             // Ensure the URL is absolute for OpenGraph compatibility
+//             // Default to the site logo as a fallback
+//             let siteOrigin = "https://dnaraitravels.netlify.app";
+//             if (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get("URL")) {
+//                 siteOrigin = Netlify.env.get("URL");
+//             } else if (typeof Deno !== "undefined" && Deno.env && Deno.env.get("URL")) {
+//                 siteOrigin = Deno.env.get("URL");
+//             }
+
+//             let rawImageUrl = blog.imageUrl;
+
+//             // Ensure we always have an image
+//             if (!rawImageUrl || rawImageUrl === "") {
+//                 rawImageUrl = `${siteOrigin}/D-NARAI_Logo-04.png`;
+//             } else if (rawImageUrl.startsWith('/')) {
+//                 rawImageUrl = `${siteOrigin}${rawImageUrl}`;
+//             }
+
+//             // Detect image type
+//             let imageType = "image/jpeg";
+
+//             if (rawImageUrl.endsWith(".png")) {
+//                 imageType = "image/png";
+//             } else if (rawImageUrl.endsWith(".svg")) {
+//                 imageType = "image/svg+xml";
+//             } else if (rawImageUrl.endsWith(".webp")) {
+//                 imageType = "image/webp";
+//             }
+
+//             // Escape ampersands for HTML
+//             const safeImageUrl = rawImageUrl.replace(/&/g, "&amp;");
+
+//             // Create meta tags
+//             const metaTags = `
+// <!-- Dynamic Open Graph Tags from Edge Function -->
+// <title>${safeTitle} | D.Narai Insight</title>
+// <meta name="description" content="${safeDesc}" />
+
+// <meta property="og:title" content="${safeTitle}" />
+// <meta property="og:description" content="${safeDesc}" />
+// <meta property="og:image" content="${safeImageUrl}" />
+// <meta property="og:image:secure_url" content="${safeImageUrl}" />
+// <meta property="og:image:type" content="${imageType}" />
+// <meta property="og:image:width" content="1200" />
+// <meta property="og:image:height" content="630" />
+// <meta property="og:url" content="${url.href}" />
+// <meta property="og:type" content="article" />
+
+// <meta name="twitter:card" content="summary_large_image" />
+// <meta name="twitter:title" content="${safeTitle}" />
+// <meta name="twitter:description" content="${safeDesc}" />
+// <meta name="twitter:image" content="${safeImageUrl}" />
+// `;
+//             // Insert meta tags before </head>
+//             html = html.replace('</head>', `${metaTags}\n</head>`);
+//         }
+//     } catch (e) {
+//         console.error("Error in seo-preview edge function:", e);
+//     }
+
+//     return new Response(html, {
+//         headers: { "content-type": "text/html" }
+//     });
+// };
+
+
 /* global Netlify, Deno */
 export default async (request, context) => {
     const url = new URL(request.url);
     const path = url.pathname;
-    const match = path.match(/^\/blog\/([^/]+)\/?$/);
 
+    // Only intercept /blog/:slug routes
+    const match = path.match(/^\/blog\/([^/]+)\/?$/);
     if (!match) {
         return context.next();
     }
 
     const slug = match[1];
 
-    // Fetch the standard index.html from Netlify
-    const response = await context.next();
-
-    // Make sure we're only modifying HTML
-    const contentType = response.headers.get("content-type");
-    if (!contentType || !contentType.includes("text/html")) {
-        return response;
+    // Set the site origin
+    let siteOrigin = "https://dnaraitravels.netlify.app";
+    if (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get) {
+        siteOrigin = Netlify.env.get("URL") || siteOrigin;
+    } else if (typeof Deno !== "undefined" && Deno.env && Deno.env.get) {
+        siteOrigin = Deno.env.get("URL") || siteOrigin;
     }
 
-    let html = await response.text();
-
     try {
-        // Try getting the backend URL from environment variables
-        // We look for VITE_API_BASE_URL, but fallback to known production URLs if needed
+        // Fetch the blog data from your API
         let apiUrl = "http://localhost:5000";
         if (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get) {
             apiUrl = Netlify.env.get("VITE_API_BASE_URL") || apiUrl;
@@ -32,53 +141,43 @@ export default async (request, context) => {
         }
 
         const res = await fetch(`${apiUrl}/api/blogs/${slug}`);
-        if (res.ok) {
-            const blog = await res.json();
+        if (!res.ok) {
+            console.error("Blog API fetch failed:", res.status);
+            return context.next();
+        }
 
-            // Clean content for description
-            const plainText = (blog.content || '').replace(/<[^>]*>?/gm, '');
-            let description = plainText.substring(0, 150);
-            if (plainText.length > 150) description += '...';
+        const blog = await res.json();
 
-            // Escape quotes and ampersands
-            const safeTitle = blog.title.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
-            const safeDesc = description.replace(/"/g, '&quot;').replace(/&/g, '&amp;');
+        // Prepare title and description
+        const safeTitle = (blog.title || "DNarai Travel").replace(/"/g, "&quot;").replace(/&/g, "&amp;");
+        const plainText = (blog.content || "").replace(/<[^>]*>?/gm, "");
+        let description = plainText.substring(0, 150);
+        if (plainText.length > 150) description += "...";
+        const safeDesc = description.replace(/"/g, "&quot;").replace(/&/g, "&amp;");
 
-            // Ensure the URL is absolute for OpenGraph compatibility
-            // Default to the site logo as a fallback
-            let siteOrigin = "https://dnaraitravels.netlify.app";
-            if (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get("URL")) {
-                siteOrigin = Netlify.env.get("URL");
-            } else if (typeof Deno !== "undefined" && Deno.env && Deno.env.get("URL")) {
-                siteOrigin = Deno.env.get("URL");
-            }
+        // Prepare image URL
+        let rawImageUrl = blog.imageUrl || "/D-NARAI_Logo-04.png"; // fallback
+        if (rawImageUrl.startsWith("/")) rawImageUrl = `${siteOrigin}${rawImageUrl}`;
 
-            let rawImageUrl = blog.imageUrl;
+        // Determine MIME type
+        const extension = rawImageUrl.split(".").pop().toLowerCase();
+        const imageTypes = {
+            png: "image/png",
+            jpg: "image/jpeg",
+            jpeg: "image/jpeg",
+            webp: "image/webp"
+        };
+        const imageType = imageTypes[extension] || "image/jpeg";
 
-            // Ensure we always have an image
-            if (!rawImageUrl || rawImageUrl === "") {
-                rawImageUrl = `${siteOrigin}/D-NARAI_Logo-04.png`;
-            } else if (rawImageUrl.startsWith('/')) {
-                rawImageUrl = `${siteOrigin}${rawImageUrl}`;
-            }
+        const safeImageUrl = rawImageUrl.replace(/&/g, "&amp;");
 
-            // Detect image type
-            let imageType = "image/jpeg";
+        // Fetch raw index.html directly from Netlify (or serve your template)
+        const htmlResponse = await fetch(`${siteOrigin}/index.html`);
+        let html = await htmlResponse.text();
 
-            if (rawImageUrl.endsWith(".png")) {
-                imageType = "image/png";
-            } else if (rawImageUrl.endsWith(".svg")) {
-                imageType = "image/svg+xml";
-            } else if (rawImageUrl.endsWith(".webp")) {
-                imageType = "image/webp";
-            }
-
-            // Escape ampersands for HTML
-            const safeImageUrl = rawImageUrl.replace(/&/g, "&amp;");
-
-            // Create meta tags
-            const metaTags = `
-<!-- Dynamic Open Graph Tags from Edge Function -->
+        // Inject meta tags
+        const metaTags = `
+<!-- Dynamic Open Graph Tags -->
 <title>${safeTitle} | D.Narai Insight</title>
 <meta name="description" content="${safeDesc}" />
 
@@ -97,14 +196,15 @@ export default async (request, context) => {
 <meta name="twitter:description" content="${safeDesc}" />
 <meta name="twitter:image" content="${safeImageUrl}" />
 `;
-            // Insert meta tags before </head>
-            html = html.replace('</head>', `${metaTags}\n</head>`);
-        }
-    } catch (e) {
-        console.error("Error in seo-preview edge function:", e);
-    }
 
-    return new Response(html, {
-        headers: { "content-type": "text/html" }
-    });
+        html = html.replace("</head>", `${metaTags}\n</head>`);
+
+        return new Response(html, {
+            headers: { "content-type": "text/html" }
+        });
+
+    } catch (err) {
+        console.error("SEO Edge Function error:", err);
+        return context.next();
+    }
 };

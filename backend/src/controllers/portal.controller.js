@@ -370,7 +370,9 @@ export const portalController = {
                 type: 'booking_alert',
                 message: `Cancellation Alert: ${passenger.fullName} cancelled their booking ${booking.flightNumber} (${booking.origin.iata} ➝ ${booking.destination.iata}).`,
                 meta: { passenger: passenger.fullName, email: passenger.email, phone: passenger.phone, flight: flightDetailsStr },
-                deliveryMethod: 'in_app'
+                deliveryMethod: 'in_app',
+                dedupeKey: `cancel_admin_${booking._id}_${Date.now()}`,
+                sentAt: new Date()
             });
 
             // 2. Admin Email
@@ -387,7 +389,9 @@ export const portalController = {
                 passengerId: req.passengerId,
                 type: 'booking_alert',
                 message: `You have successfully cancelled your flight: ${booking.flightNumber} (${booking.origin.iata} ➝ ${booking.destination.iata}).`,
-                deliveryMethod: 'in_app'
+                deliveryMethod: 'in_app',
+                dedupeKey: `cancel_pass_${booking._id}_${Date.now()}`,
+                sentAt: new Date()
             });
 
             // 4. Passenger Email

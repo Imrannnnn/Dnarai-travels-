@@ -78,14 +78,14 @@ export default function DashboardPage() {
                 </p>
               </div>
 
-              <div className="p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl flex items-center self-start sm:self-auto shadow-inner border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm">
+              <div className="p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl flex items-center self-start sm:self-auto shadow-inner border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-md">
                 <button
                   onClick={() => setViewMode('upcoming')}
                   className={clsx(
-                    'relative rounded-xl px-6 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-[0.1em] transition-all duration-300 whitespace-nowrap',
+                    'relative rounded-xl px-7 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-[0.12em] transition-all duration-300 whitespace-nowrap active:scale-95',
                     viewMode === 'upcoming'
-                      ? 'bg-white dark:bg-slate-900 text-ocean-600 shadow-premium dark:text-ocean-400 ring-1 ring-black/5 dark:ring-white/5'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+                      ? 'bg-white dark:bg-slate-900 text-ocean-600 shadow-premium dark:text-ocean-400 ring-1 ring-black/5 dark:ring-white/5 scale-[1.02]'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
                   )}
                 >
                   Upcoming
@@ -93,10 +93,10 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setViewMode('history')}
                   className={clsx(
-                    'relative rounded-xl px-6 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-[0.1em] transition-all duration-300 whitespace-nowrap',
+                    'relative rounded-xl px-7 py-2.5 text-[10px] md:text-xs font-black uppercase tracking-[0.12em] transition-all duration-300 whitespace-nowrap active:scale-95 ml-1',
                     viewMode === 'history'
-                      ? 'bg-white dark:bg-slate-900 text-ocean-600 shadow-premium dark:text-ocean-400 ring-1 ring-black/5 dark:ring-white/5'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
+                      ? 'bg-white dark:bg-slate-900 text-ocean-600 shadow-premium dark:text-ocean-400 ring-1 ring-black/5 dark:ring-white/5 scale-[1.02]'
+                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-700/50'
                   )}
                 >
                   History
@@ -136,24 +136,24 @@ export default function DashboardPage() {
             </div>
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-8 font-display relative z-10">Travel Status</h3>
 
-            <div className="space-y-6 relative z-10">
-              <div className="flex items-center gap-5 p-5 bg-white/80 dark:bg-slate-950/50 rounded-2xl border border-white/50 dark:border-slate-700 shadow-sm backdrop-blur-sm">
+            <div className="space-y-4 relative z-10">
+              <div className="flex items-center gap-5 p-5 bg-white/80 dark:bg-slate-950/50 rounded-2xl border border-white/50 dark:border-slate-700 shadow-soft hover:shadow-card transition-shadow duration-300 backdrop-blur-sm group/status">
                 <div className="relative flex h-4 w-4">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 shadow-lg shadow-emerald-500/30"></span>
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-tight">Biometric Verified</div>
+                  <div className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight group-hover/status:text-ocean-600 transition-colors">Biometric Verified</div>
                   <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide mt-0.5">Ready for Boarding</div>
                 </div>
               </div>
-
-              <div className="flex items-center gap-5 p-5 bg-white/40 dark:bg-slate-900/20 rounded-2xl border border-white/20 dark:border-slate-800 backdrop-blur-sm">
+ 
+              <div className="flex items-center gap-5 p-5 bg-white/40 dark:bg-slate-900/20 rounded-2xl border border-white/20 dark:border-slate-800 backdrop-blur-sm hover:bg-white/60 transition-colors duration-300 group/access">
                 <div className="h-4 w-4 rounded-full bg-sky-500 relative">
                   <div className="absolute inset-0 bg-sky-400 blur-[2px] rounded-full animate-pulse" />
                 </div>
                 <div>
-                  <div className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-tight">Priority Access</div>
+                  <div className="text-sm font-black text-slate-700 dark:text-slate-200 uppercase tracking-tight group-hover/access:text-ocean-500 transition-colors">Priority Access</div>
                   <div className="text-[10px] font-bold text-sky-600 dark:text-sky-400 uppercase tracking-wide mt-0.5">SkyTeam Elite</div>
                 </div>
               </div>

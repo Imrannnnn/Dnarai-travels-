@@ -20,6 +20,7 @@ const NotificationSchema = new mongoose.Schema(
         'passport_alert',
         'weather',
         'unrecognized_booking',
+        'booking_alert',
       ],
       required: true,
       index: true,

@@ -17,13 +17,20 @@ function WeatherIcon({ type }) {
 }
 
 function StatusBadge({ status }) {
-  const tone = status === 'Updated' ? 'updated' : 'ontime'
+  const isCancelled = status?.toLowerCase() === 'cancelled'
+  const isCompleted = status?.toLowerCase() === 'completed'
+  const isUpdated = status?.toLowerCase() === 'updated'
+
   return (
     <span
       className={clsx(
         'rounded-md px-2 py-1 text-[11px] font-semibold uppercase tracking-wide',
-        tone === 'updated'
+        isCancelled
           ? 'bg-coral-50 text-coral-600 dark:bg-coral-900/20 dark:text-coral-400'
+          : isCompleted
+          ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+          : isUpdated
+          ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400'
           : 'bg-ocean-50 text-ocean-700 dark:bg-ocean-900/20 dark:text-ocean-300'
       )}
     >
