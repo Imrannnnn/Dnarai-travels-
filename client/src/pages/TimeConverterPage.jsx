@@ -17,13 +17,24 @@ function SearchableSelect({ value, onChange, allData }) {
 
   const filtered = useMemo(() => {
     if (!query) return allData.filter((d) => popularCities.some((p) => p.timezone === d.timezone)).slice(0, 15);
-    const q = query.toLowerCase();
+    let q = query.toLowerCase();
+    
+    // Handle country synonyms
+    if (q === 'usa') q = 'united states';
+    if (q === 'uk') q = 'united kingdom';
+    if (q === 'uae') q = 'united arab emirates';
+
     return allData.filter(d => 
       d.country.toLowerCase().includes(q) || 
       d.city.toLowerCase().includes(q) ||
-      d.timezone.toLowerCase().includes(q) ||
-      (d.aliases && d.aliases.some(a => a.toLowerCase().includes(q)))
-    ).slice(0, 50);
+      d.timezone.toLowerCase().includes(q)
+    ).sort((a, b) => {
+      const aExact = a.city.toLowerCase() === q;
+      const bExact = b.city.toLowerCase() === q;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      return 0;
+    }).slice(0, 50);
   }, [query, allData]);
 
   return (
@@ -32,7 +43,7 @@ function SearchableSelect({ value, onChange, allData }) {
         onClick={() => setOpen(true)}
         className="w-full pl-3 pr-8 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 outline-none hover:ring-2 hover:ring-ocean-500/50 font-bold text-xs cursor-pointer truncate flex items-center shadow-sm"
       >
-         <span className="truncate">{value.country} • {value.city}</span>
+         <span className="truncate">{value.city} ({value.country})</span>
          <ChevronDown className="absolute right-3 text-slate-400 pointer-events-none" size={14} />
       </div>
 
@@ -108,15 +119,26 @@ export default function TimeConverterPage() {
         popularCities.some(p => p.timezone === d.timezone)
     ).slice(0, 15);
 
-    const query = searchQuery.toLowerCase();
+    let query = searchQuery.toLowerCase();
     
-    // Check if the query matches country, city, timezone, or any of the aliases
+    // Handle common country synonyms
+    if (query === 'usa') query = 'united states';
+    if (query === 'uk') query = 'united kingdom';
+    if (query === 'uae') query = 'united arab emirates';
+
+    // Check if the query matches country, city, or timezone
     return allData.filter(d => 
       d.country.toLowerCase().includes(query) || 
       d.city.toLowerCase().includes(query) ||
-      d.timezone.toLowerCase().includes(query) ||
-      (d.aliases && d.aliases.some(alias => alias.toLowerCase().includes(query)))
-    ).slice(0, 50);
+      d.timezone.toLowerCase().includes(query)
+    ).sort((a, b) => {
+      // Prioritize exact city name matches or start-of-string matches
+      const aExact = a.city.toLowerCase() === query;
+      const bExact = b.city.toLowerCase() === query;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      return 0;
+    }).slice(0, 50);
   }, [searchQuery, allData]);
 
   // Handle conversion whenever inputs change
@@ -177,7 +199,7 @@ export default function TimeConverterPage() {
                   <div className="relative">
                     <div className="flex items-center gap-2 text-slate-400 mb-1">
                       <MapPin size={16} className="text-ocean-500 shrink-0" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest truncate">{selectedCity.country}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest truncate">{selectedCity.city} ({selectedCity.country})</span>
                     </div>
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 dark:text-white font-display leading-tight truncate">
                       {selectedCity.city}
@@ -257,10 +279,7 @@ export default function TimeConverterPage() {
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className="text-sm md:text-xs font-black text-slate-900 dark:text-white group-hover/item:text-ocean-700 dark:group-hover/item:text-ocean-400 truncate">
-                                  {item.country}
-                                </span>
-                                <span className="text-xs md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                                  • {item.city}
+                                  {item.city} ({item.country})
                                 </span>
                               </div>
                               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-60 truncate">

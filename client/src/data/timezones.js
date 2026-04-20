@@ -22,10 +22,10 @@ export const popularCities = [
  * that aren't the primary identifier of a timezone.
  */
 const timezoneAliases = {
-  "America/Chicago": ["Texas", "Illinois", "Houston", "Dallas", "Austin", "San Antonio", "Minnesota", "Wisconsin", "Missouri", "Tennessee", "Louisiana", "New Orleans", "OKC", "Oklahoma"],
-  "America/Los_Angeles": ["California", "Los Angeles", "San Francisco", "San Diego", "Seattle", "Washington State", "Nevada", "Las Vegas", "Portland", "Oregon"],
-  "America/New_York": ["New York", "Florida", "Miami", "Orlando", "Washington DC", "Atlanta", "Boston", "Philadelphia", "Ohio", "North Carolina", "Georgia", "Virginia", "Maryland", "New Jersey", "Pennsylvania"],
-  "America/Denver": ["Colorado", "Denver", "Utah", "Salt Lake City", "Montana", "Wyoming", "New Mexico"],
+  "America/Chicago": ["Texas", "Central Time (US)", "Illinois", "Houston", "Dallas", "Austin", "San Antonio", "Minnesota", "Wisconsin", "Missouri", "Tennessee", "Louisiana", "New Orleans", "OKC", "Oklahoma"],
+  "America/Los_Angeles": ["California", "Pacific Time (US)", "Los Angeles", "San Francisco", "San Diego", "Seattle", "Washington State", "Nevada", "Las Vegas", "Portland", "Oregon"],
+  "America/New_York": ["New York", "Eastern Time (US)", "Florida", "Miami", "Orlando", "Washington DC", "Atlanta", "Boston", "Philadelphia", "Ohio", "North Carolina", "Georgia", "Virginia", "Maryland", "New Jersey", "Pennsylvania"],
+  "America/Denver": ["Mountain Time (US)", "Colorado", "Denver", "Utah", "Salt Lake City", "Montana", "Wyoming", "New Mexico", "El Paso (Texas)"],
   "America/Phoenix": ["Arizona", "Phoenix", "Tucson"],
   "America/Anchorage": ["Alaska", "Anchorage"],
   "Pacific/Honolulu": ["Hawaii", "Honolulu"],
@@ -34,7 +34,7 @@ const timezoneAliases = {
   "America/Toronto": ["Ontario", "Montreal", "Quebec", "Ottawa"],
   "America/Vancouver": ["British Columbia", "BC", "Vancouver"],
   "Africa/Lagos": ["Abuja", "Kano", "Ibadan"],
-  "Africa/Johannesburg": ["Pretoria", "Cape Town", "Durban", "SA"],
+  "Africa/Johannesburg": ["Pretoria", "Cape Town", "Durban", "SA", "South Africa"],
   "Asia/Shanghai": ["Beijing", "Guangzhou", "Shenzhen", "China"],
   "Europe/Paris": ["France", "Marseille", "Lyon"],
   "Europe/Berlin": ["Germany", "Munich", "Frankfurt", "Hamburg"],
@@ -57,25 +57,38 @@ export const getFullCountryTimezoneData = () => {
     const timezones = ct.getTimezonesForCountry(country.id);
     
     timezones.forEach(tz => {
-      // Extract city/region name from IANA ID (e.g. "Africa/Lagos" -> "Lagos")
+      // Extract main city/region name from IANA ID (e.g. "Africa/Lagos" -> "Lagos")
       const parts = tz.name.split('/');
       const cityName = parts[parts.length - 1].replace(/_/g, ' ');
 
+      // Base location entry
       allData.push({
-        id: `${country.id}-${tz.name}`, // Guaranteed unique per country-timezone pair
+        id: `${country.id}-${tz.name}-base`, 
         country: country.name,
         countryCode: country.id,
         city: cityName,
         timezone: tz.name,
         offset: tz.utcOffsetStr,
         dstOffset: tz.dstOffsetStr,
-        aliases: timezoneAliases[tz.name] || [] // Inject aliases mapping
+      });
+
+      // Inject aliases as first-class primary entries!
+      const aliases = timezoneAliases[tz.name] || [];
+      aliases.forEach(aliasName => {
+        allData.push({
+          id: `${country.id}-${tz.name}-${aliasName.toLowerCase().replace(/\s+/g, '-')}`,
+          country: country.name,
+          countryCode: country.id,
+          city: aliasName, // Present alias as the primary region/city!
+          timezone: tz.name,
+          offset: tz.utcOffsetStr,
+          dstOffset: tz.dstOffsetStr,
+        });
       });
     });
   });
 
   // Sort by country name primarily, then city
-
   return allData.sort((a, b) => {
     if (a.country < b.country) return -1;
     if (a.country > b.country) return 1;
