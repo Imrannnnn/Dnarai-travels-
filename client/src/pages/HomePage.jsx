@@ -159,6 +159,77 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* --- TIME CONVERTER TEASER --- */}
+      <section className="py-24 px-6">
+        <div className="container mx-auto max-w-[1400px]">
+          <div className="relative overflow-hidden rounded-[3.5rem] bg-slate-900 p-8 md:p-20 shadow-2xl">
+             {/* Decorative background */}
+            <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-ocean-600/20 to-transparent pointer-events-none" />
+            <Lucide.Globe className="absolute -bottom-20 -right-20 h-96 w-96 text-ocean-500/10 animate-spin-slow pointer-events-none" />
+
+            <div className="relative z-10 grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-ocean-500/10 text-ocean-400 text-xs font-black uppercase tracking-widest border border-ocean-500/20">
+                  <Lucide.Clock size={14} />
+                  New Intelligence Feature
+                </div>
+                <h2 className="text-4xl md:text-6xl font-black text-white leading-tight font-display">
+                  Global Time <br />
+                  <span className="text-ocean-400">Intelligence.</span>
+                </h2>
+                <p className="text-slate-400 text-lg md:text-xl leading-relaxed max-w-xl">
+                  Never miss a flight or a meeting again. Our new real-time Global Time Converter helps you navigate world time zones with precision.
+                </p>
+                <div className="flex flex-wrap gap-4">
+                  <Link
+                    to="/time-converter"
+                    className="inline-flex items-center gap-2 bg-ocean-600 hover:bg-ocean-700 text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all active:scale-95 shadow-xl shadow-ocean-600/20"
+                  >
+                    <span>Open Time Converter</span>
+                    <Lucide.ArrowRight size={18} />
+                  </Link>
+                </div>
+              </div>
+
+              <div className="hidden lg:block">
+                <div className="glass-card rounded-3xl p-8 border-white/10 bg-white/5 backdrop-blur-md space-y-6">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-6">
+                    <div className="flex items-center gap-4">
+                      <div className="h-12 w-12 rounded-2xl bg-ocean-500 text-white flex items-center justify-center shadow-lg shadow-ocean-500/20">
+                        <Lucide.Clock size={24} />
+                      </div>
+                      <div>
+                        <p className="text-white font-black text-lg">London, UK</p>
+                        <p className="text-ocean-400 text-xs font-bold uppercase tracking-tighter">Current Destination</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white font-black text-3xl font-mono">10:45 <span className="text-sm font-sans uppercase">AM</span></p>
+                      <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">GMT +1</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                      <span className="text-slate-400 text-sm font-bold">New York, USA</span>
+                      <span className="text-white font-black font-mono">05:45 AM</span>
+                    </div>
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                      <span className="text-slate-400 text-sm font-bold">Tokyo, Japan</span>
+                      <span className="text-white font-black font-mono">06:45 PM</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest text-center">Real-time synchronization active</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* --- REASONS SECTION --- */}
       <section className="py-32 px-6 overflow-hidden">
         <div className="container mx-auto max-w-[1600px] grid lg:grid-cols-[1fr_auto] items-center gap-20">

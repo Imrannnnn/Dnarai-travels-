@@ -21,6 +21,7 @@ const X = Lucide.X
 const Home = Lucide.Home || Lucide.Plane
 const Info = Lucide.Info || Lucide.BadgeInfo || Lucide.HelpCircle || Lucide.Plane
 const BookOpen = Lucide.BookOpen
+const Globe = Lucide.Globe
 
 function NavItem({ to, icon: Icon, label, badge, onClick }) {
   const SafeIcon = Icon || Plane
@@ -88,6 +89,7 @@ export default function Navbar() {
       { to: '/profile', icon: UserRound, label: 'Profile' },
     ] : []),
     { to: '/blog', icon: BookOpen, label: 'Insights' },
+    { to: '/time-converter', icon: Globe, label: 'World Time' },
     { to: '/about', icon: Info, label: 'Support' },
   ]
 

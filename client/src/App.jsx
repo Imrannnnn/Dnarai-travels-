@@ -11,6 +11,7 @@ import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import BlogListPage from './pages/BlogListPage'
 import BlogPostPage from './pages/BlogPostPage'
+import TimeConverterPage from './pages/TimeConverterPage'
 import { useAuth } from './data/AuthContext'
 import { useAppData } from './data/AppDataContext'
 import LoadingOverlay from './components/LoadingOverlay'
@@ -60,6 +61,7 @@ export default function App() {
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/blog" element={<BlogListPage />} />
                 <Route path="/blog/:slug" element={<BlogPostPage />} />
+                <Route path="/time-converter" element={<TimeConverterPage />} />
 
                 {/* Protected Routes */}
                 <Route
