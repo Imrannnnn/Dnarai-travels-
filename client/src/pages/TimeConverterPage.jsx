@@ -149,7 +149,7 @@ export default function TimeConverterPage() {
   const selectedInfo = getTimeInfo(selectedCity);
 
   return (
-    <div className="min-h-screen pb-12 pt-4 px-4 md:px-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
+    <div className="min-h-screen pb-12 pt-2 px-4 md:px-6 max-w-5xl mx-auto space-y-6 animate-in fade-in duration-700">
       {/* Header Section */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ocean-50 dark:bg-ocean-900/30 text-ocean-600 dark:text-ocean-400 text-[10px] font-black uppercase tracking-widest border border-ocean-100 dark:border-ocean-800">
@@ -164,10 +164,10 @@ export default function TimeConverterPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Main Clock Card */}
-        <div className="lg:col-span-8 space-y-8">
-          <div className="glass-card rounded-3xl p-6 sm:p-8 md:p-10 relative overflow-hidden group shadow-xl shadow-ocean-900/5 dark:shadow-none border border-slate-200/60 dark:border-slate-800/60 z-10">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="glass-card rounded-3xl p-6 sm:p-8 relative overflow-hidden group shadow-xl shadow-ocean-900/5 dark:shadow-none border border-slate-200/60 dark:border-slate-800/60 z-10">
             {/* Background Accent */}
             <div className="absolute -right-20 -top-20 w-48 h-48 bg-ocean-500/10 rounded-full blur-3xl group-hover:bg-ocean-500/20 transition-all duration-700" />
             
@@ -219,7 +219,7 @@ export default function TimeConverterPage() {
               </div>
 
               {/* Relocated Search Box */}
-              <div className="w-full md:w-80 relative">
+              <div className="w-full md:w-80 relative z-50">
                 <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-400">
                   <Search size={16} />
                 </div>
