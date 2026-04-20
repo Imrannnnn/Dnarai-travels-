@@ -11,6 +11,73 @@ const MapPin = Lucide.MapPin;
 const HelpCircle = Lucide.HelpCircle;
 const ChevronDown = Lucide.ChevronDown;
 
+function SearchableSelect({ value, onChange, allData }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!query) return allData.filter((d) => popularCities.some((p) => p.timezone === d.timezone)).slice(0, 15);
+    const q = query.toLowerCase();
+    return allData.filter(d => 
+      d.country.toLowerCase().includes(q) || 
+      d.city.toLowerCase().includes(q) ||
+      d.timezone.toLowerCase().includes(q) ||
+      (d.aliases && d.aliases.some(a => a.toLowerCase().includes(q)))
+    ).slice(0, 50);
+  }, [query, allData]);
+
+  return (
+    <div className="relative w-full z-10">
+      <div 
+        onClick={() => setOpen(true)}
+        className="w-full pl-3 pr-8 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 outline-none hover:ring-2 hover:ring-ocean-500/50 font-bold text-xs cursor-pointer truncate flex items-center shadow-sm"
+      >
+         <span className="truncate">{value.country} • {value.city}</span>
+         <ChevronDown className="absolute right-3 text-slate-400 pointer-events-none" size={14} />
+      </div>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-2 max-h-64 overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-[0_20px_50px_rgba(0,0,0,0.2)] z-[60] p-1.5 premium-shadow">
+          <div className="sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10 pt-1 px-1">
+             <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  autoFocus
+                  type="text" 
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder="Search region..."
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs font-bold outline-none border border-slate-200 dark:border-slate-700 focus:border-ocean-500"
+                />
+             </div>
+          </div>
+          {filtered.length > 0 ? filtered.map((item) => (
+            <button
+              key={'select-'+item.id}
+              onClick={() => {
+                onChange(item);
+                setOpen(false);
+                setQuery('');
+              }}
+              className="w-full text-left p-2.5 rounded-lg hover:bg-ocean-50 dark:hover:bg-ocean-950/40 transition-colors flex items-center justify-between mb-0.5"
+            >
+              <div className="min-w-0 pr-2">
+                <p className="text-[11px] font-black text-slate-900 dark:text-white truncate">{item.country}</p>
+                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate">{item.city}</p>
+              </div>
+              <span className="text-[9px] font-mono font-bold text-ocean-600 dark:text-ocean-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded shrink-0">
+                {item.offset}
+              </span>
+            </button>
+          )) : (
+            <div className="p-4 text-center text-slate-400 text-[10px] font-bold uppercase tracking-widest">No results</div>
+          )}
+        </div>
+      )}
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+    </div>
+  );
+}
 
 export default function TimeConverterPage() {
   const [currentTime, setCurrentTime] = useState(DateTime.now());
@@ -109,19 +176,19 @@ export default function TimeConverterPage() {
                 <div className="space-y-4">
                   <div className="relative">
                     <div className="flex items-center gap-2 text-slate-400 mb-1">
-                      <MapPin size={16} className="text-ocean-500" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">{selectedCity.country}</span>
+                      <MapPin size={16} className="text-ocean-500 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest truncate">{selectedCity.country}</span>
                     </div>
-                    <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white font-display">
+                    <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 dark:text-white font-display leading-tight truncate">
                       {selectedCity.city}
                     </h2>
                   </div>
 
                   <div className="space-y-0.5">
-                    <div className="text-6xl md:text-7xl font-black font-mono tracking-tighter text-ocean-600 dark:text-ocean-400 tabular-nums">
+                    <div className="text-5xl sm:text-6xl md:text-7xl font-black font-mono tracking-tighter text-ocean-600 dark:text-ocean-400 tabular-nums break-words">
                       {selectedInfo.formatted.split(' ')[0]}
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-wrap">
                       <span className="text-xl font-black text-slate-400 uppercase">{selectedInfo.formatted.split(' ')[1]}</span>
                       <div className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                       <span className="text-xs font-bold text-slate-500">{selectedInfo.offset}</span>
@@ -173,12 +240,13 @@ export default function TimeConverterPage() {
                     {filteredResults.length > 0 ? (
                       filteredResults.map((item) => (
                         <button
-                          key={item.id}
+                  key={item.id}
                           onClick={() => {
                             setSelectedCity(item);
                             setShowDropdown(false);
                             setSearchQuery('');
-
+                            // Automatically scroll to the top live-clock view
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-ocean-50 dark:hover:bg-ocean-950/40 transition-all group/item text-left mb-0.5 last:mb-0"
                         >
@@ -224,20 +292,11 @@ export default function TimeConverterPage() {
               <div className="md:col-span-5 space-y-2">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">From</label>
                 <div className="grid gap-2">
-                  <div className="relative group">
-                    <select
-                      value={convFromCity.id}
-                      onChange={(e) => setConvFromCity(allData.find(c => c.id === e.target.value))}
-                      className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-ocean-500 font-bold text-xs cursor-pointer"
-                    >
-                      {allData.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.country} - {item.city}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
-                  </div>
+                  <SearchableSelect 
+                    value={convFromCity} 
+                    onChange={setConvFromCity} 
+                    allData={allData} 
+                  />
                   <div className="relative group">
                     <input
                       type="time"
@@ -260,20 +319,11 @@ export default function TimeConverterPage() {
               <div className="md:col-span-5 space-y-2">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">To</label>
                 <div className="grid gap-2">
-                  <div className="relative group">
-                    <select
-                      value={convToCity.id}
-                      onChange={(e) => setConvToCity(allData.find(c => c.id === e.target.value))}
-                      className="w-full appearance-none pl-3 pr-8 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-ocean-500 font-bold text-xs cursor-pointer"
-                    >
-                      {allData.map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.country} - {item.city}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
-                  </div>
+                  <SearchableSelect 
+                    value={convToCity} 
+                    onChange={setConvToCity} 
+                    allData={allData} 
+                  />
                   <div className="bg-ocean-600/5 dark:bg-ocean-400/5 border border-dashed border-ocean-200 dark:border-ocean-800/50 rounded-xl p-3 flex flex-col items-center justify-center min-h-[54px]">
                     <p className="text-[8px] font-black text-ocean-600/60 dark:text-ocean-400/60 uppercase tracking-widest mb-0.5">Result</p>
                     <p className="text-2xl font-black text-ocean-600 dark:text-ocean-400 font-display tabular-nums leading-none">
