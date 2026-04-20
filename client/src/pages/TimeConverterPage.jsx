@@ -47,7 +47,7 @@ function SearchableSelect({ value, onChange, allData }) {
                   value={query}
                   onChange={e => setQuery(e.target.value)}
                   placeholder="Search region..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-xs font-bold outline-none border border-slate-200 dark:border-slate-700 focus:border-ocean-500"
+                  className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-lg text-[16px] md:text-xs font-bold outline-none border border-slate-200 dark:border-slate-700 focus:border-ocean-500"
                 />
              </div>
           </div>
@@ -164,10 +164,10 @@ export default function TimeConverterPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Main Clock Card */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="glass-card rounded-3xl p-6 md:p-10 relative overflow-hidden group">
+        <div className="lg:col-span-8 space-y-8">
+          <div className="glass-card rounded-3xl p-6 sm:p-8 md:p-10 relative overflow-hidden group shadow-xl shadow-ocean-900/5 dark:shadow-none border border-slate-200/60 dark:border-slate-800/60 z-10">
             {/* Background Accent */}
             <div className="absolute -right-20 -top-20 w-48 h-48 bg-ocean-500/10 rounded-full blur-3xl group-hover:bg-ocean-500/20 transition-all duration-700" />
             
@@ -232,7 +232,7 @@ export default function TimeConverterPage() {
                     setShowDropdown(true);
                   }}
                   onFocus={() => setShowDropdown(true)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 focus:ring-4 focus:ring-ocean-500/10 focus:border-ocean-500 outline-none transition-all font-bold text-xs"
+                  className="w-full pl-10 pr-4 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/40 focus:ring-4 focus:ring-ocean-500/10 focus:border-ocean-500 outline-none transition-all font-bold text-[16px] md:text-sm"
                 />
                 
                 {showDropdown && (
@@ -256,10 +256,10 @@ export default function TimeConverterPage() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs font-black text-slate-900 dark:text-white group-hover/item:text-ocean-700 dark:group-hover/item:text-ocean-400 truncate">
+                                <span className="text-sm md:text-xs font-black text-slate-900 dark:text-white group-hover/item:text-ocean-700 dark:group-hover/item:text-ocean-400 truncate">
                                   {item.country}
                                 </span>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                                <span className="text-xs md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
                                   • {item.city}
                                 </span>
                               </div>
@@ -287,7 +287,7 @@ export default function TimeConverterPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-11 gap-4 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-11 gap-4 md:gap-6 items-center bg-slate-50/50 dark:bg-slate-800/20 p-5 rounded-2xl border border-slate-100 dark:border-slate-800/50 mb-4 shadow-inner">
               {/* From */}
               <div className="md:col-span-5 space-y-2">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">From</label>
@@ -309,9 +309,12 @@ export default function TimeConverterPage() {
               </div>
 
               {/* Icon */}
-              <div className="flex md:col-span-1 flex-col items-center justify-center md:pt-4">
-                <div className="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 shadow-sm">
-                  <ArrowRightLeft size={16} />
+              <div className="flex md:col-span-1 py-3 md:py-0 flex-col items-center justify-center relative">
+                <div className="h-10 w-10 md:h-8 md:w-8 rounded-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 shadow-md z-10 transition-transform hover:scale-110">
+                  <ArrowRightLeft size={16} className="rotate-90 md:rotate-0 text-ocean-600 dark:text-ocean-400" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center md:hidden pointer-events-none">
+                  <div className="w-px h-full bg-slate-200 dark:bg-slate-700 border-dashed" />
                 </div>
               </div>
 
@@ -324,9 +327,9 @@ export default function TimeConverterPage() {
                     onChange={setConvToCity} 
                     allData={allData} 
                   />
-                  <div className="bg-ocean-600/5 dark:bg-ocean-400/5 border border-dashed border-ocean-200 dark:border-ocean-800/50 rounded-xl p-3 flex flex-col items-center justify-center min-h-[54px]">
-                    <p className="text-[8px] font-black text-ocean-600/60 dark:text-ocean-400/60 uppercase tracking-widest mb-0.5">Result</p>
-                    <p className="text-2xl font-black text-ocean-600 dark:text-ocean-400 font-display tabular-nums leading-none">
+                  <div className="bg-ocean-600/5 dark:bg-ocean-400/5 border border-dashed border-ocean-200 dark:border-ocean-800/50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[64px] shadow-sm">
+                    <p className="text-[10px] md:text-[8px] font-black text-ocean-600/60 dark:text-ocean-400/60 uppercase tracking-widest mb-1 md:mb-0.5">Result</p>
+                    <p className="text-3xl md:text-2xl font-black text-ocean-600 dark:text-ocean-400 font-display tabular-nums leading-none">
                       {convResult}
                     </p>
                   </div>
@@ -334,9 +337,9 @@ export default function TimeConverterPage() {
               </div>
             </div>
             
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 flex items-start gap-2">
-              <HelpCircle size={14} className="text-slate-400 mt-0.5 shrink-0" />
-              <p className="text-[10px] font-medium text-slate-500 leading-relaxed">
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-start gap-3 shadow-inner border border-slate-100 dark:border-slate-800/50">
+              <HelpCircle size={16} className="text-slate-400 mt-0.5 shrink-0" />
+              <p className="text-xs md:text-[10px] font-medium text-slate-500 leading-relaxed">
                 DST changes are automatically calculated. Always check local airport times for flight schedules.
               </p>
             </div>
