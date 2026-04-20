@@ -27,7 +27,7 @@ function SearchableSelect({ value, onChange, allData }) {
   }, [query, allData]);
 
   return (
-    <div className="relative w-full z-10">
+    <div className={clsx("relative w-full", open ? "z-50" : "z-10")}>
       <div 
         onClick={() => setOpen(true)}
         className="w-full pl-3 pr-8 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 outline-none hover:ring-2 hover:ring-ocean-500/50 font-bold text-xs cursor-pointer truncate flex items-center shadow-sm"
