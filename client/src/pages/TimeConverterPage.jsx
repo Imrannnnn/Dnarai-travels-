@@ -1,16 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { DateTime } from 'luxon';
 import * as Lucide from 'lucide-react';
 import { popularCities, getFullCountryTimezoneData } from '../data/timezones';
 import clsx from 'clsx';
 
-const Clock = Lucide.Clock;
 const Globe = Lucide.Globe;
 const Search = Lucide.Search;
 const ArrowRightLeft = Lucide.ArrowRightLeft;
 const MapPin = Lucide.MapPin;
 const HelpCircle = Lucide.HelpCircle;
 const ChevronDown = Lucide.ChevronDown;
+
 
 export default function TimeConverterPage() {
   const [currentTime, setCurrentTime] = useState(DateTime.now());
@@ -171,13 +171,14 @@ export default function TimeConverterPage() {
                 {showDropdown && (
                   <div className="absolute top-full left-0 md:-left-20 right-0 md:-right-20 mt-3 max-h-72 overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-[0_25px_60px_rgba(0,0,0,0.2)] z-[60] p-1.5 premium-shadow">
                     {filteredResults.length > 0 ? (
-                      filteredResults.map((item, idx) => (
+                      filteredResults.map((item) => (
                         <button
                           key={item.id}
                           onClick={() => {
                             setSelectedCity(item);
                             setShowDropdown(false);
                             setSearchQuery('');
+
                           }}
                           className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-ocean-50 dark:hover:bg-ocean-950/40 transition-all group/item text-left mb-0.5 last:mb-0"
                         >
