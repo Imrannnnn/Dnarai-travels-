@@ -25,5 +25,5 @@ csv({
             JSON.stringify(formatted, null, 2)
         );
 
-        console.log("✅ Converted to airports.json");
+        console.log(" Converted to airports.json");
     });

@@ -101,6 +101,8 @@ export default function TimeConverterPage() {
   const [convFromCity, setConvFromCity] = useState(popularCities[0]); // Lagos
   const [convToCity, setConvToCity] = useState(popularCities[1]);   // London
   const [convResult, setConvResult] = useState('');
+  const [is24Hour, setIs24Hour] = useState(false);
+
 
   // Get all possible timezones with country mapping
   const allData = useMemo(() => getFullCountryTimezoneData(), []);
@@ -152,21 +154,28 @@ export default function TimeConverterPage() {
       });
       
       const resultDate = baseDate.setZone(convToCity.timezone);
-      setConvResult(resultDate.toLocaleString(DateTime.TIME_SIMPLE));
+      setConvResult(resultDate.toFormat(is24Hour ? 'HH:mm' : 'h:mm a'));
     } catch (e) {
       setConvResult('Invalid Time');
     }
-  }, [convTime, convFromCity, convToCity]);
+  }, [convTime, convFromCity, convToCity, is24Hour]);
+
 
   const getTimeInfo = (city) => {
     const time = currentTime.setZone(city.timezone);
+    const format = is24Hour ? 'HH:mm:ss' : 'hh:mm:ss a';
+    const formatted = time.toFormat(format);
+    const parts = formatted.split(' ');
+    
     return {
-      formatted: time.toLocaleString(DateTime.TIME_WITH_SECONDS),
+      time: parts[0],
+      ampm: parts[1] || '',
       date: time.toLocaleString(DateTime.DATE_HUGE),
       offset: time.toFormat('ZZZZ'),
       isDST: time.isInDST
     };
   };
+
 
   const selectedInfo = getTimeInfo(selectedCity);
 
@@ -184,7 +193,25 @@ export default function TimeConverterPage() {
         <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto text-sm md:text-base font-medium">
           Synchronize your world. Seamlessly track travel time zones with D.Narai Enterprise.
         </p>
+
+        {/* Time Format Toggle */}
+        <div className="flex justify-center pt-2">
+          <div className="bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800 rounded-full px-4 py-2 flex items-center gap-4 shadow-sm">
+            <span className={clsx("text-[10px] font-black uppercase tracking-widest", !is24Hour ? "text-ocean-600 dark:text-ocean-400" : "text-slate-400")}>12h</span>
+            <button 
+              onClick={() => setIs24Hour(!is24Hour)}
+              className="relative w-10 h-5 bg-slate-200 dark:bg-slate-800 rounded-full transition-colors focus:outline-none"
+            >
+              <div className={clsx(
+                "absolute top-1 left-1 w-3 h-3 bg-white dark:bg-ocean-400 rounded-full shadow-sm transition-transform duration-200",
+                is24Hour ? "translate-x-5" : "translate-x-0"
+              )} />
+            </button>
+            <span className={clsx("text-[10px] font-black uppercase tracking-widest", is24Hour ? "text-ocean-600 dark:text-ocean-400" : "text-slate-400")}>24h</span>
+          </div>
+        </div>
       </div>
+
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Main Clock Card */}
@@ -208,10 +235,11 @@ export default function TimeConverterPage() {
 
                   <div className="space-y-0.5">
                     <div className="text-5xl sm:text-6xl md:text-7xl font-black font-mono tracking-tighter text-ocean-600 dark:text-ocean-400 tabular-nums break-words">
-                      {selectedInfo.formatted.split(' ')[0]}
+                      {selectedInfo.time}
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
-                      <span className="text-xl font-black text-slate-400 uppercase">{selectedInfo.formatted.split(' ')[1]}</span>
+                      {selectedInfo.ampm && <span className="text-xl font-black text-slate-400 uppercase">{selectedInfo.ampm}</span>}
+
                       <div className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                       <span className="text-xs font-bold text-slate-500">{selectedInfo.offset}</span>
                       {selectedInfo.isDST && (
@@ -407,8 +435,9 @@ export default function TimeConverterPage() {
                         "text-sm font-black font-mono tabular-nums leading-none",
                         isActive ? "text-ocean-400" : "text-ocean-600 dark:text-ocean-400"
                       )}>
-                        {info.formatted.split(':').slice(0, 2).join(':')}
+                        {is24Hour ? info.time.split(':').slice(0, 2).join(':') : `${info.time.split(':').slice(0, 2).join(':')} ${info.ampm}`}
                       </p>
+
                       <p className={clsx(
                         "text-[8px] font-bold opacity-50 block mt-0.5",
                         isActive ? "text-slate-300" : "text-slate-500"
