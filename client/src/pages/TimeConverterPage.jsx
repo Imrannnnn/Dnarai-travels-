@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DateTime } from 'luxon';
 import * as Lucide from 'lucide-react';
-import { popularCities, getFullCountryTimezoneData } from '../data/timezones';
+import { popularCities } from '../data/timezones';
+import { searchAirports, getAirportTime, convertTime, getApiBaseUrl } from '../data/api';
 import clsx from 'clsx';
 
 const Globe = Lucide.Globe;
@@ -11,31 +12,52 @@ const MapPin = Lucide.MapPin;
 const HelpCircle = Lucide.HelpCircle;
 const ChevronDown = Lucide.ChevronDown;
 
-function SearchableSelect({ value, onChange, allData }) {
+function SearchableSelect({ value, onChange }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
+  const [backendResults, setBackendResults] = useState([]);
+
+  useEffect(() => {
+    if (query.length < 2) {
+      setBackendResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchAirports({ q: query, baseUrl: getApiBaseUrl() });
+        setBackendResults(results.map(r => ({
+          ...r,
+          id: r.iata || r.icao,
+          offset: 'Airport' // Placeholder, will fetch real time on selection if needed
+        })));
+      } catch (e) {
+        console.error('Error searching airports:', e);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   const filtered = useMemo(() => {
-    if (!query) return allData.filter((d) => popularCities.some((p) => p.timezone === d.timezone)).slice(0, 15);
-    let q = query.toLowerCase();
-    
-    // Handle country synonyms
-    if (q === 'usa') q = 'united states';
-    if (q === 'uk') q = 'united kingdom';
-    if (q === 'uae') q = 'united arab emirates';
+    let local = [];
+    if (!query) {
+      local = popularCities.slice(0, 15);
+    } else {
+      let q = query.toLowerCase();
+      local = popularCities.filter(d => 
+        d.country.toLowerCase().includes(q) || 
+        d.city.toLowerCase().includes(q)
+      ).slice(0, 10);
+    }
 
-    return allData.filter(d => 
-      d.country.toLowerCase().includes(q) || 
-      d.city.toLowerCase().includes(q) ||
-      d.timezone.toLowerCase().includes(q)
-    ).sort((a, b) => {
-      const aExact = a.city.toLowerCase() === q;
-      const bExact = b.city.toLowerCase() === q;
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-      return 0;
-    }).slice(0, 50);
-  }, [query, allData]);
+    const combined = [...local];
+    backendResults.forEach(br => {
+      if (!combined.some(c => c.iata === br.iata)) {
+        combined.push(br);
+      }
+    });
+
+    return combined.slice(0, 50);
+  }, [query, backendResults]);
 
   return (
     <div className={clsx("relative w-full", open ? "z-50" : "z-10")}>
@@ -65,8 +87,23 @@ function SearchableSelect({ value, onChange, allData }) {
           {filtered.length > 0 ? filtered.map((item) => (
             <button
               key={'select-'+item.id}
-              onClick={() => {
-                onChange(item);
+              onClick={async () => {
+                if (item.iata && !item.timezone) {
+                  // Fetch full airport details if it's from backend and missing timezone
+                  try {
+                    const full = await getAirportTime({ iata: item.iata, baseUrl: getApiBaseUrl() });
+                    if (full) {
+                      onChange(full);
+                    } else {
+                      onChange(item);
+                    }
+                  } catch (e) {
+                    console.error('Error fetching airport time:', e);
+                    onChange(item);
+                  }
+                } else {
+                  onChange(item);
+                }
                 setOpen(false);
                 setQuery('');
               }}
@@ -95,17 +132,17 @@ export default function TimeConverterPage() {
   const [selectedCity, setSelectedCity] = useState(popularCities[0]); // Lagos, Nigeria
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [searchBackendResults, setSearchBackendResults] = useState([]);
 
   // Conversion tool state
   const [convTime, setConvTime] = useState(DateTime.now().toFormat('HH:mm'));
   const [convFromCity, setConvFromCity] = useState(popularCities[0]); // Lagos
   const [convToCity, setConvToCity] = useState(popularCities[1]);   // London
   const [convResult, setConvResult] = useState('');
+  const [convRelativeLabel, setConvRelativeLabel] = useState('');
   const [is24Hour, setIs24Hour] = useState(false);
 
 
-  // Get all possible timezones with country mapping
-  const allData = useMemo(() => getFullCountryTimezoneData(), []);
 
   // Update clock every second
   useEffect(() => {
@@ -115,54 +152,146 @@ export default function TimeConverterPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Filter based on search (priority to country name and aliases)
-  const filteredResults = useMemo(() => {
-    if (!searchQuery) return allData.filter(d => 
-        popularCities.some(p => p.timezone === d.timezone)
-    ).slice(0, 15);
+  // Effect to fetch timezone for popular cities if missing
+  useEffect(() => {
+    const initCities = async () => {
+      if (selectedCity && !selectedCity.timezone && selectedCity.iata) {
+        try {
+          const full = await getAirportTime({ iata: selectedCity.iata, baseUrl: getApiBaseUrl() });
+          if (full) setSelectedCity(full);
+        } catch (e) {
+          console.error('Error initializing selected city:', e);
+        }
+      }
+      
+      if (convFromCity && !convFromCity.timezone && convFromCity.iata) {
+        try {
+          const full = await getAirportTime({ iata: convFromCity.iata, baseUrl: getApiBaseUrl() });
+          if (full) setConvFromCity(full);
+        } catch (e) {
+          console.error('Error initializing from city:', e);
+        }
+      }
 
-    let query = searchQuery.toLowerCase();
-    
-    // Handle common country synonyms
-    if (query === 'usa') query = 'united states';
-    if (query === 'uk') query = 'united kingdom';
-    if (query === 'uae') query = 'united arab emirates';
+      if (convToCity && !convToCity.timezone && convToCity.iata) {
+        try {
+          const full = await getAirportTime({ iata: convToCity.iata, baseUrl: getApiBaseUrl() });
+          if (full) setConvToCity(full);
+        } catch (e) {
+          console.error('Error initializing to city:', e);
+        }
+      }
+    };
+    initCities();
+  }, [selectedCity, convFromCity, convToCity]);
 
-    // Check if the query matches country, city, or timezone
-    return allData.filter(d => 
-      d.country.toLowerCase().includes(query) || 
-      d.city.toLowerCase().includes(query) ||
-      d.timezone.toLowerCase().includes(query)
-    ).sort((a, b) => {
-      // Prioritize exact city name matches or start-of-string matches
-      const aExact = a.city.toLowerCase() === query;
-      const bExact = b.city.toLowerCase() === query;
-      if (aExact && !bExact) return -1;
-      if (!aExact && bExact) return 1;
-      return 0;
-    }).slice(0, 50);
-  }, [searchQuery, allData]);
+  // Combined search results
+  const allSearchResults = useMemo(() => {
+    let local = [];
+    if (!searchQuery) {
+      local = popularCities.slice(0, 15);
+    } else {
+      const q = searchQuery.toLowerCase();
+      local = popularCities.filter(d => 
+        d.country.toLowerCase().includes(q) || 
+        d.city.toLowerCase().includes(q)
+      ).slice(0, 10);
+    }
+
+    const combined = [...local];
+    searchBackendResults.forEach(br => {
+      if (!combined.some(c => c.iata === br.iata)) {
+        combined.push(br);
+      }
+    });
+    return combined.slice(0, 50);
+  }, [searchQuery, searchBackendResults]);
+
+  // Backend search effect for main search
+  useEffect(() => {
+    if (searchQuery.length < 2) {
+      setSearchBackendResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchAirports({ q: searchQuery, baseUrl: getApiBaseUrl() });
+        setSearchBackendResults(results);
+      } catch (e) {
+        console.error('Error in main search:', e);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Handle conversion whenever inputs change
   useEffect(() => {
-    try {
-      const [hours, minutes] = convTime.split(':');
-      const baseDate = DateTime.now().setZone(convFromCity.timezone).set({
-        hour: parseInt(hours),
-        minute: parseInt(minutes),
-        second: 0
-      });
-      
-      const resultDate = baseDate.setZone(convToCity.timezone);
-      setConvResult(resultDate.toFormat(is24Hour ? 'HH:mm' : 'h:mm a'));
-    } catch (e) {
-      setConvResult('Invalid Time');
-    }
+    let active = true;
+    const fetchConversion = async () => {
+      try {
+        // If both cities have IATA, use the backend for precise airport-based conversion
+        if (convFromCity.iata && convToCity.iata) {
+          const [hours, minutes] = convTime.split(':');
+          // Create a UTC time for the requested local time at origin
+          const originTime = DateTime.now().setZone(convFromCity.timezone).set({
+            hour: parseInt(hours),
+            minute: parseInt(minutes),
+            second: 0
+          }).toUTC().toISO();
+
+          const data = await convertTime({
+            from: convFromCity.iata,
+            to: convToCity.iata,
+            time: originTime,
+            baseUrl: getApiBaseUrl()
+          });
+
+          if (active && data) {
+            setConvResult(is24Hour ? data.arrival.localTime : data.arrival.localTime12);
+            setConvRelativeLabel(data.arrival.relativeDate);
+            return;
+          }
+        }
+
+        // Fallback to local calculation for non-airport cities
+        const [hours, minutes] = convTime.split(':');
+        const baseDate = DateTime.now().setZone(convFromCity.timezone).set({
+          hour: parseInt(hours),
+          minute: parseInt(minutes),
+          second: 0
+        });
+        
+        const resultDate = baseDate.setZone(convToCity.timezone);
+        if (active) {
+          setConvResult(resultDate.toFormat(is24Hour ? 'HH:mm' : 'h:mm a'));
+          
+          // Calculate relative day locally
+          const startOfToday = DateTime.now().setZone(convToCity.timezone).startOf('day');
+          const startOfResult = resultDate.startOf('day');
+          const diff = Math.round(startOfResult.diff(startOfToday, 'days').days);
+          
+          if (diff === 0) setConvRelativeLabel('Same Day');
+          else if (diff === 1) setConvRelativeLabel('Next Day');
+          else if (diff === -1) setConvRelativeLabel('Previous Day');
+          else setConvRelativeLabel(diff > 0 ? `+${diff} Days` : `${diff} Days`);
+        }
+      } catch (e) {
+        if (active) setConvResult('Invalid Time');
+      }
+    };
+
+    fetchConversion();
+    return () => { active = false; };
   }, [convTime, convFromCity, convToCity, is24Hour]);
 
 
   const getTimeInfo = (city) => {
-    const time = currentTime.setZone(city.timezone);
+    if (!city.timezone && !city.latitude) return { time: '--:--', ampm: '', date: '', offset: '', isDST: false };
+    
+    // If we have coordinates but no timezone, we should have fetched it, 
+    // but as a fallback or for popularCities, we might need a default or wait for effect
+    const zone = city.timezone || 'UTC';
+    const time = currentTime.setZone(zone);
     const format = is24Hour ? 'HH:mm:ss' : 'hh:mm:ss a';
     const formatted = time.toFormat(format);
     const parts = formatted.split(' ');
@@ -226,7 +355,7 @@ export default function TimeConverterPage() {
                   <div className="relative">
                     <div className="flex items-center gap-2 text-slate-400 mb-1">
                       <MapPin size={16} className="text-ocean-500 shrink-0" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest truncate">{selectedCity.city} ({selectedCity.country})</span>
+                      <span className="text-[10px] font-bold uppercase tracking-widest truncate">{selectedCity.city}, {selectedCity.country}</span>
                     </div>
                     <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-slate-900 dark:text-white font-display leading-tight truncate">
                       {selectedCity.city}
@@ -242,6 +371,10 @@ export default function TimeConverterPage() {
 
                       <div className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                       <span className="text-xs font-bold text-slate-500">{selectedInfo.offset}</span>
+                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-60">
+                        Timezone: {selectedCity.timezone || 'Detecting...'}
+                      </span>
                       {selectedInfo.isDST && (
                         <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[8px] font-black uppercase border border-amber-200 dark:border-amber-800">
                           DST
@@ -287,15 +420,24 @@ export default function TimeConverterPage() {
                 
                 {showDropdown && (
                   <div className="absolute top-full left-0 md:-left-20 right-0 md:-right-20 mt-3 max-h-72 overflow-y-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-[0_25px_60px_rgba(0,0,0,0.2)] z-[60] p-1.5 premium-shadow">
-                    {filteredResults.length > 0 ? (
-                      filteredResults.map((item) => (
+                    {allSearchResults.length > 0 ? (
+                      allSearchResults.map((item) => (
                         <button
-                  key={item.id}
-                          onClick={() => {
-                            setSelectedCity(item);
+                  key={item.id || item.iata}
+                          onClick={async () => {
+                            if (item.iata && !item.timezone) {
+                              try {
+                                const full = await getAirportTime({ iata: item.iata, baseUrl: getApiBaseUrl() });
+                                setSelectedCity(full || item);
+                              } catch (e) {
+                                console.error('Error fetching airport details:', e);
+                                setSelectedCity(item);
+                              }
+                            } else {
+                              setSelectedCity(item);
+                            }
                             setShowDropdown(false);
                             setSearchQuery('');
-                            // Automatically scroll to the top live-clock view
                             window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                           className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-ocean-50 dark:hover:bg-ocean-950/40 transition-all group/item text-left mb-0.5 last:mb-0"
@@ -306,13 +448,13 @@ export default function TimeConverterPage() {
                             </div>
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-sm md:text-xs font-black text-slate-900 dark:text-white group-hover/item:text-ocean-700 dark:group-hover/item:text-ocean-400 truncate">
-                                  {item.city} ({item.country})
-                                </span>
-                              </div>
-                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-60 truncate">
-                                {item.timezone}
-                              </p>
+                                  <span className="text-sm md:text-xs font-black text-slate-900 dark:text-white group-hover/item:text-ocean-700 dark:group-hover/item:text-ocean-400 truncate">
+                                    {item.city}, {item.country}
+                                  </span>
+                                </div>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-60 truncate">
+                                  Timezone: {item.timezone || 'Dynamic'}
+                                </p>
                             </div>
                           </div>
                           <div className="text-right shrink-0 ml-4">
@@ -342,7 +484,6 @@ export default function TimeConverterPage() {
                   <SearchableSelect 
                     value={convFromCity} 
                     onChange={setConvFromCity} 
-                    allData={allData} 
                   />
                   <div className="relative group">
                     <input
@@ -372,13 +513,19 @@ export default function TimeConverterPage() {
                   <SearchableSelect 
                     value={convToCity} 
                     onChange={setConvToCity} 
-                    allData={allData} 
                   />
                   <div className="bg-ocean-600/5 dark:bg-ocean-400/5 border border-dashed border-ocean-200 dark:border-ocean-800/50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[64px] shadow-sm">
-                    <p className="text-[10px] md:text-[8px] font-black text-ocean-600/60 dark:text-ocean-400/60 uppercase tracking-widest mb-1 md:mb-0.5">Result</p>
                     <p className="text-3xl md:text-2xl font-black text-ocean-600 dark:text-ocean-400 font-display tabular-nums leading-none">
                       {convResult}
                     </p>
+                    {convRelativeLabel && (
+                      <span className={clsx(
+                        "text-[9px] font-black uppercase mt-1 px-1.5 py-0.5 rounded",
+                        convRelativeLabel === 'Same Day' ? "text-slate-400" : "bg-ocean-100 dark:bg-ocean-900/30 text-ocean-600 dark:text-ocean-400"
+                      )}>
+                        {convRelativeLabel}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -405,13 +552,13 @@ export default function TimeConverterPage() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
             {popularCities.slice(0, 8).map((pCity) => {
-              const item = allData.find(d => d.timezone === pCity.timezone) || pCity;
-              const info = getTimeInfo(item);
-              const isActive = selectedCity.timezone === item.timezone;
+              // Note: info will be --:-- until the initial timezone fetch effect completes for these cities
+              const info = getTimeInfo(pCity);
+              const isActive = selectedCity.iata === pCity.iata;
               return (
                 <button
-                  key={item.timezone + '-sidebar'}
-                  onClick={() => setSelectedCity(item)}
+                  key={pCity.iata + '-sidebar'}
+                  onClick={() => setSelectedCity(pCity)}
                   className={clsx(
                     "group relative w-full p-3 rounded-2xl transition-all duration-300 text-left overflow-hidden border",
                     isActive 
@@ -424,24 +571,24 @@ export default function TimeConverterPage() {
                       <p className={clsx(
                         "text-xs font-black tracking-tight truncate",
                         isActive ? "text-white" : "text-slate-900 dark:text-white"
-                      )}>{item.country}</p>
+                      )}>{pCity.country}</p>
                       <p className={clsx(
                         "text-[9px] font-bold uppercase tracking-tighter opacity-60 truncate",
                         isActive ? "text-slate-300" : "text-slate-500"
-                      )}>{item.city}</p>
+                      )}>{pCity.city}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className={clsx(
                         "text-sm font-black font-mono tabular-nums leading-none",
                         isActive ? "text-ocean-400" : "text-ocean-600 dark:text-ocean-400"
                       )}>
-                        {is24Hour ? info.time.split(':').slice(0, 2).join(':') : `${info.time.split(':').slice(0, 2).join(':')} ${info.ampm}`}
+                        {info.time === '--:--' ? '...' : (is24Hour ? info.time.split(':').slice(0, 2).join(':') : `${info.time.split(':').slice(0, 2).join(':')} ${info.ampm}`)}
                       </p>
 
                       <p className={clsx(
                         "text-[8px] font-bold opacity-50 block mt-0.5",
                         isActive ? "text-slate-300" : "text-slate-500"
-                      )}>{item.offset}</p>
+                      )}>{pCity.iata}</p>
                     </div>
                   </div>
                 </button>

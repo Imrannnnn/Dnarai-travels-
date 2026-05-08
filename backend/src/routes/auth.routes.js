@@ -60,9 +60,17 @@ const pushSubscriptionSchema = z.object({
   })
 });
 
+const refreshTokenSchema = z.object({
+  body: z.object({
+    refreshToken: z.string().min(1)
+  })
+});
+
 // Auth Route Handlers
 router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
+router.post('/refresh', validate(refreshTokenSchema), authController.refresh);
+router.post('/logout', authController.logout);
 
 router.post(
   '/reset-password-first-login',

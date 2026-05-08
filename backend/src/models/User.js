@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema(
     // Array of web push subscription objects from the client
 
     pushSubscriptions: { type: Array, default: [] },
+    refreshTokens: { type: [String], default: [] },
   },
   { timestamps: true }
 );

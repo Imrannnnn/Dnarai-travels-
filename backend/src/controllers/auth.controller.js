@@ -70,17 +70,30 @@ export const authController = {
                 });
             }
 
-            // Sign JWT token
-            const token = jwt.sign(
+            // Sign tokens
+            const accessToken = jwt.sign(
                 { sub: String(user._id), role: user.role, email: user.email },
-                process.env.JWT_SECRET || 'dev_secret_change_me',
-                {
-                    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
-                }
+                process.env.JWT_SECRET,
+                { expiresIn: '20m' }
             );
 
+            const refreshToken = jwt.sign(
+                { sub: String(user._id) },
+                process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+                { expiresIn: '2d' }
+            );
+
+            // Store refresh token
+            user.refreshTokens = user.refreshTokens || [];
+            user.refreshTokens.push(refreshToken);
+            
+            // Limit to 5 sessions
+            if (user.refreshTokens.length > 5) user.refreshTokens.shift();
+            await user.save();
+
             res.json({
-                accessToken: token,
+                accessToken,
+                refreshToken,
                 role: user.role,
                 mustChangePassword: user.mustChangePassword
             });
@@ -191,6 +204,56 @@ export const authController = {
                 tempPassword, // Return temporary password to admin
                 user: { id: user._id, email: user.email, role: user.role }
             });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Refreshes the access token using a valid refresh token
+     */
+    refresh: async (req, res, next) => {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken) return next({ status: 401, message: 'Refresh token required' });
+
+            // Find user with this token
+            const user = await User.findOne({ refreshTokens: refreshToken });
+            if (!user) return next({ status: 403, message: 'Invalid or expired refresh token' });
+
+            // Verify token
+            jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, (err, _decoded) => {
+                if (err) return next({ status: 403, message: 'Invalid refresh token' });
+                
+                // Sign new access token
+                const accessToken = jwt.sign(
+                    { sub: String(user._id), role: user.role, email: user.email },
+                    process.env.JWT_SECRET,
+                    { expiresIn: '20m' }
+                );
+
+                res.json({ accessToken });
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Logs out and invalidates the refresh token
+     */
+    logout: async (req, res, next) => {
+        try {
+            const { refreshToken } = req.body;
+            if (!refreshToken) return res.json({ ok: true });
+
+            const user = await User.findOne({ refreshTokens: refreshToken });
+            if (user) {
+                user.refreshTokens = user.refreshTokens.filter(t => t !== refreshToken);
+                await user.save();
+            }
+
+            res.json({ ok: true, message: 'Logged out successfully' });
         } catch (err) {
             next(err);
         }

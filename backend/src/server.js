@@ -14,6 +14,7 @@ import notificationRoutes from './routes/notifications.routes.js';
 import portalRoutes from './routes/portal.routes.js';
 import agencyRoutes from './routes/agency.routes.js';
 import blogRoutes from './routes/blog.routes.js';
+import timeRoutes from './routes/time.routes.js';
 
 
 import { startSchedulers } from './jobs/scheduler.js';
@@ -64,6 +65,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/portal', portalRoutes);
 app.use('/api/agency', agencyRoutes);
 app.use('/api/blogs', blogRoutes);
+app.use('/api/time', timeRoutes);
 
 
 

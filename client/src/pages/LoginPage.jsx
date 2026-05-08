@@ -21,7 +21,7 @@ export default function LoginPage() {
         triggerOverlay('Securing Connection...', async () => {
             const baseUrl = getApiBaseUrl()
             const data = await apiLogin({ email, password, baseUrl })
-            login(data.accessToken, { role: data.role, email })
+            login(data.accessToken, { role: data.role, email }, data.refreshToken)
             navigate('/dashboard')
         })
     }
