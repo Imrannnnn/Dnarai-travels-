@@ -12,6 +12,7 @@ const UserSchema = new mongoose.Schema(
 
     pushSubscriptions: { type: Array, default: [] },
     refreshTokens: { type: [String], default: [] },
+    lastActivity: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

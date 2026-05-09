@@ -89,6 +89,7 @@ export const authController = {
             
             // Limit to 5 sessions
             if (user.refreshTokens.length > 5) user.refreshTokens.shift();
+            user.lastActivity = new Date();
             await user.save();
 
             res.json({
@@ -222,7 +223,7 @@ export const authController = {
             if (!user) return next({ status: 403, message: 'Invalid or expired refresh token' });
 
             // Verify token
-            jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, (err, _decoded) => {
+            jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, async (err, _decoded) => {
                 if (err) return next({ status: 403, message: 'Invalid refresh token' });
                 
                 // Sign new access token
@@ -231,6 +232,9 @@ export const authController = {
                     process.env.JWT_SECRET,
                     { expiresIn: '20m' }
                 );
+
+                user.lastActivity = new Date();
+                await user.save();
 
                 res.json({ accessToken });
             });

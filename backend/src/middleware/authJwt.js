@@ -1,7 +1,11 @@
 import jwt from 'jsonwebtoken';
 
+import { User } from '../models/User.js';
 
-export function requireAuth(req, _res, next) {
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const ACTIVITY_UPDATE_INTERVAL_MS = 60 * 1000; // 1 minute to avoid DB spam
+
+export async function requireAuth(req, _res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -11,9 +15,36 @@ export function requireAuth(req, _res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev_secret_change_me');
+    
+    // Server-side Session / Idle Tracking
+    const user = await User.findById(payload.sub);
+    if (!user) {
+      return next({ status: 401, code: 'UNAUTHORIZED', message: 'User not found' });
+    }
+
+    const now = Date.now();
+    const lastActivityTime = user.lastActivity ? user.lastActivity.getTime() : now;
+
+    if (now - lastActivityTime > IDLE_TIMEOUT_MS) {
+      // User has been idle for too long, log them out server-side
+      // Optionally clear refresh tokens here
+      user.refreshTokens = [];
+      await user.save();
+      return next({ status: 401, code: 'SESSION_EXPIRED', message: 'Session expired due to inactivity' });
+    }
+
+    // Only update lastActivity if more than a minute has passed to reduce DB writes
+    if (now - lastActivityTime > ACTIVITY_UPDATE_INTERVAL_MS) {
+      user.lastActivity = new Date(now);
+      await user.save();
+    }
+
     req.user = payload;
     return next();
-  } catch {
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      return next({ status: 401, code: 'TOKEN_EXPIRED', message: 'Token expired' });
+    }
     return next({ status: 401, code: 'UNAUTHORIZED', message: 'Invalid token' });
   }
 }
