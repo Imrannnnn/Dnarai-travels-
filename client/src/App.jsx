@@ -34,7 +34,7 @@ export default function App() {
     <>
       {(loading || overlay.show) && (
         <LoadingOverlay
-          message={overlay.show ? overlay.message : "Fetching your travel data..."}
+          message={overlay.show ? overlay.message : "Logging in..."}
           status={overlay.show ? overlay.status : 'loading'}
         />
       )}
