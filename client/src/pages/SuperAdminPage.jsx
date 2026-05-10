@@ -159,6 +159,13 @@ export default function SuperAdminPage() {
 
     const baseUrl = getApiBaseUrl()
 
+    const handleLogout = useCallback(() => {
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_role')
+        setToken(null)
+        setRole(null)
+    }, [])
+
     useEffect(() => {
         async function fetchAllData() {
             setLoading(true)
@@ -222,12 +229,6 @@ export default function SuperAdminPage() {
         }
     }
 
-    const handleLogout = useCallback(() => {
-        localStorage.removeItem('admin_token')
-        localStorage.removeItem('admin_role')
-        setToken(null)
-        setRole(null)
-    }, [])
 
     async function handleCreatePassenger(e) {
         if (e) e.preventDefault()
