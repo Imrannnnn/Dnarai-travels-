@@ -241,21 +241,30 @@ export const EmailParserService = {
     );
 
     // 4️⃣ FLIGHT NUMBER + STATUS (AVIATION FORMAT)
-    const flightNumMatches = [
+    let flightNumMatches = [
       ...cleanText.matchAll(/\b([A-Z]{2})\s?(\d{3,4})\s?\((HK|OK|RR|WL)\)\b/gi),
-    ] || [...cleanText.matchAll(/\b([A-Z]{2})\s?(\d{3,4})\b/gi)];
+    ];
+    if (flightNumMatches.length === 0) {
+      flightNumMatches = [...cleanText.matchAll(/\b([A-Z]{2})\s?(\d{3,4})\b/gi)];
+    }
 
     // Extract flight numbers more precisely - look for patterns like "UN 0613" and "ET Flight Number 950"
-    const explicitFlightMatches = [
+    let explicitFlightMatches = [
       ...cleanText.matchAll(/([A-Z]{2})\s+Flight Number\s+(\d{3,4})/gi),
-    ] || [...cleanText.matchAll(/\b([A-Z]{2})\s+(\d{3,4})\b/gi)];
+    ];
+    if (explicitFlightMatches.length === 0) {
+      explicitFlightMatches = [...cleanText.matchAll(/\b([A-Z]{2})\s+(\d{3,4})\b/gi)];
+    }
 
     // 5️⃣ DEPARTURE SECTION - Enhanced date parsing (optional dates)
-    const dateMatches = [
+    let dateMatches = [
       ...cleanText.matchAll(
         /\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{2,4})\b/gi
       ),
-    ] || [...cleanText.matchAll(/(\d{1,2}\s+[A-Z]{3,9}\s+\d{4})/gi)];
+    ];
+    if (dateMatches.length === 0) {
+      dateMatches = [...cleanText.matchAll(/(\d{1,2}\s+[A-Z]{3,9}\s+\d{4})/gi)];
+    }
 
     // Alternative date format: "Wednesday, 28 January"
     const altDateMatches = [

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import * as Lucide from 'lucide-react'
 import { getApiBaseUrl } from '../data/api'
 import Modal from '../components/Modal'
@@ -20,6 +20,8 @@ function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIa
             setQuery(`${initialCity} (${initialIata})`)
         } else if (initialCity) {
             setQuery(initialCity)
+        } else {
+            setQuery('')
         }
     }, [initialCity, initialIata])
 
@@ -138,6 +140,7 @@ export default function SuperAdminPage() {
     // New Modals State
     const [isTravelingTodayModalOpen, setIsTravelingTodayModalOpen] = useState(false)
     const [isActiveBookingsModalOpen, setIsActiveBookingsModalOpen] = useState(false)
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
     const [editForm, setEditForm] = useState({})
     const [createPassengerForm, setCreatePassengerForm] = useState({ fullName: '', email: '', phone: '' })
@@ -168,7 +171,7 @@ export default function SuperAdminPage() {
                     fetch(`${baseUrl}/api/blogs`)
                 ])
 
-                if (passengersRes.status === 401 || bookingsRes.status === 401 || notifsRes.status === 401) {
+                if (passengersRes.status === 401 || bookingsRes.status === 401 || notifsRes.status === 401 || blogsRes.status === 401) {
                     handleLogout()
                     return
                 }
@@ -192,8 +195,7 @@ export default function SuperAdminPage() {
             }
         }
         if (token) fetchAllData()
-    }, [token, baseUrl]) // handleLogout is stable, but adding it won't hurt if we want to be strict. 
-    // Wait, handleLogout is defined in the same scope. It should be in deps too if we are strict.
+    }, [token, baseUrl, handleLogout])
 
 
     async function handleLogin(e) {
@@ -220,12 +222,12 @@ export default function SuperAdminPage() {
         }
     }
 
-    function handleLogout() {
+    const handleLogout = useCallback(() => {
         localStorage.removeItem('admin_token')
         localStorage.removeItem('admin_role')
         setToken(null)
         setRole(null)
-    }
+    }, [])
 
     async function handleCreatePassenger(e) {
         if (e) e.preventDefault()
@@ -438,7 +440,7 @@ export default function SuperAdminPage() {
             const blog = await createBlog({ ...createBlogForm, baseUrl, token })
             setIsCreateBlogModalOpen(false)
             setCreateBlogForm({ title: '', content: '' })
-            setBlogs([blog, ...blogs])
+            setBlogs(prev => [blog, ...prev])
             // Refresh notifications... to show the broadcast worked
             const headers = { Authorization: `Bearer ${token}` }
             const resN = await fetch(`${baseUrl}/api/notifications`, { headers })
@@ -583,21 +585,22 @@ export default function SuperAdminPage() {
         <div className="min-h-screen bg-slate-50">
             {/* Top Navigation Bar */}
             <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-6 py-4">
+                <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md">
-                                    <Lucide.ShieldCheck size={20} />
+                        <div className="flex items-center gap-2 md:gap-4">
+                            <div className="flex items-center gap-2 md:gap-3">
+                                <div className="h-8 w-8 md:h-10 md:w-10 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md flex-shrink-0">
+                                    <Lucide.ShieldCheck className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
-                                <div>
-                                    <h1 className="text-lg font-black text-slate-900 uppercase tracking-tight">Dnarai Enterprise</h1>
-                                    <p className="text-xs text-slate-500 font-medium">Agency Dashboard</p>
+                                <div className="min-w-0">
+                                    <h1 className="text-sm md:text-lg font-black text-slate-900 uppercase tracking-tight truncate">Dnarai Enterprise</h1>
+                                    <p className="text-[10px] md:text-xs text-slate-500 font-medium truncate">Agency Dashboard</p>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 md:gap-6">
+                        {/* Desktop Actions */}
+                        <div className="hidden md:flex items-center gap-6">
                             <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
                                 <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
                                 {stats.pendingNotifications > 0 && (
@@ -611,38 +614,96 @@ export default function SuperAdminPage() {
                                 <button
                                     onClick={() => setIsAddStaffModalOpen(true)}
                                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                    title="Add Staff"
                                 >
                                     <Lucide.UserPlus size={16} />
-                                    Add Staff
+                                    <span>Add Staff</span>
                                 </button>
                             )}
 
                             <button
                                 onClick={() => setIsBlogManagerModalOpen(true)}
                                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                title="Manage Insights"
                             >
                                 <Lucide.BookOpen size={16} />
-                                Manage Insights
+                                <span>Manage Insights</span>
                             </button>
 
                             <button
                                 onClick={() => setIsCreateBlogModalOpen(true)}
                                 className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
+                                title="New Insight"
                             >
                                 <Lucide.PlusCircle size={16} />
-                                New Insight
+                                <span>New Insight</span>
                             </button>
 
                             <button
                                 onClick={handleLogout}
                                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                title="Sign Out"
                             >
                                 <Lucide.LogOut size={16} />
-                                Sign Out
+                                <span>Sign Out</span>
+                            </button>
+                        </div>
+
+                        {/* Mobile Actions */}
+                        <div className="flex md:hidden items-center gap-3">
+                            <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
+                                <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
+                                {stats.pendingNotifications > 0 && (
+                                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center cursor-pointer ring-2 ring-white">
+                                        {stats.pendingNotifications}
+                                    </span>
+                                )}
+                            </div>
+                            <button
+                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                className="p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                            >
+                                {isMobileMenuOpen ? <Lucide.X size={20} className="text-slate-600" /> : <Lucide.Menu size={20} className="text-slate-600" />}
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Mobile Menu Dropdown */}
+                {isMobileMenuOpen && (
+                    <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3">
+                        {role === 'admin' && (
+                            <button
+                                onClick={() => { setIsAddStaffModalOpen(true); setIsMobileMenuOpen(false); }}
+                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                            >
+                                <Lucide.UserPlus size={18} />
+                                Add Staff
+                            </button>
+                        )}
+                        <button
+                            onClick={() => { setIsBlogManagerModalOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                        >
+                            <Lucide.BookOpen size={18} />
+                            Manage Insights
+                        </button>
+                        <button
+                            onClick={() => { setIsCreateBlogModalOpen(true); setIsMobileMenuOpen(false); }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-ocean-700 bg-ocean-50 hover:bg-ocean-100 rounded-xl transition-all border border-ocean-100"
+                        >
+                            <Lucide.PlusCircle size={18} />
+                            New Insight
+                        </button>
+                        <button
+                            onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
+                        >
+                            <Lucide.LogOut size={18} />
+                            Sign Out
+                        </button>
+                    </div>
+                )}
             </nav>
 
             {/* Main Content */}
@@ -1019,7 +1080,7 @@ export default function SuperAdminPage() {
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 pt-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
                                         <button
                                             onClick={() => setIsCreateBookingModalOpen(true)}
                                             className="px-4 py-3 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all"
@@ -1183,7 +1244,7 @@ export default function SuperAdminPage() {
                 title="Add New Staff Member"
                 onClose={() => setIsAddStaffModalOpen(false)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsAddStaffModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                         <button onClick={handleAddStaff} className="px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800">Create Account</button>
                     </div>
@@ -1234,7 +1295,7 @@ export default function SuperAdminPage() {
                 title="Create New Passenger"
                 onClose={() => setIsCreatePassengerModalOpen(false)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsCreatePassengerModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                         <ActionButton
                             onClick={handleCreatePassenger}
@@ -1267,7 +1328,7 @@ export default function SuperAdminPage() {
                 title="Add Flight Booking"
                 onClose={() => setIsCreateBookingModalOpen(false)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsCreateBookingModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                         <ActionButton
                             onClick={handleCreateBooking}
@@ -1280,7 +1341,7 @@ export default function SuperAdminPage() {
                 }
             >
                 <form onSubmit={handleCreateBooking} className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Airline</label>
                             <input type="text" required value={createBookingForm.airlineName} onChange={e => setCreateBookingForm({ ...createBookingForm, airlineName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
@@ -1291,7 +1352,7 @@ export default function SuperAdminPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <AirportAutocomplete
                             label="Origin"
                             initialCity={createBookingForm.originCity}
@@ -1318,7 +1379,7 @@ export default function SuperAdminPage() {
 
                     {/* Hidden inputs to maintain required check integrity if needed, or we rely on state check in handler */}
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Booking Reference (PNR)</label>
                             <input
@@ -1341,7 +1402,7 @@ export default function SuperAdminPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Departure Date</label>
                             <input type="date" required value={createBookingForm.departureDate} onChange={e => setCreateBookingForm({ ...createBookingForm, departureDate: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
@@ -1359,7 +1420,7 @@ export default function SuperAdminPage() {
                 title="Edit Passenger"
                 onClose={() => setIsEditModalOpen(false)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsEditModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                         <ActionButton
                             onClick={handleUpdatePassenger}
@@ -1429,7 +1490,7 @@ export default function SuperAdminPage() {
                 title="Edit Flight Booking"
                 onClose={() => setIsEditBookingModalOpen(false)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button onClick={() => setIsEditBookingModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
                         <ActionButton
                             onClick={handleUpdateBooking}
@@ -1442,7 +1503,7 @@ export default function SuperAdminPage() {
                 }
             >
                 <form onSubmit={handleUpdateBooking} className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Airline</label>
                             <input type="text" required value={editBookingForm.airlineName || ''} onChange={e => setEditBookingForm({ ...editBookingForm, airlineName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
@@ -1453,7 +1514,7 @@ export default function SuperAdminPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <AirportAutocomplete
                             label="Origin"
                             initialCity={editBookingForm.originCity}
@@ -1478,7 +1539,7 @@ export default function SuperAdminPage() {
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Booking Reference (PNR)</label>
                             <input
@@ -1501,7 +1562,7 @@ export default function SuperAdminPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Departure Date</label>
                             <input type="date" required value={editBookingForm.departureDate || ''} onChange={e => setEditBookingForm({ ...editBookingForm, departureDate: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
@@ -1534,8 +1595,8 @@ export default function SuperAdminPage() {
                 title="System Notifications Center"
                 onClose={() => setIsAllNotificationsModalOpen(false)}
                 footer={
-                    <div className="flex justify-between items-center p-4 border-t border-slate-200 bg-slate-50">
-                        <div className="flex gap-2">
+                    <div className="flex flex-wrap justify-between items-center p-4 border-t border-slate-200 bg-slate-50 gap-4">
+                        <div className="flex flex-wrap gap-2">
                             <button
                                 onClick={handleMarkAllAsRead}
                                 className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
@@ -1679,7 +1740,7 @@ export default function SuperAdminPage() {
                 title="Detailed Flight Information"
                 onClose={() => setIsBookingDetailsModalOpen(false)}
                 footer={
-                    <div className="flex justify-between items-center p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-between items-center p-4 border-t border-slate-200 gap-4">
                         <button
                             onClick={() => {
                                 setIsBookingDetailsModalOpen(false);
@@ -1703,7 +1764,7 @@ export default function SuperAdminPage() {
                     <div className="p-0">
                         {/* Header Banner */}
                         <div className="bg-slate-900 text-white p-6">
-                            <div className="flex justify-between items-start mb-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                                 <div>
                                     <div className="text-xs font-black uppercase tracking-[0.2em] text-ocean-400 mb-1">Flight Status</div>
                                     <div className="flex items-center gap-3">
@@ -1716,7 +1777,7 @@ export default function SuperAdminPage() {
                                         </span>
                                     </div>
                                 </div>
-                                <div className="text-right">
+                                <div className="text-left md:text-right">
                                     <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-1">Airline</div>
                                     <div className="text-xl font-bold">{viewingBooking.airlineName}</div>
                                 </div>
@@ -1740,7 +1801,7 @@ export default function SuperAdminPage() {
                         </div>
 
                         {/* Details Grid */}
-                        <div className="p-6 grid grid-cols-2 gap-4">
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                                 <div className="flex items-center gap-2 text-slate-500 mb-2">
                                     <Lucide.Calendar size={16} />
@@ -1766,7 +1827,7 @@ export default function SuperAdminPage() {
                                 </div>
                             </div>
 
-                            <div className="col-span-2 bg-ocean-50 rounded-2xl p-4 border border-ocean-100">
+                            <div className="col-span-1 md:col-span-2 bg-ocean-50 rounded-2xl p-4 border border-ocean-100">
                                 <div className="flex items-center gap-2 text-ocean-600 mb-2">
                                     <Lucide.Info size={16} />
                                     <span className="text-[10px] font-black uppercase tracking-wider">Service Information</span>
@@ -1812,7 +1873,7 @@ export default function SuperAdminPage() {
                 title="Register New Agency Staff"
                 onClose={() => setIsAddStaffModalOpen(false)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button
                             onClick={() => setIsAddStaffModalOpen(false)}
                             className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
@@ -2047,7 +2108,7 @@ export default function SuperAdminPage() {
                 title="Publish Travel Insight"
                 onClose={() => setIsCreateBlogModalOpen(false)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button
                             onClick={() => setIsCreateBlogModalOpen(false)}
                             className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
@@ -2166,7 +2227,7 @@ export default function SuperAdminPage() {
                 title="Edit Travel Insight"
                 onClose={() => setEditingBlog(null)}
                 footer={
-                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
                         <button
                             onClick={() => setEditingBlog(null)}
                             className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg"
