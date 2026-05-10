@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchFlights, fetchNotifications, fetchPassenger, getApiBaseUrl, submitBookingRequest, cancelBookingAPI } from './api'
+import { fetchFlights, fetchNotifications, fetchPassenger, getApiBaseUrl, submitBookingRequest, cancelBookingAPI, updateProfile } from './api'
 import { useAuth } from './AuthContext'
 import airportsData from '../../airports.json'
 
@@ -200,7 +200,6 @@ export function AppDataProvider({ children }) {
   const updatePassengerProfile = useCallback(async ({ fullName, phone }) => {
     const baseUrl = getApiBaseUrl()
     try {
-      const { updateProfile } = await import('./api')
       const result = await updateProfile({ fullName, phone, baseUrl })
       if (result.ok && result.passenger) {
         setPassenger({
