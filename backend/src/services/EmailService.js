@@ -52,7 +52,7 @@ const COLORS = {
 };
 
 // Path to logo for CID attachment
-const LOGO_PATH = path.resolve(__dirname, '../../../client/public/D-NARAI_Logo 02.svg');
+const LOGO_PATH = path.resolve(__dirname, '../../../client/public/D-NARAI_Logo 01.svg');
 
 // Debug the path
 if (!fs.existsSync(LOGO_PATH)) {
@@ -189,7 +189,7 @@ export const EmailService = {
             </table>
 
             <div style="margin-top: 25px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 25px;">
-              <a href="https://wa.me/${(passengerPhone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request" style="display: inline-block; padding: 12px 24px; background-color: #25D366; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase;">Connect via WhatsApp</a>
+              <a href="https://wa.me/${(passengerPhone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request%20and%20we%20will%20get%20back%20to%20you%20shortly%2C" style="display: inline-block; padding: 12px 24px; background-color: #25D366; color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase;">Connect via WhatsApp</a>
               <a href="mailto:${passengerEmail}" style="display: inline-block; margin-left: 10px; padding: 12px 24px; background-color: rgba(255,255,255,0.1); color: white; text-decoration: none; border-radius: 8px; font-size: 13px; font-weight: 800; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.2);">Send Email</a>
             </div>
           </div>
@@ -388,6 +388,55 @@ export const EmailService = {
         subject,
         html: getEmailWrapper(content, previewText || 'A booking has been cancelled.'),
         attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('Email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  async sendInvoiceEmail({ email, passengerName, invoiceNumber, pdfBuffer }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const content = `
+      <tr>
+        <td style="padding: 60px 40px; text-align: center;">
+          <div style="background-color: ${COLORS.BG}; width: 80px; height: 80px; border-radius: 40px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 30px;">
+             <span style="font-size: 32px;">📄</span>
+          </div>
+          <h2 style="margin: 0; font-size: 24px; font-weight: 800; color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: -0.5px;">Travel Invoice Issued</h2>
+          <p style="margin: 20px 0 0 0; font-size: 16px; color: ${COLORS.SLATE}; line-height: 1.6;">Hello <strong>${passengerName}</strong>, your invoice for your travel arrangements with D.NARAI ENTERPRISE is now available.</p>
+          
+          <div style="margin: 40px 0; padding: 30px; border: 2px dashed #e2e8f0; border-radius: 20px; text-align: left;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td style="font-size: 13px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase;">Invoice Number</td>
+                <td style="text-align: right; font-size: 14px; font-weight: 800; color: ${COLORS.NAVY};">#${invoiceNumber}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="margin: 0; font-size: 14px; color: ${COLORS.SLATE}; font-style: italic;">"Our services end when you successfully arrived at your destination"</p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        to: email,
+        subject: `Invoice from Dnarai Travel: #${invoiceNumber}`,
+        html: getEmailWrapper(content, `This is your invoice for your current travel.`),
+        attachments: [
+          ...getAttachments(),
+          {
+            filename: `Invoice_${invoiceNumber}.pdf`,
+            content: pdfBuffer,
+            contentType: 'application/pdf'
+          }
+        ]
       });
       return { ok: true };
     } catch (error) {

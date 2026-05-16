@@ -8,6 +8,8 @@ import { useAppData } from '../data/AppDataContext'
 import ActionButton from '../components/ActionButton'
 import airportData from '../../airports.json'
 import { createBlog } from '../data/api'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIata }) {
     const [query, setQuery] = useState('')
@@ -136,6 +138,25 @@ export default function SuperAdminPage() {
     const [createBlogForm, setCreateBlogForm] = useState({ title: '', content: '' })
     const [blogs, setBlogs] = useState([])
     const [editingBlog, setEditingBlog] = useState(null)
+    const [invoices, setInvoices] = useState([])
+    const [isCreateInvoiceModalOpen, setIsCreateInvoiceModalOpen] = useState(false)
+    const [isShareInvoiceModalOpen, setIsShareInvoiceModalOpen] = useState(false)
+    const [selectedInvoiceForShare, setSelectedInvoiceForShare] = useState(null)
+    const [invoiceForm, setInvoiceForm] = useState({
+        passengerId: '',
+        passengerName: '',
+        passengerEmail: '',
+        passengerPhone: '',
+        date: new Date().toISOString().split('T')[0],
+        invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+        items: [{ description: '', rate: 0, qty: 1, amount: 0, subText: '' }],
+        serviceCharge: 0,
+        discount: 0,
+        paymentType: 'bank_transfer',
+        currency: '₦',
+        balanceDue: 0,
+        isPaid: false
+    })
 
     // New Modals State
     const [isTravelingTodayModalOpen, setIsTravelingTodayModalOpen] = useState(false)
@@ -171,29 +192,32 @@ export default function SuperAdminPage() {
             setLoading(true)
             try {
                 const headers = { Authorization: `Bearer ${token}` }
-                const [passengersRes, bookingsRes, notifsRes, blogsRes] = await Promise.all([
+                const [passengersRes, bookingsRes, notifsRes, blogsRes, invoicesRes] = await Promise.all([
                     fetch(`${baseUrl}/api/passengers`, { headers }),
                     fetch(`${baseUrl}/api/bookings`, { headers }),
                     fetch(`${baseUrl}/api/notifications`, { headers }),
-                    fetch(`${baseUrl}/api/blogs`)
+                    fetch(`${baseUrl}/api/blogs`),
+                    fetch(`${baseUrl}/api/invoices`, { headers })
                 ])
 
-                if (passengersRes.status === 401 || bookingsRes.status === 401 || notifsRes.status === 401 || blogsRes.status === 401) {
+                if (passengersRes.status === 401 || bookingsRes.status === 401 || notifsRes.status === 401 || blogsRes.status === 401 || invoicesRes.status === 401) {
                     handleLogout()
                     return
                 }
 
-                const [pData, bData, nData, blData] = await Promise.all([
+                const [pData, bData, nData, blData, iData] = await Promise.all([
                     passengersRes.json(),
                     bookingsRes.json(),
                     notifsRes.json(),
-                    blogsRes.json()
+                    blogsRes.json(),
+                    invoicesRes.json()
                 ])
 
                 if (passengersRes.ok) setPassengers(pData)
                 if (bookingsRes.ok) setBookings(bData)
                 if (notifsRes.ok) setNotifications(Array.isArray(nData) ? nData : [])
                 if (blogsRes.ok) setBlogs(blData)
+                if (invoicesRes.ok) setInvoices(iData)
 
             } catch (err) {
                 console.error('Failed to fetch admin data', err)
@@ -481,6 +505,193 @@ export default function SuperAdminPage() {
         })
     }
 
+    const handleCreateInvoice = async (e) => {
+        if (e) e.preventDefault();
+        triggerOverlay('Generating Invoice...', async () => {
+            const res = await fetch(`${baseUrl}/api/invoices`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(invoiceForm)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to create invoice');
+            setInvoices([data, ...invoices]);
+            setIsCreateInvoiceModalOpen(false);
+            // Reset form
+            setInvoiceForm({
+                passengerId: '',
+                passengerName: '',
+                passengerEmail: '',
+                passengerPhone: '',
+                date: new Date().toISOString().split('T')[0],
+                invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
+                items: [{ description: '', rate: 0, qty: 1, amount: 0, subText: '' }],
+                serviceCharge: 0,
+                discount: 0,
+                paymentType: 'bank_transfer',
+                currency: '₦',
+                balanceDue: 0,
+                isPaid: false
+            });
+        });
+    };
+
+    const handleDeleteAllInvoices = async () => {
+        if (!window.confirm('Are you sure you want to delete ALL invoices? This action cannot be undone and they will be removed from the database.')) return;
+        
+        triggerOverlay('Deleting All Invoices...', async () => {
+            const res = await fetch(`${baseUrl}/api/invoices/all`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.message || 'Failed to delete all invoices');
+            }
+            setInvoices([]);
+        });
+    };
+
+    const handleDeleteInvoice = async (invoiceId) => {
+        if (!window.confirm('Are you sure you want to delete this invoice? This action is permanent.')) return;
+        triggerOverlay('Deleting Invoice...', async () => {
+            const res = await fetch(`${baseUrl}/api/invoices/${invoiceId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!res.ok) throw new Error('Delete failed');
+            setInvoices(invoices.filter(i => (i._id || i.id) !== invoiceId));
+        });
+    };
+
+    const handleDownloadInvoice = async (inv) => {
+        setSelectedInvoiceForShare(inv);
+        // Small delay to ensure the PDF template renders with the data
+        setTimeout(async () => {
+            const element = document.getElementById('invoice-pdf-template');
+            if (!element) {
+                alert('Invoice template not found. Please try again.');
+                return;
+            }
+            try {
+                const canvas = await html2canvas(element, { 
+                    scale: 3, // Increased scale for high definition
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+                const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                const pdf = new jsPDF('p', 'mm', 'a4', true);
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+                pdf.save(`Invoice_${inv.invoiceNumber}_${inv.passengerName.replace(/\s+/g, '_')}.pdf`);
+            } catch (err) {
+                console.error('PDF generation failed', err);
+                alert('Failed to generate PDF. Please check your connection.');
+            } finally {
+                setSelectedInvoiceForShare(null);
+            }
+        }, 300);
+    };
+
+    const addInvoiceItem = () => {
+        setInvoiceForm({
+            ...invoiceForm,
+            items: [...invoiceForm.items, { description: '', rate: 0, qty: 1, amount: 0, subText: '' }]
+        });
+    };
+
+    const removeInvoiceItem = (index) => {
+        const newItems = [...invoiceForm.items];
+        newItems.splice(index, 1);
+        setInvoiceForm({ ...invoiceForm, items: newItems });
+    };
+
+    const handleInvoiceItemChange = (index, field, value) => {
+        const newItems = [...invoiceForm.items];
+        newItems[index][field] = value;
+        if (field === 'rate' || field === 'qty') {
+            newItems[index].amount = newItems[index].rate * newItems[index].qty;
+        }
+        
+        // Calculate totals
+        const subTotal = newItems.reduce((sum, item) => sum + item.amount, 0);
+        const total = subTotal + Number(invoiceForm.serviceCharge) - Number(invoiceForm.discount);
+        
+        setInvoiceForm({ 
+            ...invoiceForm, 
+            items: newItems,
+            subTotal,
+            total,
+            balanceDue: invoiceForm.isPaid ? 0 : total
+        });
+    };
+
+    const handleShareWithPassenger = async (passenger) => {
+        if (!selectedInvoiceForShare) return;
+        
+        // If passenger is null, we use the invoice's own contact info
+        const targetName = passenger ? passenger.fullName : selectedInvoiceForShare.passengerName;
+        const targetEmail = passenger ? passenger.email : selectedInvoiceForShare.passengerEmail;
+        const targetPhone = passenger ? passenger.phone : selectedInvoiceForShare.passengerPhone;
+        const targetId = passenger ? (passenger.id || passenger._id) : '';
+
+        triggerOverlay('Preparing PDF & Sending...', async () => {
+            const element = document.getElementById('invoice-pdf-template');
+            if (!element) throw new Error('Template not found');
+            
+            const canvas = await html2canvas(element, { 
+                scale: 3, // Increased scale for high definition
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const pdf = new jsPDF('p', 'mm', 'a4', true);
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+            
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+            const pdfBase64 = pdf.output('datauristring').split(',')[1];
+            
+            // Send to backend
+            const res = await fetch(`${baseUrl}/api/invoices/${selectedInvoiceForShare._id}/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    passengerId: targetId,
+                    manualEmail: targetEmail,
+                    manualName: targetName,
+                    pdfBase64
+                })
+            });
+            
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to send invoice');
+            
+            // Open WhatsApp
+            const message = encodeURIComponent(`Hello ${targetName}, this is your invoice for your current travel.`);
+            const cleanPhone = targetPhone?.replace(/[^0-9]/g, '') || '';
+            if (cleanPhone) {
+                const waLink = `https://wa.me/${cleanPhone.startsWith('234') ? cleanPhone : '234' + cleanPhone}?text=${message}`;
+                window.open(waLink, '_blank');
+            }
+            
+            setIsShareInvoiceModalOpen(false);
+            setSelectedInvoiceForShare(null);
+            alert(`Invoice sent to ${targetEmail}${cleanPhone ? ' and WhatsApp link opened!' : '!'}`);
+        });
+    };
+
     // Get passengers traveling on selected date
     const travelingPassengers = useMemo(() => {
         const targetDate = new Date(selectedDate).toISOString().split('T')[0]
@@ -583,7 +794,8 @@ export default function SuperAdminPage() {
 
     // MAIN DASHBOARD
     return (
-        <div className="min-h-screen bg-slate-50">
+        <>
+            <div className="min-h-screen bg-slate-50">
             {/* Top Navigation Bar */}
             <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
@@ -768,6 +980,13 @@ export default function SuperAdminPage() {
                                         >
                                             <Lucide.Plus size={18} />
                                             New Passenger
+                                        </button>
+                                        <button
+                                            onClick={() => setIsCreateInvoiceModalOpen(true)}
+                                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-md whitespace-nowrap"
+                                        >
+                                            <Lucide.FileText size={18} />
+                                            New Invoice
                                         </button>
                                     </div>
 
@@ -1038,6 +1257,179 @@ export default function SuperAdminPage() {
                         </div>
                     </div>
 
+                        {/* Invoices Section - Modernized */}
+                        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+                            <div className="p-5 md:p-6 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-12 w-12 bg-ocean-50 text-ocean-600 rounded-2xl flex items-center justify-center shadow-inner">
+                                        <Lucide.Receipt size={24} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Invoice History</h2>
+                                        <p className="text-xs text-slate-500 font-medium">Manage and distribute travel billing</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {invoices.length > 0 && (
+                                        <button 
+                                            onClick={handleDeleteAllInvoices}
+                                            className="p-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-black hover:bg-rose-100 transition-all border border-rose-100/50"
+                                            title="Purge All Invoices"
+                                        >
+                                            <Lucide.Trash2 size={18} />
+                                        </button>
+                                    )}
+                                    <button 
+                                        onClick={() => setIsCreateInvoiceModalOpen(true)}
+                                        className="flex-1 sm:flex-none px-5 py-3 bg-ocean-600 text-white rounded-2xl text-xs font-black hover:bg-ocean-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-ocean-600/20 active:scale-95"
+                                    >
+                                        <Lucide.Plus size={18} /> 
+                                        <span>New Invoice</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-white">
+                                {invoices.length === 0 ? (
+                                    <div className="px-6 py-20 text-center">
+                                        <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100/50">
+                                            <Lucide.FileText className="text-slate-200" size={40} />
+                                        </div>
+                                        <h3 className="text-slate-900 font-bold mb-1">No invoices found</h3>
+                                        <p className="text-sm font-medium text-slate-400 max-w-xs mx-auto">Create and manage your professional invoices for passengers here.</p>
+                                        <button 
+                                            onClick={() => setIsCreateInvoiceModalOpen(true)}
+                                            className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all"
+                                        >
+                                            Create First Invoice
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Mobile Card List - Neat and Professional */}
+                                        <div className="md:hidden divide-y divide-slate-50">
+                                            {invoices.map(inv => (
+                                                <div key={inv._id} className="p-5 hover:bg-slate-50/50 transition-colors">
+                                                    <div className="flex items-start gap-4 mb-4">
+                                                        <div className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg">
+                                                            <Lucide.FileText size={18} />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <span className="text-sm font-black text-slate-900 truncate">#{inv.invoiceNumber}</span>
+                                                                <span className="text-sm font-black text-ocean-600 shrink-0">{inv.currency}{inv.total?.toLocaleString()}</span>
+                                                            </div>
+                                                            <div className="text-xs text-slate-600 font-bold mt-0.5 truncate">{inv.passengerName}</div>
+                                                            <div className="flex items-center gap-2 mt-1.5">
+                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">{new Date(inv.date).toLocaleDateString()}</span>
+                                                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-tight italic">{inv.paymentType.replace('_', ' ')}</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-3 gap-2">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedInvoiceForShare(inv);
+                                                                setIsShareInvoiceModalOpen(true);
+                                                            }}
+                                                            className="flex items-center justify-center gap-2 py-3 bg-ocean-600 text-white rounded-xl text-xs font-black shadow-md shadow-ocean-600/10 active:scale-95 transition-all"
+                                                        >
+                                                            <Lucide.Share2 size={14} /> 
+                                                            <span>Share</span>
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDownloadInvoice(inv)}
+                                                            className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-xl text-xs font-black active:scale-95 transition-all border border-slate-200/50"
+                                                        >
+                                                            <Lucide.Download size={14} />
+                                                            <span>PDF</span>
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteInvoice(inv._id)}
+                                                            className="flex items-center justify-center py-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-black active:scale-95 transition-all border border-rose-100/50"
+                                                        >
+                                                            <Lucide.Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        {/* Desktop Table View - Polished and Modern */}
+                                        <div className="hidden md:block overflow-x-auto">
+                                            <table className="w-full">
+                                                <thead className="bg-slate-50/50 border-b border-slate-100">
+                                                    <tr>
+                                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Document</th>
+                                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Recipient</th>
+                                                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount & Method</th>
+                                                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-50">
+                                                    {invoices.map(inv => (
+                                                        <tr key={inv._id} className="hover:bg-slate-50/80 transition-colors group">
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all duration-300">
+                                                                        <Lucide.FileText size={18} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="font-black text-slate-900">#{inv.invoiceNumber}</div>
+                                                                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{new Date(inv.date).toLocaleDateString()}</div>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="text-sm font-bold text-slate-800">{inv.passengerName}</div>
+                                                                <div className="text-[10px] text-slate-400 font-medium truncate max-w-[180px]">{inv.passengerEmail}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="text-sm font-black text-ocean-600">{inv.currency}{inv.total?.toLocaleString()}</div>
+                                                                <div className="text-[10px] text-slate-400 uppercase font-black tracking-tight opacity-70">
+                                                                    {inv.paymentType.replace('_', ' ')}
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                                                    <button 
+                                                                        onClick={() => {
+                                                                            setSelectedInvoiceForShare(inv);
+                                                                            setIsShareInvoiceModalOpen(true);
+                                                                        }}
+                                                                        className="p-2.5 bg-ocean-50 text-ocean-600 rounded-xl hover:bg-ocean-100 transition-all"
+                                                                        title="Share with Passenger"
+                                                                    >
+                                                                        <Lucide.Share2 size={16} />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDownloadInvoice(inv)}
+                                                                        className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
+                                                                        title="Download PDF"
+                                                                    >
+                                                                        <Lucide.Download size={16} />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleDeleteInvoice(inv._id)}
+                                                                        className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
+                                                                        title="Delete Permanently"
+                                                                    >
+                                                                        <Lucide.Trash2 size={16} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Right Column - Selected Passenger & Notifications */}
                     <div className="space-y-6">
                         {/* Selected Passenger Details */}
@@ -1064,7 +1456,7 @@ export default function SuperAdminPage() {
                                             </div>
                                             {selectedPassenger.phone && (
                                                 <a
-                                                    href={`https://wa.me/${(selectedPassenger.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request`}
+                                                    href={`https://wa.me/${(selectedPassenger.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request%20and%20we%20will%20get%20back%20to%20you%20shortly%2C`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-2 bg-green-100 text-green-700 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-green-200"
@@ -1700,7 +2092,7 @@ export default function SuperAdminPage() {
                                                 {note.type === 'booking_request' && note.meta.phone && (
                                                     <div className="flex gap-2">
                                                         <a
-                                                            href={note.meta.wa_link || `https://wa.me/${(note.meta.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request`}
+                                                            href={note.meta.wa_link || `https://wa.me/${(note.meta.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request%20and%20we%20will%20get%20back%20to%20you%20shortly%2C`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
                                                             className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-bold uppercase rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5"
@@ -2272,6 +2664,487 @@ export default function SuperAdminPage() {
                 </form>
             </Modal>
 
-        </div>
+            {/* Edit Blog Modal (Inline) */}
+            {editingBlog && (
+                <Modal
+                    open={!!editingBlog}
+                    title="Edit Travel Insight"
+                    onClose={() => setEditingBlog(null)}
+                    footer={
+                        <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                            <button onClick={() => setEditingBlog(null)} className="px-4 py-2 text-sm font-medium text-slate-600">Cancel</button>
+                            <ActionButton onClick={handleUpdateBlog} successMessage="Updated">Save Changes</ActionButton>
+                        </div>
+                    }
+                >
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Title</label>
+                            <input type="text" value={editingBlog.title} onChange={e => setEditingBlog({ ...editingBlog, title: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Content</label>
+                            <textarea rows={10} value={editingBlog.content} onChange={e => setEditingBlog({ ...editingBlog, content: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" />
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {/* Create Invoice Modal */}
+            <Modal
+                open={isCreateInvoiceModalOpen}
+                title="Create New Invoice"
+                onClose={() => setIsCreateInvoiceModalOpen(false)}
+                footer={
+                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                        <button onClick={() => setIsCreateInvoiceModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600">Cancel</button>
+                        <ActionButton onClick={handleCreateInvoice} successMessage="Invoice Created">Create Invoice</ActionButton>
+                    </div>
+                }
+            >
+                <div className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Invoice Number</label>
+                            <input type="text" value={invoiceForm.invoiceNumber} onChange={e => setInvoiceForm({ ...invoiceForm, invoiceNumber: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Date</label>
+                            <input type="date" value={invoiceForm.date} onChange={e => setInvoiceForm({ ...invoiceForm, date: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl" />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Bill To (Name)</label>
+                            <input 
+                                type="text" 
+                                placeholder="Full Name"
+                                value={invoiceForm.passengerName} 
+                                onChange={e => setInvoiceForm({ ...invoiceForm, passengerName: e.target.value })} 
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl font-bold" 
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
+                                <input 
+                                    type="email" 
+                                    placeholder="email@example.com"
+                                    value={invoiceForm.passengerEmail} 
+                                    onChange={e => setInvoiceForm({ ...invoiceForm, passengerEmail: e.target.value })} 
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Phone Number</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="+234..."
+                                    value={invoiceForm.passengerPhone} 
+                                    onChange={e => setInvoiceForm({ ...invoiceForm, passengerPhone: e.target.value })} 
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Line Items & Services</h3>
+                            <button onClick={addInvoiceItem} className="px-3 py-1 bg-ocean-50 text-ocean-600 rounded-lg text-xs font-bold hover:bg-ocean-100 flex items-center gap-1 transition-all">
+                                <Lucide.Plus size={14} /> Add Service
+                            </button>
+                        </div>
+                        {invoiceForm.items.map((item, idx) => (
+                            <div key={idx} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 relative group">
+                                <div className="flex justify-between items-center">
+                                    <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[10px] font-black uppercase">Item {idx + 1}</span>
+                                    {invoiceForm.items.length > 1 && (
+                                        <button 
+                                            onClick={() => removeInvoiceItem(idx)} 
+                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                            title="Remove Item"
+                                        >
+                                            <Lucide.Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Service Description</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. Flight ticket bookings, Visa processing..."
+                                            value={item.description} 
+                                            onChange={e => handleInvoiceItemChange(idx, 'description', e.target.value)} 
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all" 
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Detailed Information (Optional)</label>
+                                        <textarea 
+                                            placeholder="e.g. Arik flight ticket from Abuja to Lagos for 6th May, 2026."
+                                            value={item.subText} 
+                                            rows={2}
+                                            onChange={e => handleInvoiceItemChange(idx, 'subText', e.target.value)} 
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all resize-none" 
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Rate</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{invoiceForm.currency}</span>
+                                                <input 
+                                                    type="number" 
+                                                    value={item.rate} 
+                                                    onChange={e => handleInvoiceItemChange(idx, 'rate', Number(e.target.value))} 
+                                                    className="w-full pl-8 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all" 
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Qty</label>
+                                            <input 
+                                                type="number" 
+                                                value={item.qty} 
+                                                onChange={e => handleInvoiceItemChange(idx, 'qty', Number(e.target.value))} 
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all" 
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Amount</label>
+                                            <div className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-black text-slate-900">
+                                                {invoiceForm.currency}{item.amount?.toLocaleString()}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Invoice Status</label>
+                                <div className="flex bg-slate-100 p-1 rounded-xl">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const total = (invoiceForm.subTotal || 0) + (invoiceForm.serviceCharge || 0) - (invoiceForm.discount || 0);
+                                            setInvoiceForm({ ...invoiceForm, isPaid: false, balanceDue: total });
+                                        }}
+                                        className={clsx(
+                                            "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                            !invoiceForm.isPaid ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                        )}
+                                    >
+                                        Unpaid
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setInvoiceForm({ ...invoiceForm, isPaid: true, balanceDue: 0 })}
+                                        className={clsx(
+                                            "flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                            invoiceForm.isPaid ? "bg-ocean-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                        )}
+                                    >
+                                        Paid
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Currency Settings</label>
+                                <select value={invoiceForm.currency} onChange={e => setInvoiceForm({ ...invoiceForm, currency: e.target.value })} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none">
+                                    <option value="₦">Naira (₦)</option>
+                                    <option value="$">US Dollar ($)</option>
+                                    <option value="£">British Pound (£)</option>
+                                    <option value="€">Euro (€)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Payment Method</label>
+                                <select value={invoiceForm.paymentType} onChange={e => setInvoiceForm({ ...invoiceForm, paymentType: e.target.value })} className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none">
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="cash">Cash Payment</option>
+                                    <option value="pos">POS Terminal</option>
+                                    <option value="online">Online Payment</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="space-y-3 bg-slate-900 p-6 rounded-2xl text-white shadow-xl shadow-slate-900/20">
+                            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <span>Sub Total</span>
+                                <span>{invoiceForm.currency}{invoiceForm.subTotal?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <span>Service Charge</span>
+                                <div className="flex items-center gap-1 border-b border-slate-700 pb-1">
+                                    <span className="text-slate-500">{invoiceForm.currency}</span>
+                                    <input 
+                                        type="number" 
+                                        className="w-20 text-right bg-transparent focus:outline-none text-white font-black" 
+                                        value={invoiceForm.serviceCharge} 
+                                        onChange={e => {
+                                            const val = Number(e.target.value);
+                                            const total = (invoiceForm.subTotal || 0) + val - (invoiceForm.discount || 0);
+                                            setInvoiceForm({ ...invoiceForm, serviceCharge: val, total, balanceDue: invoiceForm.isPaid ? 0 : total });
+                                        }} 
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <span>Discount</span>
+                                <div className="flex items-center gap-1 border-b border-slate-700 pb-1">
+                                    <span className="text-slate-500">{invoiceForm.currency}</span>
+                                    <input 
+                                        type="number" 
+                                        className="w-20 text-right bg-transparent focus:outline-none text-red-400 font-black" 
+                                        value={invoiceForm.discount} 
+                                        onChange={e => {
+                                            const val = Number(e.target.value);
+                                            const total = (invoiceForm.subTotal || 0) + (invoiceForm.serviceCharge || 0) - val;
+                                            setInvoiceForm({ ...invoiceForm, discount: val, total, balanceDue: invoiceForm.isPaid ? 0 : total });
+                                        }} 
+                                    />
+                                </div>
+                            </div>
+                            <div className="pt-4 mt-2 border-t border-white/10">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-black text-ocean-400 uppercase tracking-[0.2em]">Balance Due</span>
+                                    <span className="text-2xl font-black">{invoiceForm.currency}{invoiceForm.balanceDue?.toLocaleString()}</span>
+                                </div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-right italic">
+                                    Final Amount Payable
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Share Invoice Modal */}
+            <Modal
+                open={isShareInvoiceModalOpen}
+                title="Share Invoice"
+                onClose={() => setIsShareInvoiceModalOpen(false)}
+            >
+                <div className="p-6 space-y-6">
+                    {/* Quick Send Section */}
+                    {selectedInvoiceForShare && (selectedInvoiceForShare.passengerEmail || selectedInvoiceForShare.passengerPhone) && (
+                        <div className="bg-ocean-50 border border-ocean-100 rounded-2xl p-6">
+                            <h3 className="text-[10px] font-black text-ocean-600 uppercase tracking-[0.2em] mb-4">Saved Contact Details</h3>
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <div className="font-bold text-slate-900">{selectedInvoiceForShare.passengerName}</div>
+                                    <div className="text-xs text-slate-500">{selectedInvoiceForShare.passengerEmail || 'No email saved'}</div>
+                                    <div className="text-xs text-slate-500">{selectedInvoiceForShare.passengerPhone || 'No phone saved'}</div>
+                                </div>
+                                <button 
+                                    onClick={() => handleShareWithPassenger(null)}
+                                    className="px-6 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-black hover:bg-ocean-700 transition-all flex items-center gap-2 shadow-lg shadow-ocean-600/20"
+                                >
+                                    <Lucide.Send size={16} /> Send Now
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="relative flex items-center gap-4">
+                        <div className="h-px bg-slate-100 flex-1"></div>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Or Search Passenger List</span>
+                        <div className="h-px bg-slate-100 flex-1"></div>
+                    </div>
+
+                    <div className="relative">
+                        <Lucide.Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <input 
+                            type="text" 
+                            placeholder="Search passengers..." 
+                            className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl"
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                        {filteredPassengers.map(p => (
+                            <div 
+                                key={p.id || p._id} 
+                                className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl hover:bg-white hover:border-ocean-300 hover:shadow-xl hover:shadow-ocean-600/5 transition-all cursor-pointer group"
+                                onClick={() => handleShareWithPassenger(p)}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-bold group-hover:bg-ocean-200 group-hover:text-ocean-700">
+                                        {p.fullName[0]}
+                                    </div>
+                                    <div>
+                                        <div className="font-bold text-slate-900">{p.fullName}</div>
+                                        <div className="text-xs text-slate-500">{p.email}</div>
+                                    </div>
+                                </div>
+                                <Lucide.Send className="text-slate-300 group-hover:text-ocean-600" size={18} />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Hidden component for PDF generation */}
+            {selectedInvoiceForShare && (
+                <div id="invoice-pdf-template" className="fixed -left-[9999px] top-0 w-[800px] bg-white p-12 font-sans text-slate-800 leading-relaxed">
+                    {/* Header Section */}
+                    <div className="flex justify-between items-start mb-12">
+                        <div className="flex items-center gap-6">
+                            <img 
+                                src={`/D-NARAI_Logo-04.png?t=${Date.now()}`} 
+                                alt="Logo" 
+                                className="h-20 object-contain" 
+                                crossOrigin="anonymous"
+                            />
+                            <div className="border-l-2 border-ocean-100 pl-6 py-1">
+                                <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">D.NARAI ENTERPRISE</h1>
+                                <div className="text-sm font-medium text-slate-500 mt-1 space-y-0.5">
+                                    <p className="flex items-center gap-2">
+                                        <span className="text-ocean-600 font-bold">P:</span> +2348166698689
+                                    </p>
+                                    <p className="flex items-center gap-2">
+                                        <span className="text-ocean-600 font-bold">E:</span> D.naraienterprise.com
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-6 min-w-[240px]">
+                                <h2 className="text-xs font-black text-ocean-600 uppercase tracking-[0.2em] mb-4">Invoice Info</h2>
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-baseline gap-4">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Invoice #</span>
+                                        <span className="text-sm font-black text-slate-900">{selectedInvoiceForShare.invoiceNumber}</span>
+                                    </div>
+                                    <div className="flex justify-between items-baseline gap-4">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Date</span>
+                                        <span className="text-sm font-black text-slate-900">{new Date(selectedInvoiceForShare.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                                    </div>
+                                    <div className="flex justify-between items-baseline gap-4">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Due</span>
+                                        <span className="text-sm font-black text-slate-900">On Receipt</span>
+                                    </div>
+                                    <div className="pt-3 border-t border-slate-200 mt-1 flex justify-between items-baseline gap-4">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase">Balance Due</span>
+                                        <span className="text-lg font-black text-ocean-600">{selectedInvoiceForShare.currency}{selectedInvoiceForShare.balanceDue?.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Billing Section */}
+                    <div className="mb-12 py-8 border-y border-slate-100 flex justify-between items-start">
+                        <div>
+                            <h3 className="text-[10px] font-black text-ocean-600 uppercase tracking-[0.2em] mb-3">Bill To</h3>
+                            <p className="text-xl font-black text-slate-900">{selectedInvoiceForShare.passengerName}</p>
+                            <p className="text-sm text-slate-500 mt-1">Valued Travel Partner</p>
+                        </div>
+                        <div className="text-right">
+                            <h3 className="text-[10px] font-black text-ocean-600 uppercase tracking-[0.2em] mb-3">Status</h3>
+                            <span className={clsx(
+                                "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                                selectedInvoiceForShare.isPaid || selectedInvoiceForShare.balanceDue === 0
+                                    ? "bg-green-50 text-green-700 border-green-100"
+                                    : "bg-ocean-50 text-ocean-700 border-ocean-100"
+                            )}>
+                                {selectedInvoiceForShare.isPaid || selectedInvoiceForShare.balanceDue === 0 ? 'Fully Paid' : 'Unpaid / Due'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Invoice Table */}
+                    <div className="mb-12">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b-2 border-slate-900">
+                                    <th className="pb-4 text-left text-[11px] font-black text-slate-900 uppercase tracking-widest">Description</th>
+                                    <th className="pb-4 text-right text-[11px] font-black text-slate-900 uppercase tracking-widest w-24">Rate</th>
+                                    <th className="pb-4 text-right text-[11px] font-black text-slate-900 uppercase tracking-widest w-16">Qty</th>
+                                    <th className="pb-4 text-right text-[11px] font-black text-slate-900 uppercase tracking-widest w-32">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {selectedInvoiceForShare.items.map((item, idx) => (
+                                    <tr key={idx} className="group">
+                                        <td className="py-6 pr-8">
+                                            <div className="font-bold text-slate-900 text-sm mb-1">{item.description}</div>
+                                            <div className="text-xs text-slate-500 leading-relaxed max-w-md">{item.subText}</div>
+                                        </td>
+                                        <td className="py-6 text-right text-sm font-medium text-slate-600">{selectedInvoiceForShare.currency}{item.rate?.toLocaleString()}</td>
+                                        <td className="py-6 text-right text-sm font-medium text-slate-600">{item.qty}</td>
+                                        <td className="py-6 text-right text-sm font-black text-slate-900">{selectedInvoiceForShare.currency}{item.amount?.toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Totals Section */}
+                    <div className="flex justify-between items-start mb-16">
+                        <div className="max-w-[300px]">
+                            <h3 className="text-[10px] font-black text-ocean-600 uppercase tracking-[0.2em] mb-3">Payment Instructions</h3>
+                            <p className="text-[10px] leading-relaxed text-slate-500">
+                                Please ensure payment is made to the designated D.NARAI ENTERPRISE bank account. 
+                                Mention the invoice number <span className="font-bold text-slate-900">#{selectedInvoiceForShare.invoiceNumber}</span> as reference.
+                            </p>
+                        </div>
+                        <div className="w-72 space-y-4">
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-black text-slate-500 uppercase tracking-wider text-[10px]">Subtotal</span>
+                                <span className="font-black text-slate-900">{selectedInvoiceForShare.currency}{selectedInvoiceForShare.subTotal?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-black text-slate-500 uppercase tracking-wider text-[10px]">Service Charge</span>
+                                <span className="font-black text-slate-900">{selectedInvoiceForShare.currency}{selectedInvoiceForShare.serviceCharge?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-black text-slate-500 uppercase tracking-wider text-[10px]">Discount</span>
+                                <span className="font-black text-red-600">-{selectedInvoiceForShare.currency}{selectedInvoiceForShare.discount?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-sm">
+                                <span className="font-black text-slate-500 uppercase tracking-wider text-[10px]">Total Amount</span>
+                                <span className="font-black text-slate-900">{selectedInvoiceForShare.currency}{selectedInvoiceForShare.total?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-4 border-t-2 border-slate-900">
+                                <span className="font-black text-slate-900 uppercase tracking-widest text-[11px]">Balance Due</span>
+                                <span className="text-3xl font-black text-slate-900">{selectedInvoiceForShare.currency}{selectedInvoiceForShare.balanceDue?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center pt-2">
+                                <span className="font-black text-slate-500 uppercase tracking-wider text-[10px]">Payment Method</span>
+                                <span className="text-[10px] font-black text-ocean-600 uppercase tracking-widest">{selectedInvoiceForShare.paymentType?.replace('_', ' ')}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end mb-16">
+                        <div className="text-right">
+                            <div className="mb-1">
+                                <span className="text-3xl font-black text-slate-900 tracking-tighter" style={{ fontFamily: 'serif', fontStyle: 'italic' }}>
+                                    Dnarai
+                                </span>
+                            </div>
+                            <div className="w-64 border-b-2 border-slate-900 mb-2"></div>
+                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Authorized Signature</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Date Signed: {new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="pt-10 border-t border-slate-100 text-center">
+                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
+                            "Our Service Ends When You Have Arrived Your Destination Successfully."
+                        </p>
+                    </div>
+                </div>
+            )}
+        </>
     )
 }

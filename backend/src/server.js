@@ -15,6 +15,7 @@ import portalRoutes from './routes/portal.routes.js';
 import agencyRoutes from './routes/agency.routes.js';
 import blogRoutes from './routes/blog.routes.js';
 import timeRoutes from './routes/time.routes.js';
+import invoiceRoutes from './routes/invoices.routes.js';
 
 
 import { startSchedulers } from './jobs/scheduler.js';
@@ -48,7 +49,7 @@ app.use(cors({
 // Trust the first proxy (Netlify)
 app.set('trust proxy', 1);
 
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '50mb' }));
 app.use(rateLimit({
   windowMs: 60 * 1000,
   max: 120,
@@ -66,6 +67,7 @@ app.use('/api/portal', portalRoutes);
 app.use('/api/agency', agencyRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/time', timeRoutes);
+app.use('/api/invoices', invoiceRoutes);
 
 
 

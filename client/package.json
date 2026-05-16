@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "clsx": "^2.1.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.323.0",
     "luxon": "^3.7.2",
     "react": "^18.2.0",
