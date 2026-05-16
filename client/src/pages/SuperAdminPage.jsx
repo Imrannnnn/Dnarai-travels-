@@ -3140,7 +3140,7 @@ export default function SuperAdminPage() {
                     {/* Footer */}
                     <div className="pt-10 border-t border-slate-100 text-center">
                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                            "Our Service Ends When You Have Arrived Your Destination Successfully."
+                            &quot;Our Service Ends When You Have Arrived Your Destination Successfully.&quot;
                         </p>
                     </div>
                 </div>
