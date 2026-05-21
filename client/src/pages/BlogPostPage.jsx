@@ -85,6 +85,27 @@ export default function BlogPostPage() {
         }
     }, [blog]);
 
+    const renderContentWithLinks = (text) => {
+        if (!text) return null;
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.split(urlRegex).map((part, index) => {
+            if (part.match(urlRegex)) {
+                return (
+                    <a 
+                        key={index} 
+                        href={part} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        className="text-dnarai-gold-500 hover:text-dnarai-gold-600 underline font-bold transition-colors"
+                    >
+                        {part}
+                    </a>
+                );
+            }
+            return part;
+        });
+    };
+
     const handleCopyLink = () => {
         navigator.clipboard.writeText(window.location.href);
         setCopySuccess(true);
@@ -204,7 +225,7 @@ export default function BlogPostPage() {
                 {/* Content Body */}
                 <div className="prose prose-xl prose-slate dark:prose-invert max-w-none">
                     <div className="text-slate-700 dark:text-slate-300 leading-relaxed font-medium space-y-6 whitespace-pre-wrap">
-                        {blog.content}
+                        {renderContentWithLinks(blog.content)}
                     </div>
                 </div>
 
