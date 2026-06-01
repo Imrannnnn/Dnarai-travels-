@@ -19,7 +19,10 @@ export const EmailParserService = {
   isConnecting: false,
 
   init() {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    const user = process.env.IMAP_USER || process.env.GMAIL_USER;
+    const pass = process.env.IMAP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+
+    if (!user || !pass) {
       console.warn('⚠️ [EmailParser] Credentials missing in .env. Service disabled.');
       return;
     }
@@ -38,9 +41,12 @@ export const EmailParserService = {
       }
     }
 
+    const user = process.env.IMAP_USER || process.env.GMAIL_USER;
+    const pass = process.env.IMAP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+
     this.imap = new Imap({
-      user: process.env.GMAIL_USER,
-      password: process.env.GMAIL_APP_PASSWORD,
+      user: user,
+      password: pass,
       host: process.env.IMAP_HOST || 'imap.gmail.com',
       port: Number(process.env.IMAP_PORT || 993),
       tls: (process.env.IMAP_TLS || 'true') === 'true',

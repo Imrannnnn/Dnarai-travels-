@@ -19,7 +19,7 @@ import invoiceRoutes from './routes/invoices.routes.js';
 
 
 import { startSchedulers } from './jobs/scheduler.js';
-import { EmailParserService } from './services/EmailParserService.js';
+import { getTransporter } from './services/EmailService.js';
 
 dotenv.config();
 
@@ -30,7 +30,8 @@ app.use(helmet());
 // ---------- CORS Setup ----------
 const allowedOrigins = [
   'http://localhost:5173',                  // local dev
-  'https://dnaraitravels.netlify.app'      // deployed frontend
+  "https://dnaraitravels.com",             //production 
+  "https://www.dnaraitravels.com"           //alternate production
 ];
 
 app.use(cors({
@@ -77,7 +78,6 @@ async function main() {
   try {
     await connectDb();
     startSchedulers();
-    EmailParserService.init();
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
@@ -94,5 +94,26 @@ async function main() {
     process.exit(1);
   }
 }
+
+
+app.get("/test-email", async (req, res) => {
+  try {
+    const transporter = getTransporter();
+    if (!transporter) return res.status(500).send("Transporter not configured");
+
+    const info = await transporter.sendMail({
+      from: "admin@dnaraitravels.com",
+      to: "imrannasiruofficial@gmail.com",
+      subject: "SMTP Test Success 🚀",
+      text: "If you got this, email system is working perfectly."
+    });
+
+    console.log("EMAIL SENT SUCCESSFULLY", info);
+    res.send({ message: "Email sent", info });
+  } catch (err) {
+    console.log("EMAIL FAILED:", err);
+    res.status(500).send(err.message);
+  }
+});
 
 main();

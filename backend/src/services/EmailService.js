@@ -9,21 +9,27 @@ let _transporter = null;
 // 
 
 
-const getTransporter = () => {
+export const getTransporter = () => {
   if (_transporter) return _transporter;
 
-  if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    console.warn('⚠️ Brevo SMTP not configured');
+  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
+  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+
+  if (!user || !pass) {
+    console.warn('⚠️ SMTP not configured');
     return null;
   }
 
+  const port = Number(process.env.SMTP_PORT) || 587;
+  console.log(`[EmailService] Initializing transporter... HOST=${process.env.SMTP_HOST} PORT=${port} SECURE=${process.env.SMTP_SECURE}`);
+
   _transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // IMPORTANT
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: port,
+    secure: process.env.SMTP_SECURE === 'true', // false for STARTTLS
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      user,
+      pass,
     },
     tls: {
       rejectUnauthorized: false,
@@ -140,7 +146,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to: email,
         subject: 'Welcome to Dnarai Travel - Account Activation',
         html: getEmailWrapper(content, 'Your account is ready.'),
@@ -199,7 +205,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai System" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai System" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to: adminEmail,
         subject: `New Request: ${passengerName}`,
         html: getEmailWrapper(content, 'New booking request.'),
@@ -235,7 +241,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: `Confirmed: ${booking.flightNumber}`,
         html: getEmailWrapper(content, 'Booking confirmed.'),
@@ -267,7 +273,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: 'Travel Notification',
         html: getEmailWrapper(content, 'Travel update.'),
@@ -311,7 +317,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: `24h Reminder: Journey to ${booking.destination?.city}`,
         html: getEmailWrapper(content, `Preparing for your trip to ${booking.destination?.city}`),
@@ -350,7 +356,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to: passenger.email,
         subject: `Upcoming Boarding: ${booking.flightNumber}`,
         html: getEmailWrapper(content, `Final boarding reminder for ${booking.flightNumber}`),
@@ -383,7 +389,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to,
         subject,
         html: getEmailWrapper(content, previewText || 'A booking has been cancelled.'),
@@ -425,7 +431,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
         to: email,
         subject: `Invoice from Dnarai Travel: #${invoiceNumber}`,
         html: getEmailWrapper(content, `This is your invoice for your current travel.`),
