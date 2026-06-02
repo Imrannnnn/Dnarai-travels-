@@ -4,29 +4,105 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Lazy transporter initialization
 let _transporter = null;
-// 
 
+// Direct Brevo HTTP API integration to bypass SMTP IP restrictions
+const sendMailViaBrevoAPI = async ({ from, to, subject, html, text, attachments = [] }) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    throw new Error("BREVO_API_KEY is not defined");
+  }
+
+  // Parse from address (e.g. '"Dnarai Travel" <admin@dnaraitravels.com>')
+  let senderEmail = "admin@dnaraitravels.com";
+  let senderName = "Dnarai Travel";
+  const fromMatch = from ? from.match(/(?:"?([^"]*)"?\s)?<([^>]+)>/) : null;
+  if (fromMatch) {
+    senderName = fromMatch[1] || "Dnarai Travel";
+    senderEmail = fromMatch[2];
+  }
+
+  const formattedAttachments = [];
+  for (const att of attachments) {
+    let contentBase64 = "";
+    if (att.content) {
+      contentBase64 = Buffer.isBuffer(att.content) ? att.content.toString("base64") : Buffer.from(att.content).toString("base64");
+    } else if (att.path) {
+      contentBase64 = fs.readFileSync(att.path).toString("base64");
+    }
+
+    formattedAttachments.push({
+      name: att.filename || att.name || "attachment",
+      content: contentBase64
+    });
+  }
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to: [{ email: to }],
+    subject,
+    htmlContent: html,
+    textContent: text || "",
+  };
+
+  if (formattedAttachments.length > 0) {
+    payload.attachment = formattedAttachments;
+  }
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "accept": "application/json",
+      "api-key": apiKey,
+      "content-type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Brevo API error (${response.status}): ${errorText}`);
+  }
+
+  return await response.json();
+};
 
 export const getTransporter = () => {
+  // If the user provided the actual HTTP API key (starts with xkeysib-), use direct HTTP API
+  if (process.env.BREVO_API_KEY) {
+    return {
+      sendMail: async (mailOptions) => {
+        console.log("[EmailService] Sending email via Brevo HTTP API");
+        return sendMailViaBrevoAPI(mailOptions);
+      },
+      verify: (callback) => {
+        console.log("✅ Brevo HTTP API active (SMTP bypassed)");
+        if (callback) callback(null, true);
+      }
+    };
+  }
+
   if (_transporter) return _transporter;
 
-  const user = process.env.SMTP_USER || process.env.GMAIL_USER;
-  const pass = process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD;
+  const useBrevoSMTP = !!process.env.BREVO_SMTP_USER;
+  const user = useBrevoSMTP ? process.env.BREVO_SMTP_USER : (process.env.SMTP_USER || process.env.GMAIL_USER);
+  const pass = useBrevoSMTP ? process.env.BREVO_SMTP_KEY : (process.env.SMTP_PASSWORD || process.env.GMAIL_APP_PASSWORD);
 
   if (!user || !pass) {
     console.warn('⚠️ SMTP not configured');
     return null;
   }
 
-  const port = Number(process.env.SMTP_PORT) || 587;
-  console.log(`[EmailService] Initializing transporter... HOST=${process.env.SMTP_HOST} PORT=${port} SECURE=${process.env.SMTP_SECURE}`);
+  const host = useBrevoSMTP ? 'smtp-relay.brevo.com' : (process.env.SMTP_HOST || 'smtp.gmail.com');
+  const port = useBrevoSMTP ? 587 : (Number(process.env.SMTP_PORT) || 587);
+  const secure = useBrevoSMTP ? false : (process.env.SMTP_SECURE === 'true');
+
+  console.log(`[EmailService] Initializing transporter... HOST=${host} PORT=${port} SECURE=${secure}`);
 
   _transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: port,
-    secure: process.env.SMTP_SECURE === 'true', // false for STARTTLS
+    host,
+    port,
+    secure, // false for STARTTLS
     auth: {
       user,
       pass,
@@ -43,7 +119,6 @@ export const getTransporter = () => {
       console.log('✅ SMTP server ready');
     }
   });
-
 
   return _transporter;
 };
@@ -146,7 +221,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to: email,
         subject: 'Welcome to Dnarai Travel - Account Activation',
         html: getEmailWrapper(content, 'Your account is ready.'),
@@ -205,7 +280,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai System" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai System" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to: adminEmail,
         subject: `New Request: ${passengerName}`,
         html: getEmailWrapper(content, 'New booking request.'),
@@ -241,7 +316,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to: passenger.email,
         subject: `Confirmed: ${booking.flightNumber}`,
         html: getEmailWrapper(content, 'Booking confirmed.'),
@@ -273,7 +348,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to: passenger.email,
         subject: 'Travel Notification',
         html: getEmailWrapper(content, 'Travel update.'),
@@ -317,7 +392,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to: passenger.email,
         subject: `24h Reminder: Journey to ${booking.destination?.city}`,
         html: getEmailWrapper(content, `Preparing for your trip to ${booking.destination?.city}`),
@@ -356,7 +431,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to: passenger.email,
         subject: `Upcoming Boarding: ${booking.flightNumber}`,
         html: getEmailWrapper(content, `Final boarding reminder for ${booking.flightNumber}`),
@@ -389,7 +464,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to,
         subject,
         html: getEmailWrapper(content, previewText || 'A booking has been cancelled.'),
@@ -431,7 +506,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.SMTP_USER || process.env.GMAIL_USER}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
         to: email,
         subject: `Invoice from Dnarai Travel: #${invoiceNumber}`,
         html: getEmailWrapper(content, `This is your invoice for your current travel.`),
