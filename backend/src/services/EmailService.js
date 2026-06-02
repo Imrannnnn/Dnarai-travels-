@@ -168,7 +168,7 @@ const getEmailWrapper = (content, previewText = '') => `
         <td align="center" style="padding: 40px 0 20px 0; text-align: center;">
           <center>
             <a href="${process.env.CORS_ORIGIN || '#'}" style="text-decoration: none; display: inline-block;">
-              <img src="cid:dnarai-logo" alt="DNARAI TRAVEL" width="200" style="display: block; border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 900; color: ${COLORS.NAVY}; letter-spacing: -1px; width: 200px; max-width: 200px;">
+              <img src="cid:logo.png" alt="DNARAI TRAVEL" width="200" style="display: block; border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 900; color: ${COLORS.NAVY}; letter-spacing: -1px; width: 200px; max-width: 200px;">
               <div style="margin-top: -5px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 800; color: ${COLORS.GOLD}; letter-spacing: 4px; text-transform: uppercase;">Executive Travel</div>
             </a>
           </center>
@@ -203,7 +203,7 @@ const getAttachments = () => {
     return [{
       filename: 'logo.png',
       path: LOGO_PATH,
-      cid: 'dnarai-logo',
+      cid: 'logo.png',
       contentType: 'image/png'
     }];
   }
@@ -495,9 +495,6 @@ export const EmailService = {
     const content = `
       <tr>
         <td style="padding: 60px 40px; text-align: center;">
-          <div style="background-color: ${COLORS.BG}; width: 80px; height: 80px; border-radius: 40px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 30px;">
-             <span style="font-size: 32px;">📄</span>
-          </div>
           <h2 style="margin: 0; font-size: 24px; font-weight: 800; color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: -0.5px;">Travel Invoice Issued</h2>
           <p style="margin: 20px 0 0 0; font-size: 16px; color: ${COLORS.SLATE}; line-height: 1.6;">Hello <strong>${passengerName}</strong>, your invoice for your travel arrangements with D.NARAI ENTERPRISE is now available.</p>
           
