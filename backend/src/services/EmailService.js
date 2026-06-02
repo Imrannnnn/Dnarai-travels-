@@ -27,6 +27,14 @@ const sendMailViaBrevoAPI = async ({ from, to, subject, html, text, attachments 
 
   const formattedAttachments = [];
   for (const att of attachments) {
+    const fileName = att.filename || att.name || "attachment";
+    
+    // Brevo API strictly rejects .svg files with 400 Unsupported file format
+    if (fileName.toLowerCase().endsWith('.svg')) {
+      console.warn(`⚠️ [EmailService] Skipping unsupported SVG attachment for Brevo API: ${fileName}`);
+      continue;
+    }
+
     let contentBase64 = "";
     if (att.content) {
       contentBase64 = Buffer.isBuffer(att.content) ? att.content.toString("base64") : Buffer.from(att.content).toString("base64");
@@ -35,7 +43,7 @@ const sendMailViaBrevoAPI = async ({ from, to, subject, html, text, attachments 
     }
 
     formattedAttachments.push({
-      name: att.filename || att.name || "attachment",
+      name: fileName,
       content: contentBase64
     });
   }
@@ -136,7 +144,7 @@ const COLORS = {
 };
 
 // Path to logo for CID attachment
-const LOGO_PATH = path.resolve(__dirname, '../../../client/public/D-NARAI_Logo 01.svg');
+const LOGO_PATH = path.resolve(__dirname, '../../../client/public/D-NARAI_Logo-04.png');
 
 // Debug the path
 if (!fs.existsSync(LOGO_PATH)) {
@@ -193,10 +201,10 @@ const getEmailWrapper = (content, previewText = '') => `
 const getAttachments = () => {
   if (fs.existsSync(LOGO_PATH)) {
     return [{
-      filename: 'logo.svg',
+      filename: 'logo.png',
       path: LOGO_PATH,
       cid: 'dnarai-logo',
-      contentType: 'image/svg+xml'
+      contentType: 'image/png'
     }];
   }
   return [];
