@@ -45,7 +45,7 @@ const sendMailViaBrevoAPI = async ({ from, to, subject, html, text, attachments 
     to: [{ email: to }],
     subject,
     htmlContent: html,
-    textContent: text || "",
+    textContent: text || subject || "Dnarai Travel Notification",
   };
 
   if (formattedAttachments.length > 0) {
