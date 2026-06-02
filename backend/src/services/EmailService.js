@@ -13,8 +13,11 @@ const sendMailViaBrevoAPI = async ({ from, to, subject, html, text, attachments 
     throw new Error("BREVO_API_KEY is not defined");
   }
 
-  // Parse from address (e.g. '"Dnarai Travel" <admin@dnaraitravels.com>')
-  let senderEmail = "admin@dnaraitravels.com";
+  // Parse from address
+  let senderEmail = process.env.EMAIL;
+  if (!senderEmail) {
+    throw new Error("process.env.EMAIL is not defined");
+  }
   let senderName = "Dnarai Travel";
   const fromMatch = from ? from.match(/(?:"?([^"]*)"?\s)?<([^>]+)>/) : null;
   if (fromMatch) {
@@ -221,7 +224,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to: email,
         subject: 'Welcome to Dnarai Travel - Account Activation',
         html: getEmailWrapper(content, 'Your account is ready.'),
@@ -280,7 +283,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai System" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai System" <${process.env.EMAIL}>`,
         to: adminEmail,
         subject: `New Request: ${passengerName}`,
         html: getEmailWrapper(content, 'New booking request.'),
@@ -316,7 +319,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to: passenger.email,
         subject: `Confirmed: ${booking.flightNumber}`,
         html: getEmailWrapper(content, 'Booking confirmed.'),
@@ -348,7 +351,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to: passenger.email,
         subject: 'Travel Notification',
         html: getEmailWrapper(content, 'Travel update.'),
@@ -392,7 +395,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to: passenger.email,
         subject: `24h Reminder: Journey to ${booking.destination?.city}`,
         html: getEmailWrapper(content, `Preparing for your trip to ${booking.destination?.city}`),
@@ -431,7 +434,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to: passenger.email,
         subject: `Upcoming Boarding: ${booking.flightNumber}`,
         html: getEmailWrapper(content, `Final boarding reminder for ${booking.flightNumber}`),
@@ -464,7 +467,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to,
         subject,
         html: getEmailWrapper(content, previewText || 'A booking has been cancelled.'),
@@ -506,7 +509,7 @@ export const EmailService = {
 
     try {
       await transporter.sendMail({
-        from: `"Dnarai Travel" <${process.env.EMAIL || 'admin@dnaraitravels.com'}>`,
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to: email,
         subject: `Invoice from Dnarai Travel: #${invoiceNumber}`,
         html: getEmailWrapper(content, `This is your invoice for your current travel.`),

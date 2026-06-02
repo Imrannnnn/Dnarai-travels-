@@ -102,7 +102,7 @@ app.get("/test-email", async (req, res) => {
     if (!transporter) return res.status(500).send("Transporter not configured");
 
     const info = await transporter.sendMail({
-      from: "admin@dnaraitravels.com",
+      from: process.env.EMAIL,
       to: "imrannasiruofficial@gmail.com",
       subject: "SMTP Test Success 🚀",
       text: "If you got this, email system is working perfectly."
