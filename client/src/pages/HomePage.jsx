@@ -16,7 +16,7 @@ export default function HomePage() {
         {/* Background with overlay gradient */}
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-gradient-to-br from-dnarai-navy-700 via-dnarai-navy-600 to-dnarai-navy-800" />
-          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2574')] bg-cover bg-center opacity-20 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1530521954074-e64f6810b32d?q=80&w=2500')] bg-cover bg-center opacity-40 mix-blend-overlay" />
           <div className="absolute inset-0 bg-gradient-to-t from-dnarai-navy-900/90 via-dnarai-navy-800/50 to-transparent" />
           {/* Animated accent orbs */}
           <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-dnarai-gold-400/20 blur-[100px] rounded-full animate-pulse" />
