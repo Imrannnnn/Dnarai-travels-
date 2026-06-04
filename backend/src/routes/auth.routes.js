@@ -44,7 +44,7 @@ const addStaffSchema = z.object({
   body: z.object({
     email: z.string().email(),
     role: z.enum(['admin', 'staff', 'agent']),
-    password: z.string().min(8).optional(),
+    password: z.union([z.string().min(8), z.literal('')]).optional(),
   }),
 });
 

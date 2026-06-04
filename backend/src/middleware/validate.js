@@ -7,10 +7,13 @@ export function validate(schema) {
     });
 
     if (!parsed.success) {
+      const firstError = parsed.error.errors[0];
+      const pathName = firstError.path.slice(1).join('.');
+      const message = pathName ? `${pathName}: ${firstError.message}` : firstError.message;
       return next({
         status: 400,
         code: 'VALIDATION_ERROR',
-        message: 'Invalid request',
+        message: message,
         details: parsed.error.flatten(),
       });
     }
