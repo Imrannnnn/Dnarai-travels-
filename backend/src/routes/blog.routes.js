@@ -1,28 +1,11 @@
 import { Router } from 'express';
-import { z } from 'zod';
 
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/authJwt.js';
 import { blogController } from '../controllers/blog.controller.js';
+import { createBlogSchema, commentSchema } from '../validators/blog.validator.js';
 
 const router = Router();
-
-/**
- * Validation schemas for blogs
- */
-const createBlogSchema = z.object({
-    body: z.object({
-        title: z.string().min(5),
-        content: z.string().min(10)
-    })
-});
-
-const commentSchema = z.object({
-    body: z.object({
-        text: z.string().min(1),
-        authorName: z.string().optional()
-    })
-});
 
 // GET /api/blogs - List all blogs
 router.get('/', blogController.getAll);

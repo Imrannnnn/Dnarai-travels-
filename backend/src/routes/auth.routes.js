@@ -1,70 +1,23 @@
 import { Router } from 'express';
-import { z } from 'zod';
 
 import { validate } from '../middleware/validate.js';
 import { requireAuth } from '../middleware/authJwt.js';
 import { authController } from '../controllers/auth.controller.js';
+import {
+  registerSchema,
+  loginSchema,
+  resetFirstLoginSchema,
+  changePasswordSchema,
+  addStaffSchema,
+  pushSubscriptionSchema,
+  refreshTokenSchema
+} from '../validators/auth.validator.js';
 
 /**
  * Authentication routes
  * Business logic is moved to auth.controller.js
  */
 const router = Router();
-
-// Validation schemas for authentication
-const registerSchema = z.object({
-  body: z.object({
-    email: z.string().email(),
-    password: z.string().min(8),
-    role: z.enum(['admin', 'agent', 'passenger', 'staff']).optional(),
-  }),
-});
-
-const loginSchema = z.object({
-  body: z.object({
-    email: z.string().email(),
-    password: z.string().min(1),
-  }),
-});
-
-const resetFirstLoginSchema = z.object({
-  body: z.object({
-    newPassword: z.string().min(8),
-  }),
-});
-
-const changePasswordSchema = z.object({
-  body: z.object({
-    currentPassword: z.string().min(1),
-    newPassword: z.string().min(8),
-  }),
-});
-
-const addStaffSchema = z.object({
-  body: z.object({
-    email: z.string().email(),
-    role: z.enum(['admin', 'staff', 'agent']),
-    password: z.union([z.string().min(8), z.literal('')]).optional(),
-  }),
-});
-
-const pushSubscriptionSchema = z.object({
-  body: z.object({
-    subscription: z.object({
-      endpoint: z.string().url(),
-      keys: z.object({
-        p256dh: z.string(),
-        auth: z.string()
-      })
-    })
-  })
-});
-
-const refreshTokenSchema = z.object({
-  body: z.object({
-    refreshToken: z.string().min(1)
-  })
-});
 
 // Auth Route Handlers
 router.post('/register', validate(registerSchema), authController.register);

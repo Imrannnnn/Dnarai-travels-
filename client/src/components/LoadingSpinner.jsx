@@ -29,15 +29,17 @@ export default function LoadingSpinner({
     }
 
     const isDone = status === 'success' || status === 'done';
+    const isError = status === 'error';
+    const isProcessing = !isDone && !isError;
 
     return (
         <div className="flex flex-col items-center justify-center gap-6">
             <div className="relative group">
                 {/* Outer decorative ring */}
-                <div className={`${sizeClasses[size]} absolute inset-0 rounded-full border-2 border-ocean-100 dark:border-slate-800 ${!isDone ? 'animate-pulse-slow' : 'border-emerald-500/30'}`} />
+                <div className={`${sizeClasses[size]} absolute inset-0 rounded-full border-2 border-ocean-100 dark:border-slate-800 ${isProcessing ? 'animate-pulse-slow' : (isDone ? 'border-emerald-500/30' : 'border-red-500/30')}`} />
 
                 {/* Spinning decorative orbit - only show when loading */}
-                {!isDone && (
+                {isProcessing && (
                     <div className={`${sizeClasses[size]} absolute inset-0 rounded-full border-t-2 border-ocean-500 animate-spin-slow opacity-60`} />
                 )}
 
@@ -46,6 +48,10 @@ export default function LoadingSpinner({
                     {isDone ? (
                         <div className="bg-emerald-500 rounded-full p-3 shadow-lg shadow-emerald-500/20 animate-in zoom-in duration-300">
                             <Lucide.Check size={size === 'sm' ? 16 : 32} className="text-white" strokeWidth={4} />
+                        </div>
+                    ) : isError ? (
+                        <div className="bg-red-500 rounded-full p-3 shadow-lg shadow-red-500/20 animate-in zoom-in duration-300">
+                            <Lucide.AlertCircle size={size === 'sm' ? 16 : 32} className="text-white" strokeWidth={4} />
                         </div>
                     ) : (
                         <div className="animate-pulse-slow">
@@ -58,7 +64,7 @@ export default function LoadingSpinner({
                     )}
 
                     {/* Shine effect overlay - only show when loading */}
-                    {!isDone && (
+                    {isProcessing && (
                         <div
                             className="absolute inset-0 animate-shine rounded-full"
                             style={{
@@ -71,16 +77,16 @@ export default function LoadingSpinner({
                 </div>
 
                 {/* Pulsing glow ring */}
-                <div className={`${sizeClasses[size]} absolute inset-0 rounded-full border border-ocean-400/20 animate-ping opacity-20`} />
+                <div className={`${sizeClasses[size]} absolute inset-0 rounded-full border ${isError ? 'border-red-400/20' : 'border-ocean-400/20'} animate-ping opacity-20`} />
             </div>
 
             {message && (
                 <div className="space-y-2 text-center">
-                    <p className={`${textSizeClasses[size]} font-black uppercase tracking-[0.3em] ${isDone ? 'text-emerald-500' : 'text-slate-800 dark:text-white'} animate-pulse`}>
-                        {isDone ? 'Action Completed' : message}
+                    <p className={`${textSizeClasses[size]} font-black uppercase tracking-[0.3em] ${isDone ? 'text-emerald-500' : isError ? 'text-red-500' : 'text-slate-800 dark:text-white'} ${isProcessing ? 'animate-pulse' : ''}`}>
+                        {isDone ? 'Action Completed' : isError ? `Error: ${message}` : message}
                     </p>
-                    <div className={`h-0.5 w-12 mx-auto rounded-full overflow-hidden transition-all duration-500 ${isDone ? 'bg-emerald-500 w-24' : 'bg-gradient-to-r from-transparent via-ocean-500 to-transparent'}`}>
-                        {!isDone && (
+                    <div className={`h-0.5 w-12 mx-auto rounded-full overflow-hidden transition-all duration-500 ${isDone ? 'bg-emerald-500 w-24' : isError ? 'bg-red-500 w-24' : 'bg-gradient-to-r from-transparent via-ocean-500 to-transparent'}`}>
+                        {isProcessing && (
                             <div className="h-full w-full bg-white/50 animate-shine" style={{ backgroundSize: '200% 100%' }} />
                         )}
                     </div>
