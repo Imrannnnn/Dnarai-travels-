@@ -246,6 +246,40 @@ export const EmailService = {
     }
   },
 
+  async sendRegistrationWelcomeEmail({ email, fullName, loginUrl }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const content = `
+      <tr>
+        <td style="padding: 60px 40px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: ${COLORS.NAVY};">Welcome to Dnarai Travel</h1>
+          <p style="margin: 20px 0 0 0; font-size: 16px; color: ${COLORS.SLATE}; line-height: 1.6;">Hello ${fullName || 'Traveler'}, your account has been successfully created.</p>
+          <div style="margin: 40px 0; padding: 30px; background-color: #f1f5f9; border-radius: 20px; text-align: left;">
+            <p style="margin: 0 0 15px 0; font-size: 14px; font-weight: 800; color: ${COLORS.NAVY};">Your Login Details</p>
+            <p style="margin: 0; font-size: 14px;"><strong>Username:</strong> ${email}</p>
+          </div>
+          <a href="${loginUrl}" style="display: inline-block; padding: 18px 40px; background-color: ${COLORS.NAVY}; color: white; text-decoration: none; border-radius: 12px; font-weight: 700;">Login to Your Account</a>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
+        to: email,
+        subject: 'Welcome to Dnarai Travel',
+        html: getEmailWrapper(content, 'Your account has been created.'),
+        attachments: getAttachments()
+      });
+      console.log(`✉️ Registration welcome email sent to ${email}`);
+      return { ok: true };
+    } catch (error) {
+      console.error('Email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
   async sendBookingRequestNotification({ adminEmail, passengerName, requestDetails, passengerEmail, passengerPhone }) {
     const transporter = getTransporter();
     if (!transporter) return { ok: false, error: 'Transporter not configured' };

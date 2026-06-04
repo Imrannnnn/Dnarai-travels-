@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
+import { EmailService } from '../services/EmailService.js';
 
 /**
  * Controller for authentication and user management
@@ -33,6 +34,14 @@ export const authController = {
                 passwordHash,
                 role: role || 'passenger'
             });
+
+            // Send registration welcome email in the background
+            const loginUrl = `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/login`;
+            EmailService.sendRegistrationWelcomeEmail({
+                email: user.email,
+                fullName: '',
+                loginUrl
+            }).catch(err => console.error("Failed to send registration email:", err));
 
             res.json({ id: user._id, email: user.email, role: user.role });
         } catch (err) {
