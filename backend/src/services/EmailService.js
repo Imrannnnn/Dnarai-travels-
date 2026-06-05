@@ -342,19 +342,116 @@ export const EmailService = {
     const transporter = getTransporter();
     if (!transporter) return { ok: false, error: 'Transporter not configured' };
 
+    // Fetch live destination weather
+    const { WeatherService } = await import('./WeatherService.js');
+    const weather = await WeatherService.getCityForecast({ city: booking.destination?.city || 'the destination' });
+
+    // Format departure date & time
+    const departureDate = booking.departureDateTimeUtc
+      ? new Date(booking.departureDateTimeUtc).toLocaleDateString('en-GB', {
+          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+        })
+      : 'TBC';
+
+    const departureTime = booking.departureTime24
+      ? booking.departureTime24
+      : (booking.departureDateTimeUtc
+          ? new Date(booking.departureDateTimeUtc).toLocaleTimeString('en-GB', {
+              hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false
+            })
+          : 'TBC');
+
+    // Weather icon mapping (text-based for email clients)
+    const weatherIcon = { sun: '☀️', cloudSun: '⛅', cloud: '☁️', rain: '🌧️', snow: '❄️', storm: '⛈️' }[weather.type] || '🌤️';
+
     const content = `
       <tr>
-        <td style="background-color: ${COLORS.NAVY}; padding: 40px; text-align: center; color: white;">
-          <h1 style="margin: 0;">Ticket Issued</h1>
+        <td style="background: linear-gradient(135deg, ${COLORS.NAVY} 0%, #1e3a5f 100%); padding: 50px 40px; text-align: center; color: white;">
+          <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 800; color: ${COLORS.GOLD}; text-transform: uppercase; letter-spacing: 3px;">Dnarai Travel</p>
+          <h1 style="margin: 0; font-size: 32px; font-weight: 900; letter-spacing: -1px;">Ticket Confirmed ✅</h1>
+          <p style="margin: 12px 0 0 0; font-size: 15px; opacity: 0.8;">Your itinerary is locked in. Have a great journey!</p>
         </td>
       </tr>
       <tr>
         <td style="padding: 40px;">
-          <div style="border: 2px solid ${COLORS.NAVY}; border-radius: 16px; padding: 30px; text-align: center;">
-            <div style="font-size: 24px; font-weight: 900;">${booking.origin?.iata || 'DEP'} ✈️ ${booking.destination?.iata || 'ARR'}</div>
-            <p>${booking.airlineName} - ${booking.flightNumber}</p>
-            <p><strong>Passenger:</strong> ${passenger.fullName}</p>
+
+          <!-- Greeting -->
+          <p style="margin: 0 0 30px 0; font-size: 16px; color: ${COLORS.SLATE}; line-height: 1.6;">
+            Hello <strong style="color: ${COLORS.NAVY};">${passenger.fullName}</strong>, your flight ticket has been successfully issued. Here are your travel details:
+          </p>
+
+          <!-- Flight Card -->
+          <div style="border: 2px solid #e2e8f0; border-radius: 20px; overflow: hidden; margin-bottom: 30px;">
+            <!-- Route Header -->
+            <div style="background-color: #f8fafc; padding: 24px 28px; border-bottom: 1px solid #e2e8f0;">
+              <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1.5px;">Flight Route</p>
+              <div style="display: flex; align-items: center; font-size: 28px; font-weight: 900; color: ${COLORS.NAVY};">
+                <span>${booking.origin?.iata || 'DEP'}</span>
+                <span style="margin: 0 16px; font-size: 22px;">✈️</span>
+                <span>${booking.destination?.iata || 'ARR'}</span>
+              </div>
+              <p style="margin: 4px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};">
+                ${booking.origin?.city || ''} → ${booking.destination?.city || ''}
+              </p>
+            </div>
+
+            <!-- Details Grid -->
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td style="padding: 20px 28px; border-bottom: 1px solid #f1f5f9; width: 50%;">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">Airline</p>
+                  <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.NAVY};">${booking.airlineName}</p>
+                </td>
+                <td style="padding: 20px 28px; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9;">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">Flight No.</p>
+                  <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.NAVY};">${booking.flightNumber}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 20px 28px; border-bottom: 1px solid #f1f5f9;">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">📅 Departure Date</p>
+                  <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.NAVY};">${departureDate}</p>
+                </td>
+                <td style="padding: 20px 28px; border-bottom: 1px solid #f1f5f9; border-left: 1px solid #f1f5f9;">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">🕐 Departure Time</p>
+                  <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.NAVY};">${departureTime}</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 20px 28px;" colspan="2">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">Passenger</p>
+                  <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.NAVY};">${passenger.fullName}</p>
+                </td>
+              </tr>
+              ${booking.bookingReference ? `
+              <tr>
+                <td style="padding: 0 28px 20px;" colspan="2">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">Booking Reference (PNR)</p>
+                  <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.NAVY}; font-family: monospace;">${booking.bookingReference}</p>
+                </td>
+              </tr>` : ''}
+              ${booking.ticketNumber ? `
+              <tr>
+                <td style="padding: 0 28px 20px;" colspan="2">
+                  <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">Ticket Number</p>
+                  <p style="margin: 0; font-size: 15px; font-weight: 700; color: ${COLORS.NAVY}; font-family: monospace;">${booking.ticketNumber}</p>
+                </td>
+              </tr>` : ''}
+            </table>
           </div>
+
+          <!-- Destination Weather -->
+          <div style="margin-bottom: 30px; padding: 28px; background-color: ${COLORS.NAVY}; border-radius: 20px; color: white;">
+            <p style="margin: 0 0 12px 0; font-size: 11px; font-weight: 800; color: ${COLORS.GOLD}; text-transform: uppercase; letter-spacing: 2px;">🌍 Destination Weather — ${booking.destination?.city || 'Destination'}</p>
+            <div style="font-size: 30px; font-weight: 900; margin-bottom: 6px;">${weatherIcon} ${weather.tempC}°C &nbsp;<span style="font-size: 18px; font-weight: 400; opacity: 0.85;">${weather.desc}</span></div>
+            <p style="margin: 14px 0 0 0; font-size: 14px; opacity: 0.9; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px;"><strong>Packing Tip:</strong> ${weather.advice}</p>
+          </div>
+
+          <!-- Footer Note -->
+          <p style="margin: 0; font-size: 13px; color: ${COLORS.SLATE}; line-height: 1.6; font-style: italic; text-align: center;">
+            "Our services end only when you arrive safely at your destination."<br>Safe travels from the Dnarai Travel team. ✈️
+          </p>
+
         </td>
       </tr>
     `;
@@ -363,8 +460,8 @@ export const EmailService = {
       await transporter.sendMail({
         from: `"Dnarai Travel" <${process.env.EMAIL}>`,
         to: passenger.email,
-        subject: `Confirmed: ${booking.flightNumber}`,
-        html: getEmailWrapper(content, 'Booking confirmed.'),
+        subject: `✈️ Ticket Confirmed: ${booking.flightNumber} — ${booking.origin?.city || booking.origin?.iata || 'DEP'} to ${booking.destination?.city || booking.destination?.iata || 'ARR'} on ${departureDate}`,
+        html: getEmailWrapper(content, `Your ticket for ${booking.flightNumber} is confirmed. Departing ${departureDate} at ${departureTime}.`),
         attachments: getAttachments()
       });
       return { ok: true };
