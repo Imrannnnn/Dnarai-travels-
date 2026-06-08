@@ -142,10 +142,10 @@ export async function fetchNotifications({ baseUrl, signal } = {}) {
   return request('/api/portal/notifications', { baseUrl, signal })
 }
 
-export async function submitBookingRequest({ departureCity, destination, date, notes, isReturn, returnDate, passengers, baseUrl, signal } = {}) {
+export async function submitBookingRequest({ departureCity, destination, date, notes, isReturn, returnDate, passengers, tripType, legs, baseUrl, signal } = {}) {
   return request('/api/portal/booking-requests', {
     method: 'POST',
-    body: { departureCity, destination, date, notes, isReturn, returnDate, passengers },
+    body: { departureCity, destination, date, notes, isReturn, returnDate, passengers, tripType, legs },
     baseUrl,
     signal
   })
@@ -163,6 +163,14 @@ export async function updateProfile({ fullName, phone, baseUrl }) {
   return request('/api/portal/update-profile', {
     method: 'POST',
     body: { fullName, phone },
+    baseUrl
+  })
+}
+
+export async function updatePassportAPI({ passportNumber, issueDate, dob, passportName, expiryDate, countryIssue, baseUrl }) {
+  return request('/api/portal/update-passport', {
+    method: 'POST',
+    body: { passportNumber, issueDate, dob, passportName, expiryDate, countryIssue },
     baseUrl
   })
 }

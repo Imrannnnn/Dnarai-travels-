@@ -14,7 +14,7 @@ function IconForType({ type, title }) {
   return <Plane size={24} />
 }
 
-export default function NotificationItem({ item, onMarkRead }) {
+export default function NotificationItem({ item, onMarkRead, onViewDetails }) {
   const iconTone = item.alert
     ? 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
     : item.type === 'weather'
@@ -80,7 +80,9 @@ export default function NotificationItem({ item, onMarkRead }) {
           )}
           onClick={(e) => {
             e.stopPropagation()
-            // Action logic if needed
+            if (item.bookingId && onViewDetails) {
+              onViewDetails(item.bookingId)
+            }
           }}
         >
           {item.actionLabel || 'Details'}

@@ -86,6 +86,49 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* --- VISION & MISSION --- */}
+      <section className="py-24 bg-gradient-to-br from-dnarai-navy-900 via-dnarai-navy-800 to-dnarai-navy-900 text-white relative overflow-hidden px-6 border-b border-white/5">
+        {/* Background glow orbs */}
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-dnarai-gold-500/10 blur-[100px] rounded-full pointer-events-none animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-ocean-500/15 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="container mx-auto max-w-[1400px] relative z-10">
+          <div className="grid md:grid-cols-2 gap-12">
+            {/* Vision Card */}
+            <div className="relative group bg-white/5 border border-white/10 rounded-3xl p-10 flex flex-col justify-between hover:bg-white/10 transition-all duration-300 shadow-xl">
+              <div className="space-y-6">
+                <div className="h-12 w-12 rounded-2xl bg-dnarai-gold-500/20 text-dnarai-gold-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Lucide.Eye size={24} />
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-dnarai-gold-400">Our Vision</h3>
+                  <p className="text-2xl md:text-3xl font-black font-display leading-snug">
+                    That all our clients have a satisfactory experience throughout their Journey.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Mission Card */}
+            <div className="relative group bg-white/5 border border-white/10 rounded-3xl p-10 flex flex-col justify-between hover:bg-white/10 transition-all duration-300 shadow-xl">
+              <div className="space-y-6">
+                <div className="h-12 w-12 rounded-2xl bg-ocean-500/20 text-ocean-300 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                  <Lucide.Compass size={24} />
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-ocean-400">Our Mission</h3>
+                  <p className="text-2xl md:text-3xl font-black font-display leading-snug">
+                    To bridge all Air travel gaps.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* --- STATS SECTION --- */}
       <section className="bg-sand-50 py-24 border-y border-sand-200 dark:bg-slate-950 dark:border-slate-800 relative z-20">
         <div className="container mx-auto max-w-[1400px] px-6">
@@ -163,7 +206,7 @@ export default function HomePage() {
       <section className="py-24 px-6">
         <div className="container mx-auto max-w-[1400px]">
           <div className="relative overflow-hidden rounded-[3.5rem] bg-slate-900 p-8 md:p-20 shadow-2xl">
-             {/* Decorative background */}
+            {/* Decorative background */}
             <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-ocean-600/20 to-transparent pointer-events-none" />
             <Lucide.Globe className="absolute -bottom-20 -right-20 h-96 w-96 text-ocean-500/10 animate-spin-slow pointer-events-none" />
 
@@ -391,11 +434,24 @@ export default function HomePage() {
             <div className="space-y-5">
               <h5 className="text-xs font-bold uppercase tracking-wider text-ocean-400">Connect</h5>
               <div className="flex gap-3">
-                {['Facebook', 'Instagram', 'Twitter'].map(social => (
-                  <div key={social} className="h-10 w-10 rounded-xl bg-white/5 hover:bg-ocean-600 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110">
-                    <Lucide.Globe size={18} />
-                  </div>
-                ))}
+                <a
+                  href="https://web.facebook.com/D.NaraiEnterprise?_rdc=1&_rdr#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-10 w-10 rounded-xl bg-white/5 hover:bg-ocean-600 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110"
+                  aria-label="Facebook"
+                >
+                  <Lucide.Facebook size={18} />
+                </a>
+                <a
+                  href="https://www.instagram.com/d.naraienterprise?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw=="
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-10 w-10 rounded-xl bg-white/5 hover:bg-ocean-600 flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-110"
+                  aria-label="Instagram"
+                >
+                  <Lucide.Instagram size={18} />
+                </a>
               </div>
             </div>
           </div>

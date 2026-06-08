@@ -13,7 +13,7 @@ const Plane = Lucide.Plane
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { flights, passenger, addBooking, clearFlight, completeFlight } = useAppData()
+  const { flights, passenger, addBooking, clearFlight } = useAppData()
   const [selectedFlight, setSelectedFlight] = useState(null)
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState('upcoming') // 'upcoming' | 'history'
@@ -190,10 +190,6 @@ export default function DashboardPage() {
             clearFlight(selectedFlight.id)
             setSelectedFlight(null)
           }
-        }}
-        onComplete={() => {
-          completeFlight(selectedFlight.id)
-          setSelectedFlight(null)
         }}
       />
     </div>

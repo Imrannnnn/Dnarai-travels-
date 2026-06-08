@@ -128,6 +128,7 @@ export default function SuperAdminPage() {
     const [onboardingSuccess, setOnboardingSuccess] = useState(null)
     const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { passenger: {...} }
     const [isEditBookingModalOpen, setIsEditBookingModalOpen] = useState(false)
+    const [showPassportAccordion, setShowPassportAccordion] = useState(false)
     const [isAllNotificationsModalOpen, setIsAllNotificationsModalOpen] = useState(false)
     const [bookingFilter, setBookingFilter] = useState('recent') // 'recent' or 'all'
     const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false)
@@ -1465,11 +1466,54 @@ export default function SuperAdminPage() {
                                                 </a>
                                             )}
                                         </div>
-                                        <div className="bg-slate-50 rounded-xl p-4">
-                                            <div className="text-xs font-bold text-slate-500 uppercase mb-1">Document</div>
-                                            <div className="text-sm font-medium text-slate-900">
-                                                {selectedPassenger.documentNumberMasked || 'Not provided'}
-                                            </div>
+                                        <div className="bg-slate-50 rounded-xl border border-slate-200/50 overflow-hidden">
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassportAccordion(!showPassportAccordion)}
+                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-100 transition-colors text-left"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Lucide.ShieldCheck className="text-ocean-600 h-4 w-4" />
+                                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Passport Details</span>
+                                                </div>
+                                                <div className="text-slate-400">
+                                                    {showPassportAccordion ? <Lucide.ChevronUp size={16} /> : <Lucide.ChevronDown size={16} />}
+                                                </div>
+                                            </button>
+                                            {showPassportAccordion && (
+                                                <div className="p-4 bg-white border-t border-slate-200/50 grid grid-cols-2 gap-3 animate-in fade-in duration-300">
+                                                    <div className="col-span-2">
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name on Passport</div>
+                                                        <div className="text-sm font-bold text-slate-900">{selectedPassenger.passportName || 'Not provided'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Passport Number</div>
+                                                        <div className="text-sm font-bold text-slate-900">{selectedPassenger.documentNumberFull || 'Not provided'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Country of Issue</div>
+                                                        <div className="text-sm font-bold text-slate-900">{selectedPassenger.passportCountryIssue || 'Not provided'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date of Birth (DOB)</div>
+                                                        <div className="text-sm font-bold text-slate-900">
+                                                            {selectedPassenger.passportDob ? new Date(selectedPassenger.passportDob).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Issue Date</div>
+                                                        <div className="text-sm font-bold text-slate-900">
+                                                            {selectedPassenger.passportIssueDate ? new Date(selectedPassenger.passportIssueDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
+                                                        </div>
+                                                    </div>
+                                                    <div className="col-span-2 border-t border-slate-100 pt-2 mt-1">
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expiry Date</div>
+                                                        <div className="text-sm font-bold text-slate-900">
+                                                            {selectedPassenger.documentExpiryDate ? new Date(selectedPassenger.documentExpiryDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -3090,11 +3134,22 @@ export default function SuperAdminPage() {
                     {/* Totals Section */}
                     <div className="flex justify-between items-start mb-16">
                         <div className="max-w-[300px]">
-                            <h3 className="text-[10px] font-black text-ocean-600 uppercase tracking-[0.2em] mb-3">Payment Instructions</h3>
-                            <p className="text-[10px] leading-relaxed text-slate-500">
-                                Please ensure payment is made to the designated D.NARAI ENTERPRISE bank account. 
-                                Mention the invoice number <span className="font-bold text-slate-900">#{selectedInvoiceForShare.invoiceNumber}</span> as reference.
-                            </p>
+                            {!(selectedInvoiceForShare.isPaid || selectedInvoiceForShare.balanceDue === 0) && (
+                                <>
+                                    <h3 className="text-[10px] font-black text-ocean-600 uppercase tracking-[0.2em] mb-3">Payment Instructions</h3>
+                                    <div className="text-[10px] leading-relaxed text-slate-500 space-y-2">
+                                        <p>
+                                            Please ensure payment is made to the designated bank account below. 
+                                            Mention the invoice number <span className="font-bold text-slate-900">#{selectedInvoiceForShare.invoiceNumber}</span> as reference.
+                                        </p>
+                                        <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1 font-semibold text-slate-800">
+                                            <p><span className="text-slate-400 font-bold uppercase tracking-wider text-[8px] mr-1">Bank:</span> GTBank</p>
+                                            <p><span className="text-slate-400 font-bold uppercase tracking-wider text-[8px] mr-1">Account:</span> D.Narai Enterprise LTD</p>
+                                            <p><span className="text-slate-400 font-bold uppercase tracking-wider text-[8px] mr-1">Number:</span> 0706119674</p>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
                         </div>
                         <div className="w-72 space-y-4">
                             <div className="flex justify-between items-center text-sm">
@@ -3140,7 +3195,7 @@ export default function SuperAdminPage() {
                     {/* Footer */}
                     <div className="pt-10 border-t border-slate-100 text-center">
                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                            &quot;Our Service Ends When You Have Arrived Your Destination Successfully.&quot;
+                            &quot;Our Service End when you successfully arrive your destination.&quot;
                         </p>
                     </div>
                 </div>

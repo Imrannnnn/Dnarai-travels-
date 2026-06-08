@@ -1,5 +1,4 @@
 import PageHeader from '../components/PageHeader'
-import DocumentCard from '../components/DocumentCard'
 import clsx from 'clsx'
 import * as Lucide from 'lucide-react'
 import PassportUploadModal from '../components/PassportUploadModal'
@@ -273,25 +272,62 @@ export default function ProfilePage() {
               <div className="mb-8 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-1.5 rounded-full bg-coral-500" />
-                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight font-display">Verified Documents</h3>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight font-display">Verified Passport Details</h3>
                 </div>
                 <button
                   onClick={() => setUploadModalOpen(true)}
                   className="text-[10px] font-black uppercase text-ocean-600 py-1.5 px-4 rounded-full border border-ocean-600/20 hover:bg-ocean-50 transition-colors"
                 >
-                  Upload New
+                  {passenger?.passportNumber ? 'Update Details' : 'Fill Details'}
                 </button>
               </div>
 
-              <div className="grid gap-5 sm:grid-cols-2">
-                {documents.length > 0 ? (
-                  documents.map((d) => <DocumentCard key={d.id} doc={d} />)
-                ) : (
-                  <div className="col-span-full py-10 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No documents verified yet</p>
+              {passenger?.passportNumber ? (
+                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Name on Passport</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">{passenger.passportName || 'N/A'}</div>
                   </div>
-                )}
-              </div>
+                  <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Passport Number</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">
+                      {'**** ' + passenger.passportNumber.slice(-4)}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Country of Issue</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">{passenger.passportCountryIssue || 'N/A'}</div>
+                  </div>
+                  <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Date of Birth (DOB)</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">
+                      {passenger.passportDob ? new Date(passenger.passportDob).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Issue Date</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">
+                      {passenger.passportIssueDate ? new Date(passenger.passportIssueDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-sand-100 bg-sand-50/30 p-4 dark:border-slate-800/50 dark:bg-slate-950/50">
+                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Expiry Date</div>
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">
+                      {passenger.passportExpiryDate ? new Date(passenger.passportExpiryDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="py-10 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">No passport details filled yet</p>
+                  <button
+                    onClick={() => setUploadModalOpen(true)}
+                    className="text-[10px] font-black uppercase text-white bg-ocean-600 hover:bg-ocean-700 py-2 px-6 rounded-xl shadow-md transition-all"
+                  >
+                    Provide Details
+                  </button>
+                </div>
+              )}
             </section>
           )}
         </div>
@@ -301,7 +337,8 @@ export default function ProfilePage() {
         open={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         onUpload={uploadPassport}
+        passenger={passenger}
       />
-    </div >
+    </div>
   )
 }

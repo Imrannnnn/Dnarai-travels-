@@ -11,9 +11,16 @@ const Calendar = Lucide.Calendar
 const MapPin = Lucide.MapPin
 const User = Lucide.User
 const Phone = Lucide.Phone
+const Plus = Lucide.Plus
+const Trash2 = Lucide.Trash2
 
 export default function BookingModal({ open, onClose, onSubmit }) {
     const { updatePassengerProfile } = useAppData()
+    const [tripType, setTripType] = useState('return') // 'oneway' | 'return' | 'multicity'
+    const [legs, setLegs] = useState([
+        { departureCity: '', destination: '', departureIata: '', destinationIata: '', date: '' },
+        { departureCity: '', destination: '', departureIata: '', destinationIata: '', date: '' }
+    ])
     const [formData, setFormData] = useState({
         departureCity: '',
         destination: '',
@@ -41,12 +48,45 @@ export default function BookingModal({ open, onClose, onSubmit }) {
         setErrorMessage('')
 
         try {
-            await onSubmit(formData)
+            const payload = {
+                tripType,
+                passengers: formData.passengers,
+                notes: formData.notes
+            }
+
+            if (tripType === 'multicity') {
+                payload.departureCity = legs[0].departureCity
+                payload.departureIata = legs[0].departureIata
+                payload.destination = legs[legs.length - 1].destination
+                payload.destinationIata = legs[legs.length - 1].destinationIata
+                payload.date = legs[0].date
+                payload.isReturn = false
+                payload.returnDate = ''
+                payload.legs = legs
+            } else {
+                payload.departureCity = formData.departureCity
+                payload.departureIata = formData.departureIata
+                payload.destination = formData.destination
+                payload.destinationIata = formData.destinationIata
+                payload.date = formData.date
+                payload.isReturn = tripType === 'return'
+                payload.returnDate = tripType === 'return' ? formData.returnDate : ''
+                payload.legs = []
+            }
+
+            await onSubmit(payload)
             setStatus('success')
+            
+            // Reset forms
             setFormData({
-                departureCity: '', destination: '', date: '', notes: '',
+                departureCity: '', departureIata: '', destination: '', destinationIata: '', date: '', notes: '',
                 isReturn: false, returnDate: '', passengers: { adults: 1, children: 0, infants: 0 }
             })
+            setTripType('return')
+            setLegs([
+                { departureCity: '', destination: '', departureIata: '', destinationIata: '', date: '' },
+                { departureCity: '', destination: '', departureIata: '', destinationIata: '', date: '' }
+            ])
 
             setTimeout(() => {
                 onClose()
@@ -198,76 +238,203 @@ export default function BookingModal({ open, onClose, onSubmit }) {
                             {errorMessage}
                         </div>
                     )}
-                    <div className="space-y-4">
-                        <AirportAutocomplete
-                            label="Departing From"
-                            icon={Plane}
-                            value={formData.departureCity}
-                            onChange={(val) => setFormData(prev => ({ ...prev, departureCity: val }))}
-                            onSelect={(airport) => setFormData(prev => ({ ...prev, departureIata: airport.iata }))}
-                            placeholder="Origin City or Airport Code"
-                            required
-                        />
-
-                        <AirportAutocomplete
-                            label="Where to?"
-                            icon={MapPin}
-                            value={formData.destination}
-                            onChange={(val) => setFormData(prev => ({ ...prev, destination: val }))}
-                            onSelect={(airport) => setFormData(prev => ({ ...prev, destinationIata: airport.iata }))}
-                            placeholder="City, Country or Airport Code"
-                            required
-                        />
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
-                                    Departure Date
-                                </label>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Calendar size={18} />
-                                    </div>
-                                    <input
-                                        type="date"
-                                        required
-                                        className="w-full rounded-2xl border border-sand-200 bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
-                                        value={formData.date}
-                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <label className={`text-xs font-bold uppercase tracking-widest ${formData.isReturn ? 'text-ocean-600 dark:text-ocean-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                        Return Flight?
-                                    </label>
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.isReturn}
-                                        onChange={(e) => setFormData({ ...formData, isReturn: e.target.checked })}
-                                        className="h-4 w-4 rounded border-slate-300 text-ocean-600 focus:ring-ocean-600"
-                                    />
-                                </div>
-                                <div className="relative">
-                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                        <Calendar size={18} />
-                                    </div>
-                                    <input
-                                        type="date"
-                                        disabled={!formData.isReturn}
-                                        required={formData.isReturn}
-                                        className={`w-full rounded-2xl border bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:bg-slate-900 dark:text-white transition-all ${formData.isReturn
-                                            ? 'border-sand-200 text-slate-900 dark:border-slate-800'
-                                            : 'border-transparent text-slate-400 bg-slate-100 dark:bg-slate-800/50 cursor-not-allowed'
-                                            }`}
-                                        value={formData.returnDate}
-                                        onChange={(e) => setFormData({ ...formData, returnDate: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                    <div className="space-y-5">
+                        {/* Journey Type Selector */}
+                        <div className="p-1 bg-slate-100 dark:bg-slate-900/80 rounded-2xl flex items-center border border-slate-200/50 dark:border-slate-800/50">
+                            {[
+                                { id: 'oneway', label: 'One Way' },
+                                { id: 'return', label: 'Return Ticket' },
+                                { id: 'multicity', label: 'Multi-city' }
+                            ].map((type) => (
+                                <button
+                                    key={type.id}
+                                    type="button"
+                                    onClick={() => setTripType(type.id)}
+                                    className={`flex-1 rounded-xl py-2.5 text-[10px] md:text-xs font-black uppercase tracking-wider transition-all duration-300 active:scale-95 ${
+                                        tripType === type.id
+                                            ? 'bg-white dark:bg-slate-800 text-ocean-600 dark:text-ocean-400 shadow-md scale-[1.01] border border-black/5 dark:border-white/5'
+                                            : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-300'
+                                    }`}
+                                >
+                                    {type.label}
+                                </button>
+                            ))}
                         </div>
+
+                        {tripType !== 'multicity' ? (
+                            <div className="space-y-4">
+                                <AirportAutocomplete
+                                    label="Departing From"
+                                    icon={Plane}
+                                    value={formData.departureCity}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, departureCity: val }))}
+                                    onSelect={(airport) => setFormData(prev => ({ ...prev, departureIata: airport.iata }))}
+                                    placeholder="Origin City or Airport Code"
+                                    required
+                                />
+
+                                <AirportAutocomplete
+                                    label="Where to?"
+                                    icon={MapPin}
+                                    value={formData.destination}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, destination: val }))}
+                                    onSelect={(airport) => setFormData(prev => ({ ...prev, destinationIata: airport.iata }))}
+                                    placeholder="City, Country or Airport Code"
+                                    required
+                                />
+
+                                {tripType === 'oneway' ? (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                            Departure Date
+                                        </label>
+                                        <div className="relative">
+                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                <Calendar size={18} />
+                                            </div>
+                                            <input
+                                                type="date"
+                                                required
+                                                className="w-full rounded-2xl border border-sand-200 bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                                                value={formData.date}
+                                                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                                Departure Date
+                                            </label>
+                                            <div className="relative">
+                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                    <Calendar size={18} />
+                                                </div>
+                                                <input
+                                                    type="date"
+                                                    required
+                                                    className="w-full rounded-2xl border border-sand-200 bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                                                    value={formData.date}
+                                                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold uppercase tracking-widest text-ocean-600 dark:text-ocean-400">
+                                                Return Date
+                                            </label>
+                                            <div className="relative">
+                                                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                    <Calendar size={18} />
+                                                </div>
+                                                <input
+                                                    type="date"
+                                                    required
+                                                    className="w-full rounded-2xl border border-sand-200 bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                                                    value={formData.returnDate}
+                                                    onChange={(e) => setFormData({ ...formData, returnDate: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="space-y-5 animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Flights / Leg Details</h4>
+                                    <span className="text-[10px] bg-ocean-50 text-ocean-600 dark:bg-ocean-950/30 dark:text-ocean-400 font-bold px-2.5 py-1 rounded-full border border-ocean-100/50 dark:border-ocean-900/30">
+                                        {legs.length} Legs
+                                    </span>
+                                </div>
+                                <div className="space-y-4 max-h-[260px] overflow-y-auto pr-1">
+                                    {legs.map((leg, index) => (
+                                        <div key={index} className="p-4 bg-slate-50 dark:bg-slate-900/40 border border-slate-200/50 dark:border-slate-800 rounded-2xl relative space-y-4 shadow-sm">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs font-black uppercase tracking-widest text-ocean-600 dark:text-ocean-400">Flight {index + 1}</span>
+                                                {legs.length > 2 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setLegs(legs.filter((_, idx) => idx !== index));
+                                                        }}
+                                                        className="text-[10px] font-bold text-red-500 hover:text-red-700 hover:underline uppercase tracking-wider flex items-center gap-1"
+                                                    >
+                                                        <Trash2 size={12} /> Remove
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <AirportAutocomplete
+                                                label="Departing From"
+                                                icon={Plane}
+                                                value={leg.departureCity}
+                                                onChange={(val) => {
+                                                    const newLegs = [...legs];
+                                                    newLegs[index].departureCity = val;
+                                                    setLegs(newLegs);
+                                                }}
+                                                onSelect={(airport) => {
+                                                    const newLegs = [...legs];
+                                                    newLegs[index].departureIata = airport.iata;
+                                                    setLegs(newLegs);
+                                                }}
+                                                placeholder="Origin City or Airport Code"
+                                                required
+                                            />
+                                            <AirportAutocomplete
+                                                label="Where to?"
+                                                icon={MapPin}
+                                                value={leg.destination}
+                                                onChange={(val) => {
+                                                    const newLegs = [...legs];
+                                                    newLegs[index].destination = val;
+                                                    setLegs(newLegs);
+                                                }}
+                                                onSelect={(airport) => {
+                                                    const newLegs = [...legs];
+                                                    newLegs[index].destinationIata = airport.iata;
+                                                    setLegs(newLegs);
+                                                }}
+                                                placeholder="City, Country or Airport Code"
+                                                required
+                                            />
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                                                    Departure Date
+                                                </label>
+                                                <div className="relative">
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                                        <Calendar size={18} />
+                                                    </div>
+                                                    <input
+                                                        type="date"
+                                                        required
+                                                        className="w-full rounded-2xl border border-sand-200 bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
+                                                        value={leg.date}
+                                                        onChange={(e) => {
+                                                            const newLegs = [...legs];
+                                                            newLegs[index].date = e.target.value;
+                                                            setLegs(newLegs);
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setLegs([...legs, { departureCity: '', destination: '', departureIata: '', destinationIata: '', date: '' }]);
+                                    }}
+                                    className="w-full py-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-ocean-600 dark:text-ocean-400 border border-dashed border-slate-300 dark:border-slate-700 hover:border-ocean-500 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-sm hover:shadow active:scale-98"
+                                >
+                                    <Plus size={16} /> Add Next Leg / City
+                                </button>
+                            </div>
+                        )}
 
                         <div className="space-y-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                             <label className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 block mb-2">

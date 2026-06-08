@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchFlights, fetchNotifications, fetchPassenger, getApiBaseUrl, submitBookingRequest, cancelBookingAPI, updateProfile } from './api'
+import { fetchFlights, fetchNotifications, fetchPassenger, getApiBaseUrl, submitBookingRequest, cancelBookingAPI, updateProfile, updatePassportAPI } from './api'
 import { useAuth } from './AuthContext'
 import airportsData from '../../airports.json'
 
@@ -87,22 +87,31 @@ export function AppDataProvider({ children }) {
 
         if (p) {
           setPassenger({
+            id: p.id || p._id,
             name: p.fullName || p.name,
             fullName: p.fullName,
             email: p.email,
             phone: p.phone,
-            membership: 'Premium Member', // Could come from backend
+            membership: 'Premium Member',
+            passportNumber: p.documentNumberFull || '',
+            passportName: p.passportName || '',
+            passportDob: p.passportDob || '',
+            passportIssueDate: p.passportIssueDate || '',
+            passportExpiryDate: p.documentExpiryDate || '',
+            passportCountryIssue: p.passportCountryIssue || '',
           })
 
-          if (p.documentNumber) {
+          if (p.documentNumberFull) {
             setDocuments([{
               id: 'passport',
               icon: 'passport',
               title: 'International Passport',
-              maskedNumber: '**** ' + p.documentNumber.slice(-4),
-              expiry: new Date(p.documentExpiryDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+              maskedNumber: p.documentNumberMasked || ('**** ' + p.documentNumberFull.slice(-4)),
+              expiry: p.documentExpiryDate ? new Date(p.documentExpiryDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A',
               status: 'Verified'
             }])
+          } else {
+            setDocuments([])
           }
         }
 
@@ -140,7 +149,8 @@ export function AppDataProvider({ children }) {
             message: item.message,
             timeAgo: 'Recently',
             unread: !item.read,
-            actionLabel: 'View Details'
+            actionLabel: 'View Details',
+            bookingId: item.bookingId || item.meta?.bookingId || null,
           })))
         }
       } catch (err) {
@@ -174,6 +184,8 @@ export function AppDataProvider({ children }) {
         returnDate: booking.returnDate,
         passengers: booking.passengers,
         notes: booking.notes,
+        tripType: booking.tripType,
+        legs: booking.legs,
         baseUrl
       })
       console.log('📋 Booking request submitted, refreshing notifications...')
@@ -187,7 +199,8 @@ export function AppDataProvider({ children }) {
           message: item.message,
           timeAgo: 'Recently',
           unread: !item.read,
-          actionLabel: 'View Details'
+          actionLabel: 'View Details',
+          bookingId: item.bookingId || item.meta?.bookingId || null,
         })))
       }
       console.log('📋 Notifications refreshed successfully')
@@ -236,7 +249,8 @@ export function AppDataProvider({ children }) {
           message: item.message,
           timeAgo: 'Recently',
           unread: !item.read,
-          actionLabel: 'View Details'
+          actionLabel: 'View Details',
+          bookingId: item.bookingId || item.meta?.bookingId || null,
         })));
       }
     } catch (err) {
@@ -297,9 +311,44 @@ export function AppDataProvider({ children }) {
     }
   }, [])
 
-  const uploadPassport = useCallback((data) => {
-    console.log('Passport Upload:', data)
-    // This would ideally hit an API endpoint like PATCH /api/passengers/:id/documents
+  const uploadPassport = useCallback(async (data) => {
+    console.log('Passport Details Update:', data)
+    const baseUrl = getApiBaseUrl()
+    const updated = await updatePassportAPI({
+      passportNumber: data.passportNumber,
+      issueDate: data.issueDate,
+      dob: data.dob,
+      passportName: data.passportName,
+      expiryDate: data.expiryDate,
+      countryIssue: data.countryIssue,
+      baseUrl
+    })
+    
+    if (updated && updated.passenger) {
+      const p = updated.passenger
+      setPassenger(prev => ({
+        ...prev,
+        passportNumber: p.documentNumberFull || '',
+        passportName: p.passportName || '',
+        passportDob: p.passportDob || '',
+        passportIssueDate: p.passportIssueDate || '',
+        passportExpiryDate: p.documentExpiryDate || '',
+        passportCountryIssue: p.passportCountryIssue || '',
+      }))
+
+      if (p.documentNumberFull) {
+        setDocuments([{
+          id: 'passport',
+          icon: 'passport',
+          title: 'International Passport',
+          maskedNumber: p.documentNumberMasked || ('**** ' + p.documentNumberFull.slice(-4)),
+          expiry: p.documentExpiryDate ? new Date(p.documentExpiryDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'N/A',
+          status: 'Verified'
+        }])
+      } else {
+        setDocuments([])
+      }
+    }
   }, [])
 
 

@@ -4,6 +4,7 @@ import NotificationItem from '../components/NotificationItem'
 import clsx from 'clsx'
 import { useAppData } from '../data/AppDataContext'
 import * as Lucide from 'lucide-react'
+import FlightDetailsModal from '../components/FlightDetailsModal'
 
 const filters = [
   { id: 'all', label: 'All' },
@@ -14,7 +15,8 @@ const filters = [
 
 export default function NotificationsPage() {
   const [active, setActive] = useState('all')
-  const { notifications: items, unreadCount, markAllAsRead, markAsRead } = useAppData()
+  const { notifications: items, unreadCount, markAllAsRead, markAsRead, flights, clearFlight } = useAppData()
+  const [selectedFlight, setSelectedFlight] = useState(null)
 
   const filtered = useMemo(() => {
     if (active === 'all') return items
@@ -74,7 +76,17 @@ export default function NotificationsPage() {
         <div className="flex flex-col gap-4 lg:gap-6">
           {filtered.length > 0 ? (
             filtered.map((n) => (
-              <NotificationItem key={n.id} item={n} onMarkRead={markRead} />
+              <NotificationItem
+                key={n.id}
+                item={n}
+                onMarkRead={markRead}
+                onViewDetails={(bookingId) => {
+                  const flight = flights.find((f) => f.id === bookingId)
+                  if (flight) {
+                    setSelectedFlight(flight)
+                  }
+                }}
+              />
             ))
           ) : (
             <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -94,6 +106,17 @@ export default function NotificationsPage() {
           )}
         </div>
       </div>
+      <FlightDetailsModal
+        open={!!selectedFlight}
+        flight={selectedFlight}
+        onClose={() => setSelectedFlight(null)}
+        onClear={() => {
+          if (confirm('Are you sure you want to remove this flight?')) {
+            clearFlight(selectedFlight.id)
+            setSelectedFlight(null)
+          }
+        }}
+      />
     </div>
   )
 }
