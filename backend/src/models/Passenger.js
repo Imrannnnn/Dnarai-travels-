@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { encryptSensitive, maskLast4 } from '../utils/crypto.js';
+import { encryptSensitive, decryptSensitive, maskLast4 } from '../utils/crypto.js';
 
 const PassengerSchema = new mongoose.Schema(
   {
@@ -11,6 +11,11 @@ const PassengerSchema = new mongoose.Schema(
     documentNumberEnc: { type: String },
     documentNumberLast4: { type: String },
     documentExpiryDate: { type: Date },
+
+    passportIssueDate: { type: Date },
+    passportDob: { type: Date },
+    passportNameEnc: { type: String },
+    passportCountryIssue: { type: String },
   },
   { timestamps: true }
 );
@@ -21,6 +26,14 @@ PassengerSchema.methods.setDocumentNumber = function (plainNumber) {
   this.documentNumberLast4 = raw.slice(-4);
 };
 
+PassengerSchema.methods.setPassportName = function (plainName) {
+  if (plainName) {
+    this.passportNameEnc = encryptSensitive(String(plainName));
+  } else {
+    this.passportNameEnc = undefined;
+  }
+};
+
 PassengerSchema.methods.toSafeJSON = function () {
   return {
     id: this._id,
@@ -29,7 +42,12 @@ PassengerSchema.methods.toSafeJSON = function () {
     phone: this.phone,
     documentType: this.documentType,
     documentNumberMasked: maskLast4(this.documentNumberLast4),
+    documentNumberFull: this.documentNumberEnc ? decryptSensitive(this.documentNumberEnc) : '',
     documentExpiryDate: this.documentExpiryDate,
+    passportIssueDate: this.passportIssueDate,
+    passportDob: this.passportDob,
+    passportName: this.passportNameEnc ? decryptSensitive(this.passportNameEnc) : '',
+    passportCountryIssue: this.passportCountryIssue,
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };

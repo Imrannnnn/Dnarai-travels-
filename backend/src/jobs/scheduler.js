@@ -9,8 +9,8 @@ export function startSchedulers() {
     await runFlightReminderJob().catch((e) => console.error('[job] flightReminders', e));
   });
 
-  // Complete past flights: hourly
-  cron.schedule('0 * * * *', async () => {
+  // Complete past flights: every 15 minutes
+  cron.schedule('*/15 * * * *', async () => {
     await runAutoCompleteFlightsJob().catch((e) => console.error('[job] autoCompleteFlights', e));
   });
 

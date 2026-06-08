@@ -52,7 +52,7 @@ export const WeatherService = {
     return map[code] || { desc: 'Fair', type: 'cloudSun' };
   },
 
-  async getCityForecast({ city }) {
+  async getCityForecast({ city, date }) {
     try {
       // 1. Get Coordinates via Geocoding API
       const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
@@ -64,20 +64,54 @@ export const WeatherService = {
 
       const { latitude, longitude, name } = geoRes.data.results[0];
 
-      // 2. Get Weather via Forecast API
+      // 2. Get Weather via Forecast API (fetching 16 days daily forecast + current weather)
       const weatherUrl = `https://api.open-meteo.com/v1/forecast`;
       const { data } = await axios.get(weatherUrl, {
         params: {
           latitude,
           longitude,
           current_weather: true,
-          timezone: 'auto'
+          daily: 'temperature_2m_max,weathercode',
+          timezone: 'auto',
+          forecast_days: 16
         }
       });
 
-      const current = data.current_weather;
-      const { desc, type } = this.interpretWeatherCode(current.weathercode);
-      const tempC = Math.round(current.temperature);
+      let tempC = 22;
+      let weatherCode = 0;
+      let usedForecastDay = false;
+
+      let targetDateStr = null;
+      if (date) {
+        try {
+          targetDateStr = new Date(date).toISOString().split('T')[0];
+        } catch (e) {
+          console.warn(`[WeatherService] Invalid date passed: ${date}`);
+        }
+      }
+
+      if (targetDateStr && data.daily && data.daily.time) {
+        const index = data.daily.time.indexOf(targetDateStr);
+        if (index !== -1) {
+          tempC = Math.round(data.daily.temperature_2m_max[index]);
+          weatherCode = data.daily.weathercode[index];
+          usedForecastDay = true;
+        }
+      }
+
+      // Fallback to current weather if target date is not in the forecast window
+      if (!usedForecastDay) {
+        const current = data.current_weather || (data.daily && {
+          temperature: data.daily.temperature_2m_max[0],
+          weathercode: data.daily.weathercode[0]
+        });
+        if (current) {
+          tempC = Math.round(current.temperature);
+          weatherCode = current.weathercode;
+        }
+      }
+
+      const { desc, type } = this.interpretWeatherCode(weatherCode);
 
       // 3. Generate Advice
       const advice = this.getClothingAdvice(tempC);

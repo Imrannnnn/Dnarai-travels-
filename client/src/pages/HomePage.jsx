@@ -65,24 +65,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="relative hidden lg:block">
-            <div className="absolute -inset-10 bg-sky-500/20 blur-[100px] rounded-full opacity-50 animate-pulse" />
-            <div className="relative glass-card rounded-[3rem] p-4 border-white/5 shadow-2xl bg-white/5 backdrop-blur-sm">
-              <div className="bg-slate-900/80 rounded-[2.5rem] p-10 overflow-hidden relative border border-white/10">
-                <WavePlane label="Operational Flight Status" />
-                <div className="mt-10 grid grid-cols-2 gap-6">
-                  <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <div className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Network</div>
-                    <div className="text-lg font-black text-green-500 uppercase italic font-display">Active</div>
-                  </div>
-                  <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <div className="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Sync</div>
-                    <div className="text-lg font-black text-sky-400 uppercase italic font-display">Real-Time</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+
         </div>
       </section>
 

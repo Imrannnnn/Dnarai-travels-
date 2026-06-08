@@ -88,7 +88,10 @@ export const NotificationService = {
     const depart = booking.departureTime24 || '14:30';
     const messageBase = `Reminder: ${booking.flightNumber} ${booking.origin.city} → ${booking.destination.city} departs at ${to12Hour(depart)} (${timePeriod(depart)}).`;
 
-    const weather = await WeatherService.getCityForecast({ city: booking.destination.city });
+    const weather = await WeatherService.getCityForecast({ 
+      city: booking.destination.city,
+      date: booking.departureDateTimeUtc
+    });
     const message = `${messageBase} Destination weather: ${weather.desc}, ${weather.tempC}°C. ${weather.advice}`;
 
     const dedupeKey = force

@@ -292,11 +292,26 @@ export const EmailService = {
           <div style="background-color: #f8fafc; border-radius: 16px; padding: 24px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
             <p style="margin: 0 0 10px 0; font-size: 13px; font-weight: 700; color: ${COLORS.SLATE}; text-transform: uppercase; letter-spacing: 1px;">Itinerary Details</p>
             <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
-              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>From:</strong> ${requestDetails.departureCity}</td></tr>
-              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>To:</strong> ${requestDetails.destination}</td></tr>
-              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Date:</strong> ${requestDetails.date}</td></tr>
-              ${requestDetails.isReturn && requestDetails.returnDate ? `<tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Return Date:</strong> ${requestDetails.returnDate}</td></tr>` : ''}
-              <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Passengers:</strong> 
+              ${requestDetails.tripType === 'multicity' && Array.isArray(requestDetails.legs) ? `
+                <tr><td style="padding: 4px 0 12px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Trip Type:</strong> Multi-city (${requestDetails.legs.length} legs)</td></tr>
+                ${requestDetails.legs.map((leg, idx) => `
+                  <tr>
+                    <td style="padding: 10px 0; font-size: 14px; color: ${COLORS.NAVY}; border-top: 1px dashed #e2e8f0;">
+                      <span style="font-weight: 800; color: ${COLORS.GOLD}; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Flight ${idx + 1}</span><br/>
+                      <strong>From:</strong> ${leg.departureCity} ${leg.departureIata ? `(${leg.departureIata})` : ''}<br/>
+                      <strong>To:</strong> ${leg.destination} ${leg.destinationIata ? `(${leg.destinationIata})` : ''}<br/>
+                      <strong>Date:</strong> ${leg.date}
+                    </td>
+                  </tr>
+                `).join('')}
+              ` : `
+                <tr><td style="padding: 4px 0 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Trip Type:</strong> ${requestDetails.tripType === 'return' || requestDetails.isReturn ? 'Return Journey' : 'One Way'}</td></tr>
+                <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>From:</strong> ${requestDetails.departureCity}</td></tr>
+                <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>To:</strong> ${requestDetails.destination}</td></tr>
+                <tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Date:</strong> ${requestDetails.date}</td></tr>
+                ${(requestDetails.tripType === 'return' || requestDetails.isReturn) && requestDetails.returnDate ? `<tr><td style="padding: 8px 0; font-size: 14px; color: ${COLORS.NAVY};"><strong>Return Date:</strong> ${requestDetails.returnDate}</td></tr>` : ''}
+              `}
+              <tr><td style="padding: 12px 0 8px 0; font-size: 14px; color: ${COLORS.NAVY}; border-top: 1px solid #e2e8f0;"><strong>Passengers:</strong> 
                 ${requestDetails.passengers?.adults || 1} Adults
                 ${requestDetails.passengers?.children ? `, ${requestDetails.passengers.children} Children` : ''}
                 ${requestDetails.passengers?.infants ? `, ${requestDetails.passengers.infants} Infants` : ''}
@@ -342,9 +357,12 @@ export const EmailService = {
     const transporter = getTransporter();
     if (!transporter) return { ok: false, error: 'Transporter not configured' };
 
-    // Fetch live destination weather
+    // Fetch destination weather for the flight date
     const { WeatherService } = await import('./WeatherService.js');
-    const weather = await WeatherService.getCityForecast({ city: booking.destination?.city || 'the destination' });
+    const weather = await WeatherService.getCityForecast({ 
+      city: booking.destination?.city || 'the destination',
+      date: booking.departureDateTimeUtc
+    });
 
     // Format departure date & time
     const departureDate = booking.departureDateTimeUtc
@@ -449,7 +467,7 @@ export const EmailService = {
 
           <!-- Footer Note -->
           <p style="margin: 0; font-size: 13px; color: ${COLORS.SLATE}; line-height: 1.6; font-style: italic; text-align: center;">
-            "Our services end only when you arrive safely at your destination."<br>Safe travels from the Dnarai Travel team. ✈️
+            "Our Service End when you successfully arrive your destination."<br>Safe travels from the Dnarai Travel team. ✈️
           </p>
 
         </td>
@@ -508,7 +526,10 @@ export const EmailService = {
     if (!transporter) return { ok: false, error: 'Transporter not configured' };
 
     const { WeatherService } = await import('./WeatherService.js');
-    const weather = await WeatherService.getCityForecast({ city: booking.destination?.city || 'the destination' });
+    const weather = await WeatherService.getCityForecast({ 
+      city: booking.destination?.city || 'the destination',
+      date: booking.departureDateTimeUtc
+    });
 
     const content = `
       <tr>
@@ -552,7 +573,10 @@ export const EmailService = {
     if (!transporter) return { ok: false, error: 'Transporter not configured' };
 
     const { WeatherService } = await import('./WeatherService.js');
-    const weather = await WeatherService.getCityForecast({ city: booking.destination?.city || 'the destination' });
+    const weather = await WeatherService.getCityForecast({ 
+      city: booking.destination?.city || 'the destination',
+      date: booking.departureDateTimeUtc
+    });
 
     const content = `
       <tr>
@@ -566,7 +590,7 @@ export const EmailService = {
             <p style="margin: 10px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Quick Gear Check:</strong> ${weather.advice}</p>
           </div>
 
-          <p style="font-size: 14px; color: ${COLORS.SLATE};">Safe travels! Our service ends only when you arrive at your destination.</p>
+          <p style="font-size: 14px; color: ${COLORS.SLATE};">Safe travels! Our Service End when you successfully arrive your destination.</p>
         </td>
       </tr>
     `;
@@ -638,7 +662,7 @@ export const EmailService = {
             </table>
           </div>
 
-          <p style="margin: 0; font-size: 14px; color: ${COLORS.SLATE}; font-style: italic;">"Our services end when you successfully arrived at your destination"</p>
+          <p style="margin: 0; font-size: 14px; color: ${COLORS.SLATE}; font-style: italic;">"Our Service End when you successfully arrive your destination."</p>
         </td>
       </tr>
     `;

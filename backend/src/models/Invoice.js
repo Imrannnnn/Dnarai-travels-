@@ -32,7 +32,7 @@ const InvoiceSchema = new mongoose.Schema(
       required: true,
     },
     currency: { type: String, required: true }, // e.g., '₦', '$'
-    notes: { type: String, default: "Our services end when you successfully arrived at your destination" },
+    notes: { type: String, default: "Our Service End when you successfully arrive your destination." },
   },
   { timestamps: true }
 );

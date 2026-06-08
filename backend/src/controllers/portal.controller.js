@@ -86,6 +86,58 @@ export const portalController = {
     },
 
     /**
+     * Updates passenger passport details
+     */
+    updatePassport: async (req, res, next) => {
+        try {
+            if (!req.passengerId) {
+                return next({
+                    status: 403,
+                    code: 'FORBIDDEN',
+                    message: 'Passenger account not linked'
+                });
+            }
+
+            const { passportNumber, issueDate, dob, passportName, expiryDate, countryIssue } = req.body;
+
+            if (!passportNumber || !expiryDate || !issueDate || !dob || !passportName || !countryIssue) {
+                return next({
+                    status: 400,
+                    code: 'VALIDATION_ERROR',
+                    message: 'Passport number and Expiry Date are required'
+                });
+            }
+
+            const passenger = await Passenger.findById(req.passengerId);
+            if (!passenger) {
+                return next({
+                    status: 404,
+                    code: 'NOT_FOUND',
+                    message: 'Passenger record missing'
+                });
+            }
+
+            passenger.setDocumentNumber(passportNumber);
+            passenger.documentExpiryDate = new Date(expiryDate);
+
+            if (issueDate) passenger.passportIssueDate = new Date(issueDate);
+            if (dob) passenger.passportDob = new Date(dob);
+            if (passportName) passenger.setPassportName(passportName);
+            if (countryIssue) passenger.passportCountryIssue = countryIssue;
+
+            await passenger.save();
+
+            res.status(200).json({
+                ok: true,
+                message: 'Passport details updated successfully',
+                passenger: passenger.toSafeJSON()
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
      * Retrieves the current user's passenger profile
      */
     getMe: async (req, res, next) => {
@@ -134,7 +186,10 @@ export const portalController = {
             const data = await Promise.all(bookings.map(async (b) => {
                 const bObj = b.toObject();
                 try {
-                    const weather = await WeatherService.getCityForecast({ city: b.destination?.city });
+                    const weather = await WeatherService.getCityForecast({
+                        city: b.destination?.city,
+                        date: b.departureDateTimeUtc
+                    });
                     bObj.weather = weather;
                 } catch (err) {
                     // Fallback static weather if service fails
@@ -260,14 +315,35 @@ export const portalController = {
                 });
             }
 
-            const { departureCity, destination, date, notes, isReturn, returnDate, passengers } = req.body;
+            const { departureCity, destination, date, notes, isReturn, returnDate, passengers, tripType, legs } = req.body;
 
-            if (!departureCity || !destination || !date) {
-                return next({
-                    status: 400,
-                    code: 'VALIDATION_ERROR',
-                    message: 'Itinerary basics (From, To, Date) are required'
-                });
+            // Validate fields based on tripType
+            if (tripType === 'multicity') {
+                if (!Array.isArray(legs) || legs.length < 2) {
+                    return next({
+                        status: 400,
+                        code: 'VALIDATION_ERROR',
+                        message: 'Multi-city itinerary requires at least 2 flight legs'
+                    });
+                }
+                for (let i = 0; i < legs.length; i++) {
+                    const leg = legs[i];
+                    if (!leg.departureCity || !leg.destination || !leg.date) {
+                        return next({
+                            status: 400,
+                            code: 'VALIDATION_ERROR',
+                            message: `Flight leg ${i + 1} is missing required fields (From, To, or Date)`
+                        });
+                    }
+                }
+            } else {
+                if (!departureCity || !destination || !date) {
+                    return next({
+                        status: 400,
+                        code: 'VALIDATION_ERROR',
+                        message: 'Itinerary basics (From, To, Date) are required'
+                    });
+                }
             }
 
             const passenger = await Passenger.findById(req.passengerId);
@@ -281,8 +357,31 @@ export const portalController = {
 
             const { EmailService } = await import('../services/EmailService.js');
 
+            // Format route string for the notification message
+            let routeStr = '';
+            if (tripType === 'multicity') {
+                const legCodes = [];
+                legs.forEach((leg, index) => {
+                    legCodes.push(leg.departureIata || leg.departureCity);
+                    if (index === legs.length - 1) {
+                        legCodes.push(leg.destinationIata || leg.destination);
+                    }
+                });
+                routeStr = legCodes.join(' ➝ ');
+            } else {
+                routeStr = `${departureCity} ➝ ${destination}`;
+            }
+
             const requestDetails = {
-                departureCity, destination, date, notes, isReturn, returnDate, passengers
+                departureCity: tripType === 'multicity' ? legs[0].departureCity : departureCity,
+                destination: tripType === 'multicity' ? legs[legs.length - 1].destination : destination,
+                date: tripType === 'multicity' ? legs[0].date : date,
+                notes,
+                isReturn: tripType === 'return' ? true : isReturn,
+                returnDate: tripType === 'return' ? returnDate : '',
+                passengers,
+                tripType: tripType || (isReturn ? 'return' : 'oneway'),
+                legs: tripType === 'multicity' ? legs : []
             };
 
             // 1. Notify Agency Admins via Dedicated Email Service
@@ -302,7 +401,7 @@ export const portalController = {
             await Notification.create({
                 passengerId: req.passengerId,
                 type: 'booking_request',
-                message: `Your request (${departureCity} ➝ ${destination}) has been submitted for review.`,
+                message: `Your request (${routeStr}) has been submitted for review.`,
                 deliveryMethod: 'in_app',
                 dedupeKey: `req_pass_${req.passengerId}_${Date.now()}`,
             });
@@ -312,7 +411,7 @@ export const portalController = {
                 passengerId: req.passengerId,
                 isAdminOnly: true,
                 type: 'booking_request',
-                message: `New Request: ${passenger.fullName} traveling ${departureCity} to ${destination}.`,
+                message: `New Request: ${passenger.fullName} traveling ${routeStr}.`,
                 meta: {
                     passenger: passenger.fullName,
                     email: passenger.email,
@@ -360,7 +459,7 @@ export const portalController = {
 
             const passenger = await Passenger.findById(req.passengerId);
             const { EmailService } = await import('../services/EmailService.js');
-            
+
             const flightDetailsStr = `${booking.airlineName} Flight ${booking.flightNumber} from ${booking.origin.city} (${booking.origin.iata}) to ${booking.destination.city} (${booking.destination.iata}) on ${new Date(booking.departureDateTimeUtc).toLocaleDateString()}`;
 
             // 1. Admin In-App notification
@@ -370,10 +469,10 @@ export const portalController = {
                     isAdminOnly: true,
                     type: 'booking_alert',
                     message: `Cancellation Alert: ${passenger.fullName} cancelled their booking ${booking.flightNumber} (${booking.origin.iata} ➝ ${booking.destination.iata}).`,
-                    meta: { 
-                        passenger: passenger.fullName, 
-                        email: passenger.email, 
-                        phone: passenger.phone, 
+                    meta: {
+                        passenger: passenger.fullName,
+                        email: passenger.email,
+                        phone: passenger.phone,
                         flight: flightDetailsStr,
                         bookingId: booking._id
                     },
@@ -394,7 +493,7 @@ export const portalController = {
                         previewText: `Cancellation for ${booking.flightNumber}`
                     });
                 }
-            } catch(e) { console.error('Admin cancellation email failed', e); }
+            } catch (e) { console.error('Admin cancellation email failed', e); }
 
             // 3. Passenger In-App notification
             try {
@@ -416,7 +515,7 @@ export const portalController = {
                     body: `Dear ${passenger.fullName},\n\nYour booking has been successfully cancelled.\n\nFlight Details:\n${flightDetailsStr}\n\nIf you have any questions or need to rebook, please contact us or login to your Dnarai Enterprise dashboard.\n\nBest regards,\nDnarai Enterprise`,
                     previewText: `Cancellation confirmation for ${booking.flightNumber}`
                 });
-            } catch(e) { console.error('Passenger cancellation email failed', e); }
+            } catch (e) { console.error('Passenger cancellation email failed', e); }
 
             return res.json({ ok: true, message: 'Booking successfully cancelled' });
         } catch (err) {
