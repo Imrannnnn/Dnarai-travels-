@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import content from '../content/siteContent.json'
-import WavePlane from '../components/WavePlane'
 import * as Lucide from 'lucide-react'
 import { useAuth } from '../data/AuthContext'
 
@@ -23,8 +22,8 @@ export default function HomePage() {
           <div className="absolute bottom-1/3 left-1/3 w-80 h-80 bg-dnarai-gold-200/10 blur-[120px] rounded-full" />
         </div>
 
-        <div className="container mx-auto max-w-[1400px] relative z-10 grid gap-20 lg:grid-cols-[1.2fr_1fr] lg:items-center">
-          <div className="space-y-10 text-center lg:text-left">
+        <div className="container mx-auto max-w-[900px] relative z-10 text-center space-y-10">
+          <div className="space-y-10 flex flex-col items-center">
             <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 backdrop-blur-xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-white/90 shadow-soft">
               <span className="flex h-2.5 w-2.5 rounded-full bg-coral-400 animate-pulse shadow-[0_0_8px_rgba(251,146,60,0.6)]" />
               Premium Travel Management
@@ -34,11 +33,11 @@ export default function HomePage() {
               {home.hero.title}
             </h1>
 
-            <p className="max-w-2xl text-lg md:text-xl font-medium text-white/80 leading-relaxed mx-auto lg:mx-0">
+            <p className="max-w-2xl text-lg md:text-xl font-medium text-white/80 leading-relaxed">
               {home.hero.subtitle}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 pt-6 justify-center lg:justify-start">
+            <div className="flex flex-col sm:flex-row gap-4 pt-6 justify-center">
               <Link
                 to="/dashboard"
                 className="group relative inline-flex items-center justify-center gap-3 rounded-2xl bg-white px-8 py-4 text-sm font-bold uppercase tracking-wide text-ocean-700 shadow-card-hover transition-all duration-300 hover:shadow-[0_12px_40px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-100"
@@ -64,49 +63,47 @@ export default function HomePage() {
               )}
             </div>
           </div>
-
-
         </div>
       </section>
 
+
+
       {/* --- VISION & MISSION --- */}
-      <section className="py-24 bg-gradient-to-br from-dnarai-navy-900 via-dnarai-navy-800 to-dnarai-navy-900 text-white relative overflow-hidden px-6 border-b border-white/5">
+      <section className="py-24 bg-white dark:bg-slate-950 relative overflow-hidden px-6 border-b border-sand-100 dark:border-slate-800">
         {/* Background glow orbs */}
-        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-dnarai-gold-500/10 blur-[100px] rounded-full pointer-events-none animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-ocean-500/15 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 w-80 h-80 bg-dnarai-gold-500/5 blur-[100px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-ocean-500/5 blur-[120px] rounded-full pointer-events-none" />
 
         <div className="container mx-auto max-w-[1400px] relative z-10">
           <div className="grid md:grid-cols-2 gap-12">
             {/* Vision Card */}
-            <div className="relative group bg-white/5 border border-white/10 rounded-3xl p-10 flex flex-col justify-between hover:bg-white/10 transition-all duration-300 shadow-xl">
+            <div className="relative group bg-slate-50 dark:bg-slate-900 border border-sand-200 dark:border-slate-800 rounded-3xl p-10 flex flex-col justify-between hover:border-dnarai-gold-400 dark:hover:border-dnarai-gold-500/50 hover:shadow-xl transition-all duration-300">
               <div className="space-y-6">
-                <div className="h-12 w-12 rounded-2xl bg-dnarai-gold-500/20 text-dnarai-gold-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <div className="h-12 w-12 rounded-2xl bg-dnarai-gold-500/10 text-dnarai-gold-600 dark:text-dnarai-gold-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Lucide.Eye size={24} />
                 </div>
                 <div className="space-y-3">
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-dnarai-gold-400">Our Vision</h3>
-                  <p className="text-2xl md:text-3xl font-black font-display leading-snug">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-dnarai-gold-600 dark:text-dnarai-gold-400">Our Vision</h3>
+                  <p className="text-2xl md:text-3xl font-black font-display leading-snug text-slate-900 dark:text-white">
                     That all our clients have a satisfactory experience throughout their Journey.
                   </p>
                 </div>
               </div>
-
             </div>
 
             {/* Mission Card */}
-            <div className="relative group bg-white/5 border border-white/10 rounded-3xl p-10 flex flex-col justify-between hover:bg-white/10 transition-all duration-300 shadow-xl">
+            <div className="relative group bg-slate-50 dark:bg-slate-900 border border-sand-200 dark:border-slate-800 rounded-3xl p-10 flex flex-col justify-between hover:border-ocean-400 dark:hover:border-ocean-500/50 hover:shadow-xl transition-all duration-300">
               <div className="space-y-6">
-                <div className="h-12 w-12 rounded-2xl bg-ocean-500/20 text-ocean-300 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                <div className="h-12 w-12 rounded-2xl bg-ocean-500/10 text-ocean-600 dark:text-ocean-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                   <Lucide.Compass size={24} />
                 </div>
                 <div className="space-y-3">
-                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-ocean-400">Our Mission</h3>
-                  <p className="text-2xl md:text-3xl font-black font-display leading-snug">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-ocean-600 dark:text-ocean-400">Our Mission</h3>
+                  <p className="text-2xl md:text-3xl font-black font-display leading-snug text-slate-900 dark:text-white">
                     To bridge all Air travel gaps.
                   </p>
                 </div>
               </div>
-
             </div>
           </div>
         </div>
@@ -132,7 +129,7 @@ export default function HomePage() {
       </section>
 
       {/* --- CORE SOLUTIONS --- */}
-      <section className="py-32 bg-white dark:bg-slate-900/20 px-6 relative overflow-hidden">
+      <section className="py-32 bg-slate-50 dark:bg-slate-900/20 px-6 relative overflow-hidden">
         <div className="container mx-auto max-w-[1400px] space-y-20 relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-sm font-bold uppercase tracking-widest text-ocean-600">Why Choose Us</h2>

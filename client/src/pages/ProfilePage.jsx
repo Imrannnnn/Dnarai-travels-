@@ -12,7 +12,7 @@ const FallbackIcon = () => null
 const ShieldCheck = Lucide.ShieldCheck || FallbackIcon
 
 export default function ProfilePage() {
-  const { documents, passenger, uploadPassport, triggerOverlay, updatePassengerProfile } = useAppData()
+  const { passenger, uploadPassport, triggerOverlay, updatePassengerProfile } = useAppData()
   const { user } = useAuth()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
