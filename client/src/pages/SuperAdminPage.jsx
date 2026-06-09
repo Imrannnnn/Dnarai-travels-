@@ -3118,7 +3118,7 @@ export default function SuperAdminPage() {
                                 <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">D.NARAI ENTERPRISE</h1>
                                 <div className="text-sm font-medium text-slate-500 mt-1 space-y-0.5">
                                     <p className="flex items-center gap-2">
-                                        <span className="text-ocean-600 font-bold">P:</span> +2348166698689
+                                        <span className="text-ocean-600 font-bold">P:</span> +234 913 131 5886 / +234 816 669 8589
                                     </p>
                                     <p className="flex items-center gap-2">
                                         <span className="text-ocean-600 font-bold">E:</span> D.naraienterprise.com

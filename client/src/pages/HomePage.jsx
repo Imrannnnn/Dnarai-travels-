@@ -390,25 +390,28 @@ export default function HomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-8 col-span-1 lg:col-span-2">
-              <div className="space-y-5">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-ocean-400">Explore</h5>
-                <ul className="space-y-3 text-sm text-slate-400">
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">Destinations</li>
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">Travel Packages</li>
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">Special Offers</li>
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">Travel Guides</li>
-                </ul>
-              </div>
-              <div className="space-y-5">
-                <h5 className="text-xs font-bold uppercase tracking-wider text-ocean-400">Support</h5>
-                <ul className="space-y-3 text-sm text-slate-400">
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">Help Center</li>
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">Contact Us</li>
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">FAQs</li>
-                  <li className="hover:text-white cursor-pointer transition-colors duration-300">Privacy Policy</li>
-                </ul>
-              </div>
+            <div className="space-y-5">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-ocean-400">Support</h5>
+              <ul className="space-y-3 text-sm text-slate-400">
+                <li className="hover:text-white cursor-pointer transition-colors duration-300">Help Center</li>
+                <li className="hover:text-white cursor-pointer transition-colors duration-300">Contact Us</li>
+                <li className="hover:text-white cursor-pointer transition-colors duration-300">FAQs</li>
+                <li className="hover:text-white cursor-pointer transition-colors duration-300">Privacy Policy</li>
+              </ul>
+            </div>
+
+            <div className="space-y-5">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-ocean-400">Contact</h5>
+              <ul className="space-y-3 text-sm text-slate-400">
+                <li className="flex items-center gap-2">
+                  <Lucide.Phone size={14} className="text-ocean-400 flex-shrink-0" />
+                  <a href="tel:+2349131315886" className="hover:text-white transition-colors duration-300">+234 913 131 5886</a>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Lucide.Phone size={14} className="text-ocean-400 flex-shrink-0" />
+                  <a href="tel:+2348166698589" className="hover:text-white transition-colors duration-300">+234 816 669 8589</a>
+                </li>
+              </ul>
             </div>
 
             <div className="space-y-5">
