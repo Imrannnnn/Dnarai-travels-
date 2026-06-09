@@ -12,7 +12,7 @@ const FallbackIcon = () => null
 const ShieldCheck = Lucide.ShieldCheck || FallbackIcon
 
 export default function ProfilePage() {
-  const { passenger, uploadPassport, triggerOverlay, updatePassengerProfile } = useAppData()
+  const { passenger, uploadPassport, triggerOverlay, updatePassengerProfile, updateFrequentFlyers } = useAppData()
   const { user } = useAuth()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -21,6 +21,10 @@ export default function ProfilePage() {
     phone: passenger?.phone || ''
   })
 
+  const [frequentFlyers, setFrequentFlyers] = useState([])
+  const [newAirline, setNewAirline] = useState('')
+  const [newNumber, setNewNumber] = useState('')
+
   // Update edit form data when passenger loads
   useEffect(() => {
     if (passenger) {
@@ -28,8 +32,32 @@ export default function ProfilePage() {
         fullName: passenger.fullName || '',
         phone: passenger.phone || ''
       })
+      if (passenger.frequentFlyerNumbers) {
+        setFrequentFlyers(passenger.frequentFlyerNumbers)
+      }
     }
   }, [passenger])
+
+  const handleAddFrequentFlyer = async (e) => {
+    if (e) e.preventDefault()
+    if (!newAirline.trim() || !newNumber.trim()) return
+
+    const updatedList = [...frequentFlyers, { airlineName: newAirline.trim(), frequentFlyerNumber: newNumber.trim() }]
+    
+    triggerOverlay('Adding Frequent Flyer Account...', async () => {
+      await updateFrequentFlyers(updatedList)
+      setNewAirline('')
+      setNewNumber('')
+    })
+  }
+
+  const handleRemoveFrequentFlyer = async (indexToRemove) => {
+    const updatedList = frequentFlyers.filter((_, idx) => idx !== indexToRemove)
+    
+    triggerOverlay('Removing Frequent Flyer Account...', async () => {
+      await updateFrequentFlyers(updatedList)
+    })
+  }
 
   const handleSaveProfile = async () => {
     triggerOverlay('Updating Profile...', async () => {
@@ -268,7 +296,8 @@ export default function ProfilePage() {
           </section>
 
           {user?.role === 'passenger' && (
-            <section className="rounded-[2.5rem] border border-sand-200/60 bg-white p-8 shadow-card dark:border-slate-800 dark:bg-slate-900/40">
+            <>
+              <section className="rounded-[2.5rem] border border-sand-200/60 bg-white p-8 shadow-card dark:border-slate-800 dark:bg-slate-900/40">
               <div className="mb-8 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-1.5 rounded-full bg-coral-500" />
@@ -329,6 +358,100 @@ export default function ProfilePage() {
                 </div>
               )}
             </section>
+
+            <section className="rounded-[2.5rem] border border-sand-200/60 bg-white p-8 shadow-card dark:border-slate-800 dark:bg-slate-900/40">
+              <div className="mb-8 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-1.5 rounded-full bg-ocean-600" />
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight font-display">Frequent Flyer Accounts</h3>
+                </div>
+              </div>
+
+              {frequentFlyers.length > 0 ? (
+                <div className="grid gap-4 mb-6">
+                  {frequentFlyers.map((ff, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-4 bg-sand-50/30 border border-sand-100 rounded-2xl dark:border-slate-800/50 dark:bg-slate-950/50">
+                      <div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Airline</div>
+                        <div className="text-sm font-bold text-slate-900 dark:text-white">{ff.airlineName}</div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Flyer Number</div>
+                          <div className="text-sm font-mono font-bold text-slate-900 dark:text-white">{ff.frequentFlyerNumber}</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveFrequentFlyer(idx)}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-xl transition-all"
+                          title="Remove Account"
+                        >
+                          <Lucide.Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem] mb-6">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No frequent flyer accounts registered</p>
+                </div>
+              )}
+
+              <form onSubmit={handleAddFrequentFlyer} className="bg-slate-50 dark:bg-slate-950/30 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 space-y-4">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Register New Account</h4>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Airline Name</label>
+                    <input
+                      type="text"
+                      list="airlines-list"
+                      required
+                      value={newAirline}
+                      onChange={e => setNewAirline(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-ocean-500/20 outline-none transition-all dark:text-white"
+                      placeholder="e.g. Emirates"
+                    />
+                    <datalist id="airlines-list">
+                      <option value="Emirates" />
+                      <option value="Qatar Airways" />
+                      <option value="British Airways" />
+                      <option value="Delta Air Lines" />
+                      <option value="United Airlines" />
+                      <option value="Lufthansa" />
+                      <option value="Singapore Airlines" />
+                      <option value="Air France" />
+                      <option value="KLM Royal Dutch Airlines" />
+                      <option value="Turkish Airlines" />
+                      <option value="Ethiopian Airlines" />
+                      <option value="EgyptAir" />
+                      <option value="RwandAir" />
+                      <option value="Kenya Airways" />
+                      <option value="Air Peace" />
+                    </datalist>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Frequent Flyer Number</label>
+                    <input
+                      type="text"
+                      required
+                      value={newNumber}
+                      onChange={e => setNewNumber(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-ocean-500/20 outline-none transition-all dark:text-white font-mono"
+                      placeholder="e.g. EK1234567"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-ocean-600 hover:bg-ocean-700 px-6 py-3 text-xs font-black uppercase tracking-wider text-white shadow-md transition-all active:scale-95"
+                >
+                  <Lucide.Plus size={16} />
+                  <span>Add Account</span>
+                </button>
+              </form>
+            </section>
+          </>
           )}
         </div>
       </div>

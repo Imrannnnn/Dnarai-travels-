@@ -16,6 +16,13 @@ const PassengerSchema = new mongoose.Schema(
     passportDob: { type: Date },
     passportNameEnc: { type: String },
     passportCountryIssue: { type: String },
+
+    frequentFlyerNumbers: [
+      {
+        airlineName: { type: String, required: true },
+        frequentFlyerNumber: { type: String, required: true }
+      }
+    ],
   },
   { timestamps: true }
 );
@@ -48,6 +55,7 @@ PassengerSchema.methods.toSafeJSON = function () {
     passportDob: this.passportDob,
     passportName: this.passportNameEnc ? decryptSensitive(this.passportNameEnc) : '',
     passportCountryIssue: this.passportCountryIssue,
+    frequentFlyerNumbers: this.frequentFlyerNumbers || [],
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };

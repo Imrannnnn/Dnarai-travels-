@@ -138,6 +138,62 @@ export const portalController = {
     },
 
     /**
+     * Updates passenger frequent flyer numbers
+     */
+    updateFrequentFlyers: async (req, res, next) => {
+        try {
+            if (!req.passengerId) {
+                return next({
+                    status: 403,
+                    code: 'FORBIDDEN',
+                    message: 'Passenger account not linked'
+                });
+            }
+
+            const { frequentFlyerNumbers } = req.body;
+
+            if (!Array.isArray(frequentFlyerNumbers)) {
+                return next({
+                    status: 400,
+                    code: 'VALIDATION_ERROR',
+                    message: 'Frequent flyer numbers must be an array'
+                });
+            }
+
+            // Validate array structure
+            for (const item of frequentFlyerNumbers) {
+                if (!item.airlineName || !item.frequentFlyerNumber) {
+                    return next({
+                        status: 400,
+                        code: 'VALIDATION_ERROR',
+                        message: 'Each frequent flyer entry must contain airlineName and frequentFlyerNumber'
+                    });
+                }
+            }
+
+            const passenger = await Passenger.findById(req.passengerId);
+            if (!passenger) {
+                return next({
+                    status: 404,
+                    code: 'NOT_FOUND',
+                    message: 'Passenger record missing'
+                });
+            }
+
+            passenger.frequentFlyerNumbers = frequentFlyerNumbers;
+            await passenger.save();
+
+            res.status(200).json({
+                ok: true,
+                message: 'Frequent flyer numbers updated successfully',
+                passenger: passenger.toSafeJSON()
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
      * Retrieves the current user's passenger profile
      */
     getMe: async (req, res, next) => {

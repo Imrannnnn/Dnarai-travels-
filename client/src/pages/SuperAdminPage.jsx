@@ -129,6 +129,7 @@ export default function SuperAdminPage() {
     const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { passenger: {...} }
     const [isEditBookingModalOpen, setIsEditBookingModalOpen] = useState(false)
     const [showPassportAccordion, setShowPassportAccordion] = useState(false)
+    const [isFFModalOpen, setIsFFModalOpen] = useState(false)
     const [isAllNotificationsModalOpen, setIsAllNotificationsModalOpen] = useState(false)
     const [bookingFilter, setBookingFilter] = useState('recent') // 'recent' or 'all'
     const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false)
@@ -1515,6 +1516,29 @@ export default function SuperAdminPage() {
                                                 </div>
                                             )}
                                         </div>
+
+                                        <div className="bg-slate-50 rounded-xl border border-slate-200/50 overflow-hidden">
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsFFModalOpen(true)}
+                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-100 transition-colors text-left"
+                                            >
+                                                <div className="flex items-center gap-2">
+                                                    <Lucide.Plane className="text-ocean-600 h-4 w-4" />
+                                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Frequent Flyer Numbers</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 text-slate-400">
+                                                    {selectedPassenger.frequentFlyerNumbers && selectedPassenger.frequentFlyerNumbers.length > 0 ? (
+                                                        <span className="bg-ocean-100 text-ocean-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                                            {selectedPassenger.frequentFlyerNumbers.length}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">None</span>
+                                                    )}
+                                                    <Lucide.ArrowRight size={14} />
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
@@ -1675,6 +1699,49 @@ export default function SuperAdminPage() {
                     </div>
                 </div>
             )}
+
+            <Modal
+                open={isFFModalOpen}
+                title="Frequent Flyer Programs"
+                onClose={() => setIsFFModalOpen(false)}
+                footer={
+                    <div className="flex justify-end p-4 border-t border-slate-200">
+                        <button
+                            onClick={() => setIsFFModalOpen(false)}
+                            className="px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800 transition-all"
+                        >
+                            Close
+                        </button>
+                    </div>
+                }
+            >
+                <div className="p-6 space-y-4">
+                    {selectedPassenger && selectedPassenger.frequentFlyerNumbers && selectedPassenger.frequentFlyerNumbers.length > 0 ? (
+                        <div className="space-y-3">
+                            {selectedPassenger.frequentFlyerNumbers.map((ff, idx) => (
+                                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                    <div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Airline</div>
+                                        <div className="text-sm font-bold text-slate-900">{ff.airlineName}</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Flyer Number</div>
+                                        <div className="text-sm font-mono font-bold text-ocean-600 bg-ocean-50 px-3 py-1 rounded-lg">
+                                            {ff.frequentFlyerNumber}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <Lucide.Plane className="text-slate-300 mx-auto mb-4" size={48} />
+                            <p className="text-sm font-bold text-slate-900 uppercase tracking-wide">No Registered Numbers</p>
+                            <p className="text-xs text-slate-500 mt-1">This passenger has not registered any frequent flyer numbers yet.</p>
+                        </div>
+                    )}
+                </div>
+            </Modal>
 
             <Modal
                 open={isAddStaffModalOpen}

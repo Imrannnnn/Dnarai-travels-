@@ -18,6 +18,7 @@ router.use(portalController.portalMiddleware);
 // Profile Management
 router.post('/update-profile', portalController.updateProfile);
 router.post('/update-passport', portalController.updatePassport);
+router.post('/update-frequent-flyers', portalController.updateFrequentFlyers);
 router.get('/me', portalController.getMe);
 
 // Flight Itineraries (With Weather Service)

@@ -175,6 +175,14 @@ export async function updatePassportAPI({ passportNumber, issueDate, dob, passpo
   })
 }
 
+export async function updateFrequentFlyersAPI({ frequentFlyerNumbers, baseUrl }) {
+  return request('/api/portal/update-frequent-flyers', {
+    method: 'POST',
+    body: { frequentFlyerNumbers },
+    baseUrl
+  })
+}
+
 export async function createBlog({ title, content, baseUrl, token }) {
   return request('/api/blogs', {
     method: 'POST',

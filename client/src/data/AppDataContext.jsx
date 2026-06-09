@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchFlights, fetchNotifications, fetchPassenger, getApiBaseUrl, submitBookingRequest, cancelBookingAPI, updateProfile, updatePassportAPI } from './api'
+import { fetchFlights, fetchNotifications, fetchPassenger, getApiBaseUrl, submitBookingRequest, cancelBookingAPI, updateProfile, updatePassportAPI, updateFrequentFlyersAPI } from './api'
 import { useAuth } from './AuthContext'
 import airportsData from '../../airports.json'
 
@@ -99,6 +99,7 @@ export function AppDataProvider({ children }) {
             passportIssueDate: p.passportIssueDate || '',
             passportExpiryDate: p.documentExpiryDate || '',
             passportCountryIssue: p.passportCountryIssue || '',
+            frequentFlyerNumbers: p.frequentFlyerNumbers || [],
           })
 
           if (p.documentNumberFull) {
@@ -351,6 +352,22 @@ export function AppDataProvider({ children }) {
     }
   }, [])
 
+  const updateFrequentFlyers = useCallback(async (frequentFlyerNumbers) => {
+    console.log('Frequent Flyer Numbers Update:', frequentFlyerNumbers)
+    const baseUrl = getApiBaseUrl()
+    const updated = await updateFrequentFlyersAPI({
+      frequentFlyerNumbers,
+      baseUrl
+    })
+    
+    if (updated && updated.passenger) {
+      const p = updated.passenger
+      setPassenger(prev => ({
+        ...prev,
+        frequentFlyerNumbers: p.frequentFlyerNumbers || [],
+      }))
+    }
+  }, [])
 
   const value = useMemo(
     () => ({
@@ -367,6 +384,7 @@ export function AppDataProvider({ children }) {
       markAsRead,
       markAllAsRead,
       uploadPassport,
+      updateFrequentFlyers,
       triggerOverlay,
       loading,
       overlay,
@@ -386,6 +404,7 @@ export function AppDataProvider({ children }) {
       markAsRead,
       markAllAsRead,
       uploadPassport,
+      updateFrequentFlyers,
       triggerOverlay,
     ]
   )
