@@ -1,13 +1,8 @@
 import cron from 'node-cron';
-import { runFlightReminderJob } from './flightReminders.job.js';
 import { runPassportExpiryJob } from './passportExpiry.job.js';
 import { runAutoCompleteFlightsJob } from './autoCompleteFlights.job.js';
 
 export function startSchedulers() {
-  // Flight reminders: every 15 minutes
-  cron.schedule('*/15 * * * *', async () => {
-    await runFlightReminderJob().catch((e) => console.error('[job] flightReminders', e));
-  });
 
   // Complete past flights: every 15 minutes
   cron.schedule('*/15 * * * *', async () => {

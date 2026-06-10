@@ -47,4 +47,22 @@ const BookingSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+BookingSchema.post('save', async function (doc) {
+  try {
+    const { AgendaService } = await import('../services/AgendaService.js');
+    await AgendaService.scheduleReminders(doc);
+  } catch (err) {
+    console.error(`[Mongoose Hook] Failed to schedule Agenda reminders for booking ${doc._id}:`, err);
+  }
+});
+
+BookingSchema.post('remove', async function (doc) {
+  try {
+    const { AgendaService } = await import('../services/AgendaService.js');
+    await AgendaService.cancelReminders(doc._id);
+  } catch (err) {
+    console.error(`[Mongoose Hook] Failed to cancel Agenda reminders for booking ${doc._id}:`, err);
+  }
+});
+
 export const Booking = mongoose.model('Booking', BookingSchema);

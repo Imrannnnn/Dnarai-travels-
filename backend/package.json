@@ -19,6 +19,7 @@
   "dependencies": {
     "@google/genai": "^1.38.0",
     "@google/generative-ai": "^0.24.1",
+    "agenda": "^5.0.0",
     "axios": "^1.6.8",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",

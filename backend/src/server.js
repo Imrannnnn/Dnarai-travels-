@@ -20,6 +20,7 @@ import invoiceRoutes from './routes/invoices.routes.js';
 
 import { startSchedulers } from './jobs/scheduler.js';
 import { getTransporter } from './services/EmailService.js';
+import { AgendaService } from './services/AgendaService.js';
 
 dotenv.config();
 
@@ -77,6 +78,12 @@ app.use(errorHandler);
 async function main() {
   try {
     await connectDb();
+    
+    // Initialize & start Agenda job queue
+    await AgendaService.start();
+    // Run self-healing sync for future bookings
+    await AgendaService.syncFutureBookingsJobs();
+
     startSchedulers();
 
     const PORT = process.env.PORT || 5000;
