@@ -543,7 +543,7 @@ export default function SuperAdminPage() {
 
     const handleDeleteAllInvoices = async () => {
         if (!window.confirm('Are you sure you want to delete ALL invoices? This action cannot be undone and they will be removed from the database.')) return;
-        
+
         triggerOverlay('Deleting All Invoices...', async () => {
             const res = await fetch(`${baseUrl}/api/invoices/all`, {
                 method: 'DELETE',
@@ -579,7 +579,7 @@ export default function SuperAdminPage() {
                 return;
             }
             try {
-                const canvas = await html2canvas(element, { 
+                const canvas = await html2canvas(element, {
                     scale: 3, // Increased scale for high definition
                     useCORS: true,
                     logging: false,
@@ -620,13 +620,13 @@ export default function SuperAdminPage() {
         if (field === 'rate' || field === 'qty') {
             newItems[index].amount = newItems[index].rate * newItems[index].qty;
         }
-        
+
         // Calculate totals
         const subTotal = newItems.reduce((sum, item) => sum + item.amount, 0);
         const total = subTotal + Number(invoiceForm.serviceCharge) - Number(invoiceForm.discount);
-        
-        setInvoiceForm({ 
-            ...invoiceForm, 
+
+        setInvoiceForm({
+            ...invoiceForm,
             items: newItems,
             subTotal,
             total,
@@ -636,7 +636,7 @@ export default function SuperAdminPage() {
 
     const handleShareWithPassenger = async (passenger) => {
         if (!selectedInvoiceForShare) return;
-        
+
         // If passenger is null, we use the invoice's own contact info
         const targetName = passenger ? passenger.fullName : selectedInvoiceForShare.passengerName;
         const targetEmail = passenger ? passenger.email : selectedInvoiceForShare.passengerEmail;
@@ -646,8 +646,8 @@ export default function SuperAdminPage() {
         triggerOverlay('Preparing PDF & Sending...', async () => {
             const element = document.getElementById('invoice-pdf-template');
             if (!element) throw new Error('Template not found');
-            
-            const canvas = await html2canvas(element, { 
+
+            const canvas = await html2canvas(element, {
                 scale: 3, // Increased scale for high definition
                 useCORS: true,
                 logging: false,
@@ -658,10 +658,10 @@ export default function SuperAdminPage() {
             const imgProps = pdf.getImageProperties(imgData);
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-            
+
             pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
             const pdfBase64 = pdf.output('datauristring').split(',')[1];
-            
+
             // Send to backend
             const res = await fetch(`${baseUrl}/api/invoices/${selectedInvoiceForShare._id}/send`, {
                 method: 'POST',
@@ -676,10 +676,10 @@ export default function SuperAdminPage() {
                     pdfBase64
                 })
             });
-            
+
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Failed to send invoice');
-            
+
             // Open WhatsApp
             const message = encodeURIComponent(`Hello ${targetName}, this is your invoice for your current travel.`);
             const cleanPhone = targetPhone?.replace(/[^0-9]/g, '') || '';
@@ -687,7 +687,7 @@ export default function SuperAdminPage() {
                 const waLink = `https://wa.me/${cleanPhone.startsWith('234') ? cleanPhone : '234' + cleanPhone}?text=${message}`;
                 window.open(waLink, '_blank');
             }
-            
+
             setIsShareInvoiceModalOpen(false);
             setSelectedInvoiceForShare(null);
             alert(`Invoice sent to ${targetEmail}${cleanPhone ? ' and WhatsApp link opened!' : '!'}`);
@@ -798,466 +798,466 @@ export default function SuperAdminPage() {
     return (
         <>
             <div className="min-h-screen bg-slate-50">
-            {/* Top Navigation Bar */}
-            <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 md:gap-4">
-                            <div className="flex items-center gap-2 md:gap-3">
-                                <div className="h-8 w-8 md:h-10 md:w-10 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md flex-shrink-0">
-                                    <Lucide.ShieldCheck className="w-4 h-4 md:w-5 md:h-5" />
-                                </div>
-                                <div className="min-w-0">
-                                    <h1 className="text-sm md:text-lg font-black text-slate-900 uppercase tracking-tight truncate">Dnarai Enterprise</h1>
-                                    <p className="text-[10px] md:text-xs text-slate-500 font-medium truncate">Agency Dashboard</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Desktop Actions */}
-                        <div className="hidden md:flex items-center gap-6">
-                            <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
-                                <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
-                                {stats.pendingNotifications > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center cursor-pointer ring-2 ring-white">
-                                        {stats.pendingNotifications}
-                                    </span>
-                                )}
-                            </div>
-
-                            {role === 'admin' && (
-                                <button
-                                    onClick={() => setIsAddStaffModalOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                                    title="Add Staff"
-                                >
-                                    <Lucide.UserPlus size={16} />
-                                    <span>Add Staff</span>
-                                </button>
-                            )}
-
-                            <button
-                                onClick={() => setIsBlogManagerModalOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                                title="Manage Insights"
-                            >
-                                <Lucide.BookOpen size={16} />
-                                <span>Manage Insights</span>
-                            </button>
-
-                            <button
-                                onClick={() => setIsCreateBlogModalOpen(true)}
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
-                                title="New Insight"
-                            >
-                                <Lucide.PlusCircle size={16} />
-                                <span>New Insight</span>
-                            </button>
-
-                            <button
-                                onClick={handleLogout}
-                                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                                title="Sign Out"
-                            >
-                                <Lucide.LogOut size={16} />
-                                <span>Sign Out</span>
-                            </button>
-                        </div>
-
-                        {/* Mobile Actions */}
-                        <div className="flex md:hidden items-center gap-3">
-                            <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
-                                <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
-                                {stats.pendingNotifications > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center cursor-pointer ring-2 ring-white">
-                                        {stats.pendingNotifications}
-                                    </span>
-                                )}
-                            </div>
-                            <button
-                                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                className="p-1 rounded-lg hover:bg-slate-100 transition-colors"
-                            >
-                                {isMobileMenuOpen ? <Lucide.X size={20} className="text-slate-600" /> : <Lucide.Menu size={20} className="text-slate-600" />}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Mobile Menu Dropdown */}
-                {isMobileMenuOpen && (
-                    <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3">
-                        {role === 'admin' && (
-                            <button
-                                onClick={() => { setIsAddStaffModalOpen(true); setIsMobileMenuOpen(false); }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
-                            >
-                                <Lucide.UserPlus size={18} />
-                                Add Staff
-                            </button>
-                        )}
-                        <button
-                            onClick={() => { setIsBlogManagerModalOpen(true); setIsMobileMenuOpen(false); }}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
-                        >
-                            <Lucide.BookOpen size={18} />
-                            Manage Insights
-                        </button>
-                        <button
-                            onClick={() => { setIsCreateBlogModalOpen(true); setIsMobileMenuOpen(false); }}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-ocean-700 bg-ocean-50 hover:bg-ocean-100 rounded-xl transition-all border border-ocean-100"
-                        >
-                            <Lucide.PlusCircle size={18} />
-                            New Insight
-                        </button>
-                        <button
-                            onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
-                            className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
-                        >
-                            <Lucide.LogOut size={18} />
-                            Sign Out
-                        </button>
-                    </div>
-                )}
-            </nav>
-
-            {/* Main Content */}
-            <div className="max-w-7xl mx-auto px-6 py-8">
-                {/* Stats Cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 mt-4 md:mt-0">
-                    {[
-                        { label: 'Passengers', labelFull: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'bg-ocean-500', bgLight: 'bg-ocean-50', onClick: () => { setActiveView('all'); scrollToPassengerList(); } },
-                        { label: 'Bookings', labelFull: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'bg-green-500', bgLight: 'bg-green-50', onClick: () => setIsActiveBookingsModalOpen(true) },
-                        { label: 'Today', labelFull: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'bg-purple-500', bgLight: 'bg-purple-50', onClick: () => setIsTravelingTodayModalOpen(true) },
-                        { label: 'Alerts', labelFull: 'Notifications', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'bg-amber-500', bgLight: 'bg-amber-50', onClick: () => setIsAllNotificationsModalOpen(true) },
-                    ].map(stat => (
-                        <div
-                            key={stat.labelFull}
-                            onClick={stat.onClick}
-                            className={clsx(
-                                "bg-white rounded-[1.5rem] md:rounded-2xl p-4 md:p-6 border border-slate-200 hover:shadow-lg transition-all active:scale-95 group",
-                                stat.onClick && "cursor-pointer"
-                            )}
-                        >
-                            <div className="flex items-center justify-between mb-2 md:mb-4">
-                                <div className={`${stat.bgLight} p-2 md:p-3 rounded-xl transition-colors group-hover:scale-110 duration-300`}>
-                                    <stat.icon className={`${stat.color.replace('bg-', 'text-')}`} size={20} />
-                                </div>
-                                {stat.value > 0 && stat.label === 'Alerts' && (
-                                    <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
-                                )}
-                            </div>
-                            <div className="text-xl md:text-3xl font-black text-slate-900 mb-0.5 md:mb-1">{stat.value}</div>
-                            <div className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-tight md:normal-case md:tracking-normal">
-                                <span className="hidden md:inline">{stat.labelFull}</span>
-                                <span className="md:hidden">{stat.label}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Main Grid Layout */}
-                <div className="grid lg:grid-cols-3 gap-8">
-                    {/* Left Column - Passengers List */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Passengers Section */}
-                        <div ref={passengerListRef} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                            <div className="p-6 border-b border-slate-200 bg-slate-50">
-                                <div className="flex flex-col gap-4">
-                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                        <div>
-                                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-                                                {activeView === 'today' ? 'Traveling Today' : 'Passenger Registry'}
-                                            </h2>
-                                            <p className="text-sm text-slate-500 mt-1">
-                                                {activeView === 'today'
-                                                    ? `${filteredPassengers.length} passengers traveling on ${new Date(selectedDate).toLocaleDateString()}`
-                                                    : 'Manage all registered passengers'
-                                                }
-                                            </p>
-                                        </div>
-                                        <button
-                                            onClick={() => setIsCreatePassengerModalOpen(true)}
-                                            className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all shadow-md whitespace-nowrap"
-                                        >
-                                            <Lucide.Plus size={18} />
-                                            New Passenger
-                                        </button>
-                                        <button
-                                            onClick={() => setIsCreateInvoiceModalOpen(true)}
-                                            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-md whitespace-nowrap"
-                                        >
-                                            <Lucide.FileText size={18} />
-                                            New Invoice
-                                        </button>
+                {/* Top Navigation Bar */}
+                <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+                    <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 md:gap-4">
+                                <div className="flex items-center gap-2 md:gap-3">
+                                    <div className="h-8 w-8 md:h-10 md:w-10 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md flex-shrink-0">
+                                        <Lucide.ShieldCheck className="w-4 h-4 md:w-5 md:h-5" />
                                     </div>
-
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
-                                            <button
-                                                onClick={() => setActiveView('all')}
-                                                className={clsx(
-                                                    "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-                                                    activeView === 'all'
-                                                        ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                        : "text-slate-500 hover:text-slate-900"
-                                                )}
-                                            >
-                                                Registry
-                                            </button>
-                                            <button
-                                                onClick={() => setActiveView('today')}
-                                                className={clsx(
-                                                    "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-                                                    activeView === 'today'
-                                                        ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                        : "text-slate-500 hover:text-slate-900"
-                                                )}
-                                            >
-                                                Traveling Today
-                                            </button>
-                                        </div>
-
-                                        {activeView === 'today' && (
-                                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
-                                                <Lucide.Calendar size={16} className="text-slate-400" />
-                                                <input
-                                                    type="date"
-                                                    value={selectedDate}
-                                                    onChange={(e) => setSelectedDate(e.target.value)}
-                                                    className="text-sm font-medium focus:outline-none"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Search */}
-                                    <div className="relative">
-                                        <Lucide.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                        <input
-                                            type="text"
-                                            placeholder="Search passengers..."
-                                            value={searchQuery}
-                                            onChange={e => setSearchQuery(e.target.value)}
-                                            className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-ocean-500 transition-all"
-                                        />
+                                    <div className="min-w-0">
+                                        <h1 className="text-sm md:text-lg font-black text-slate-900 uppercase tracking-tight truncate">Dnarai Enterprise</h1>
+                                        <p className="text-[10px] md:text-xs text-slate-500 font-medium truncate">Agency Dashboard</p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="mb-6">
-                                <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-3">Pending Document Reviews</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {documents.filter(d => d.status === 'Pending').length > 0 ? (
-                                        documents.filter(d => d.status === 'Pending').map((doc, idx) => (
-                                            <div key={idx} className="bg-white border border-yellow-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Lucide.FileText size={16} className="text-yellow-600" />
-                                                        <span className="font-bold text-slate-900 text-sm">{doc.title}</span>
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">Exp: {doc.expiry}</div>
-                                                </div>
-                                                <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Review</span>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <div className="col-span-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-center text-sm text-slate-500 italic">
-                                            No documents pending review
-                                        </div>
+                            {/* Desktop Actions */}
+                            <div className="hidden md:flex items-center gap-6">
+                                <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
+                                    <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
+                                    {stats.pendingNotifications > 0 && (
+                                        <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center cursor-pointer ring-2 ring-white">
+                                            {stats.pendingNotifications}
+                                        </span>
                                     )}
                                 </div>
-                            </div>
 
-                            <div className="block md:hidden">
-                                {filteredPassengers.map(p => (
-                                    <div
-                                        key={p.id || p._id}
-                                        onClick={() => setSelectedPassenger(p)}
-                                        className={clsx(
-                                            "p-5 border-b border-slate-100 flex items-center justify-between transition-colors",
-                                            (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) ? "bg-ocean-50" : "bg-white"
-                                        )}
+                                {role === 'admin' && (
+                                    <button
+                                        onClick={() => setIsAddStaffModalOpen(true)}
+                                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                        title="Add Staff"
                                     >
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-black text-lg shadow-sm border border-white">
-                                                {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <div className="font-black text-slate-900 text-base leading-tight">{p.fullName}</div>
-                                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
-                                            </div>
-                                        </div>
-                                        <Lucide.ChevronRight size={20} className="text-slate-300" />
-                                    </div>
-                                ))}
-                                {filteredPassengers.length === 0 && (
-                                    <div className="p-10 text-center text-slate-400 italic">No passengers found</div>
+                                        <Lucide.UserPlus size={16} />
+                                        <span>Add Staff</span>
+                                    </button>
                                 )}
+
+                                <button
+                                    onClick={() => setIsBlogManagerModalOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                    title="Manage Insights"
+                                >
+                                    <Lucide.BookOpen size={16} />
+                                    <span>Manage Insights</span>
+                                </button>
+
+                                <button
+                                    onClick={() => setIsCreateBlogModalOpen(true)}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
+                                    title="New Insight"
+                                >
+                                    <Lucide.PlusCircle size={16} />
+                                    <span>New Insight</span>
+                                </button>
+
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                    title="Sign Out"
+                                >
+                                    <Lucide.LogOut size={16} />
+                                    <span>Sign Out</span>
+                                </button>
                             </div>
 
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-slate-50 border-b border-slate-200">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Passenger</th>
-                                            <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Contact</th>
-                                            {activeView === 'today' && (
-                                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Flight</th>
-                                            )}
-                                            <th className="px-6 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {filteredPassengers.map(p => (
-                                            <tr
-                                                key={p.id || p._id}
-                                                onClick={() => setSelectedPassenger(p)}
-                                                className={clsx(
-                                                    "hover:bg-slate-50 cursor-pointer transition-colors",
-                                                    (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) && "bg-ocean-50"
-                                                )}
-                                            >
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="h-10 w-10 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-bold text-sm">
-                                                            {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-slate-900">{p.fullName}</div>
-                                                            <div className="text-xs text-slate-500">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="text-sm text-slate-900">{p.email}</div>
-                                                    <div className="text-xs text-slate-500">{p.phone || 'No phone'}</div>
-                                                </td>
-                                                {activeView === 'today' && (
-                                                    <td className="px-6 py-4">
-                                                        {p.bookings && p.bookings.length > 0 ? (
-                                                            <div
-                                                                onClick={(e) => { e.stopPropagation(); handleViewBookingDetails(p.bookings[0]); }}
-                                                                className="text-sm hover:bg-ocean-100 p-2 rounded-lg transition-all border border-transparent hover:border-ocean-200"
-                                                            >
-                                                                <div className="font-bold text-slate-900 flex items-center gap-1">
-                                                                    {p.bookings[0].flightNumber}
-                                                                    <Lucide.ExternalLink size={12} className="text-slate-400" />
-                                                                </div>
-                                                                <div className="text-xs text-slate-500">
-                                                                    {p.bookings[0].origin?.iata} → {p.bookings[0].destination?.iata}
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-xs text-slate-400">No flight</span>
-                                                        )}
-                                                    </td>
-                                                )}
-                                                <td className="px-6 py-4 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setEditForm(p); setIsEditModalOpen(true); }}
-                                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
-                                                        >
-                                                            <Lucide.Edit size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); setDeleteConfirmation({ passenger: p }); }}
-                                                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                        >
-                                                            <Lucide.Trash2 size={14} />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Recent Bookings */}
-                        <div ref={bookingsListRef} className="bg-white rounded-2xl border border-slate-200 p-6">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-                                    {bookingFilter === 'recent' ? 'Recent Bookings' : 'All Bookings'}
-                                </h3>
-                                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                                    <button
-                                        onClick={() => setBookingFilter('recent')}
-                                        className={clsx(
-                                            "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                                            bookingFilter === 'recent'
-                                                ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                : "text-slate-500 hover:text-slate-700"
-                                        )}
-                                    >
-                                        Recent
-                                    </button>
-                                    <button
-                                        onClick={() => setBookingFilter('all')}
-                                        className={clsx(
-                                            "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                                            bookingFilter === 'all'
-                                                ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                : "text-slate-500 hover:text-slate-700"
-                                        )}
-                                    >
-                                        History
-                                    </button>
+                            {/* Mobile Actions */}
+                            <div className="flex md:hidden items-center gap-3">
+                                <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
+                                    <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
+                                    {stats.pendingNotifications > 0 && (
+                                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center cursor-pointer ring-2 ring-white">
+                                            {stats.pendingNotifications}
+                                        </span>
+                                    )}
                                 </div>
-                            </div>
-                            <div className="grid gap-4">
-                                {(bookingFilter === 'recent' ? bookings.slice(0, 6) : bookings).map(b => (
-                                    <div
-                                        key={b._id}
-                                        onClick={() => handleViewBookingDetails(b)}
-                                        className="border border-slate-200 rounded-xl p-4 hover:border-ocean-300 hover:shadow-md transition-all cursor-pointer group"
-                                    >
-                                        <div className="flex items-center justify-between mb-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
-                                                    {b.airlineName?.slice(0, 2).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-slate-900">{b.airlineName}</div>
-                                                    <div className="text-xs text-ocean-600 font-medium">{b.flightNumber}</div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className={clsx(
-                                                    "px-3 py-1 rounded-full text-xs font-bold",
-                                                    b.status === 'confirmed' ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
-                                                )}>
-                                                    {b.status}
-                                                </span>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        openEditBookingModal(b);
-                                                    }}
-                                                    className="p-1.5 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
-                                                >
-                                                    <Lucide.Edit size={14} />
-                                                </button>
-                                                <Lucide.ArrowRight size={16} className="text-slate-400 group-hover:text-ocean-600 transition-colors" />
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-bold text-slate-900">{b.origin?.iata}</span>
-                                                <Lucide.ArrowRight size={16} className="text-slate-400" />
-                                                <span className="font-bold text-slate-900">{b.destination?.iata}</span>
-                                            </div>
-                                            <div className="text-xs text-slate-500">
-                                                {new Date(b.departureDateTimeUtc).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                                <button
+                                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                                    className="p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                                >
+                                    {isMobileMenuOpen ? <Lucide.X size={20} className="text-slate-600" /> : <Lucide.Menu size={20} className="text-slate-600" />}
+                                </button>
                             </div>
                         </div>
                     </div>
+
+                    {/* Mobile Menu Dropdown */}
+                    {isMobileMenuOpen && (
+                        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3">
+                            {role === 'admin' && (
+                                <button
+                                    onClick={() => { setIsAddStaffModalOpen(true); setIsMobileMenuOpen(false); }}
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                                >
+                                    <Lucide.UserPlus size={18} />
+                                    Add Staff
+                                </button>
+                            )}
+                            <button
+                                onClick={() => { setIsBlogManagerModalOpen(true); setIsMobileMenuOpen(false); }}
+                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                            >
+                                <Lucide.BookOpen size={18} />
+                                Manage Insights
+                            </button>
+                            <button
+                                onClick={() => { setIsCreateBlogModalOpen(true); setIsMobileMenuOpen(false); }}
+                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-ocean-700 bg-ocean-50 hover:bg-ocean-100 rounded-xl transition-all border border-ocean-100"
+                            >
+                                <Lucide.PlusCircle size={18} />
+                                New Insight
+                            </button>
+                            <button
+                                onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
+                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
+                            >
+                                <Lucide.LogOut size={18} />
+                                Sign Out
+                            </button>
+                        </div>
+                    )}
+                </nav>
+
+                {/* Main Content */}
+                <div className="max-w-7xl mx-auto px-6 py-8">
+                    {/* Stats Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 mt-4 md:mt-0">
+                        {[
+                            { label: 'Passengers', labelFull: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'bg-ocean-500', bgLight: 'bg-ocean-50', onClick: () => { setActiveView('all'); scrollToPassengerList(); } },
+                            { label: 'Bookings', labelFull: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'bg-green-500', bgLight: 'bg-green-50', onClick: () => setIsActiveBookingsModalOpen(true) },
+                            { label: 'Today', labelFull: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'bg-purple-500', bgLight: 'bg-purple-50', onClick: () => setIsTravelingTodayModalOpen(true) },
+                            { label: 'Alerts', labelFull: 'Notifications', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'bg-amber-500', bgLight: 'bg-amber-50', onClick: () => setIsAllNotificationsModalOpen(true) },
+                        ].map(stat => (
+                            <div
+                                key={stat.labelFull}
+                                onClick={stat.onClick}
+                                className={clsx(
+                                    "bg-white rounded-[1.5rem] md:rounded-2xl p-4 md:p-6 border border-slate-200 hover:shadow-lg transition-all active:scale-95 group",
+                                    stat.onClick && "cursor-pointer"
+                                )}
+                            >
+                                <div className="flex items-center justify-between mb-2 md:mb-4">
+                                    <div className={`${stat.bgLight} p-2 md:p-3 rounded-xl transition-colors group-hover:scale-110 duration-300`}>
+                                        <stat.icon className={`${stat.color.replace('bg-', 'text-')}`} size={20} />
+                                    </div>
+                                    {stat.value > 0 && stat.label === 'Alerts' && (
+                                        <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    )}
+                                </div>
+                                <div className="text-xl md:text-3xl font-black text-slate-900 mb-0.5 md:mb-1">{stat.value}</div>
+                                <div className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-tight md:normal-case md:tracking-normal">
+                                    <span className="hidden md:inline">{stat.labelFull}</span>
+                                    <span className="md:hidden">{stat.label}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Main Grid Layout */}
+                    <div className="grid lg:grid-cols-3 gap-8">
+                        {/* Left Column - Passengers List */}
+                        <div className="lg:col-span-2 space-y-6">
+                            {/* Passengers Section */}
+                            <div ref={passengerListRef} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                                <div className="p-6 border-b border-slate-200 bg-slate-50">
+                                    <div className="flex flex-col gap-4">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div>
+                                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
+                                                    {activeView === 'today' ? 'Traveling Today' : 'Passenger Registry'}
+                                                </h2>
+                                                <p className="text-sm text-slate-500 mt-1">
+                                                    {activeView === 'today'
+                                                        ? `${filteredPassengers.length} passengers traveling on ${new Date(selectedDate).toLocaleDateString()}`
+                                                        : 'Manage all registered passengers'
+                                                    }
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => setIsCreatePassengerModalOpen(true)}
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all shadow-md whitespace-nowrap"
+                                            >
+                                                <Lucide.Plus size={18} />
+                                                New Passenger
+                                            </button>
+                                            <button
+                                                onClick={() => setIsCreateInvoiceModalOpen(true)}
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-md whitespace-nowrap"
+                                            >
+                                                <Lucide.FileText size={18} />
+                                                New Invoice
+                                            </button>
+                                        </div>
+
+                                        <div className="flex flex-col sm:flex-row gap-4">
+                                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
+                                                <button
+                                                    onClick={() => setActiveView('all')}
+                                                    className={clsx(
+                                                        "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+                                                        activeView === 'all'
+                                                            ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
+                                                            : "text-slate-500 hover:text-slate-900"
+                                                    )}
+                                                >
+                                                    Registry
+                                                </button>
+                                                <button
+                                                    onClick={() => setActiveView('today')}
+                                                    className={clsx(
+                                                        "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300",
+                                                        activeView === 'today'
+                                                            ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
+                                                            : "text-slate-500 hover:text-slate-900"
+                                                    )}
+                                                >
+                                                    Traveling Today
+                                                </button>
+                                            </div>
+
+                                            {activeView === 'today' && (
+                                                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
+                                                    <Lucide.Calendar size={16} className="text-slate-400" />
+                                                    <input
+                                                        type="date"
+                                                        value={selectedDate}
+                                                        onChange={(e) => setSelectedDate(e.target.value)}
+                                                        className="text-sm font-medium focus:outline-none"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Search */}
+                                        <div className="relative">
+                                            <Lucide.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                            <input
+                                                type="text"
+                                                placeholder="Search passengers..."
+                                                value={searchQuery}
+                                                onChange={e => setSearchQuery(e.target.value)}
+                                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-ocean-500 transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mb-6">
+                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-3">Pending Document Reviews</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {documents.filter(d => d.status === 'Pending').length > 0 ? (
+                                            documents.filter(d => d.status === 'Pending').map((doc, idx) => (
+                                                <div key={idx} className="bg-white border border-yellow-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <Lucide.FileText size={16} className="text-yellow-600" />
+                                                            <span className="font-bold text-slate-900 text-sm">{doc.title}</span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-500">Exp: {doc.expiry}</div>
+                                                    </div>
+                                                    <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Review</span>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="col-span-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-center text-sm text-slate-500 italic">
+                                                No documents pending review
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="block md:hidden">
+                                    {filteredPassengers.map(p => (
+                                        <div
+                                            key={p.id || p._id}
+                                            onClick={() => setSelectedPassenger(p)}
+                                            className={clsx(
+                                                "p-5 border-b border-slate-100 flex items-center justify-between transition-colors",
+                                                (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) ? "bg-ocean-50" : "bg-white"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-12 w-12 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-black text-lg shadow-sm border border-white">
+                                                    {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <div className="font-black text-slate-900 text-base leading-tight">{p.fullName}</div>
+                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
+                                                </div>
+                                            </div>
+                                            <Lucide.ChevronRight size={20} className="text-slate-300" />
+                                        </div>
+                                    ))}
+                                    {filteredPassengers.length === 0 && (
+                                        <div className="p-10 text-center text-slate-400 italic">No passengers found</div>
+                                    )}
+                                </div>
+
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Passenger</th>
+                                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Contact</th>
+                                                {activeView === 'today' && (
+                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Flight</th>
+                                                )}
+                                                <th className="px-6 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            {filteredPassengers.map(p => (
+                                                <tr
+                                                    key={p.id || p._id}
+                                                    onClick={() => setSelectedPassenger(p)}
+                                                    className={clsx(
+                                                        "hover:bg-slate-50 cursor-pointer transition-colors",
+                                                        (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) && "bg-ocean-50"
+                                                    )}
+                                                >
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="h-10 w-10 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-bold text-sm">
+                                                                {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-bold text-slate-900">{p.fullName}</div>
+                                                                <div className="text-xs text-slate-500">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <div className="text-sm text-slate-900">{p.email}</div>
+                                                        <div className="text-xs text-slate-500">{p.phone || 'No phone'}</div>
+                                                    </td>
+                                                    {activeView === 'today' && (
+                                                        <td className="px-6 py-4">
+                                                            {p.bookings && p.bookings.length > 0 ? (
+                                                                <div
+                                                                    onClick={(e) => { e.stopPropagation(); handleViewBookingDetails(p.bookings[0]); }}
+                                                                    className="text-sm hover:bg-ocean-100 p-2 rounded-lg transition-all border border-transparent hover:border-ocean-200"
+                                                                >
+                                                                    <div className="font-bold text-slate-900 flex items-center gap-1">
+                                                                        {p.bookings[0].flightNumber}
+                                                                        <Lucide.ExternalLink size={12} className="text-slate-400" />
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-500">
+                                                                        {p.bookings[0].origin?.iata} → {p.bookings[0].destination?.iata}
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-400">No flight</span>
+                                                            )}
+                                                        </td>
+                                                    )}
+                                                    <td className="px-6 py-4 text-right">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setEditForm(p); setIsEditModalOpen(true); }}
+                                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
+                                                            >
+                                                                <Lucide.Edit size={14} />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); setDeleteConfirmation({ passenger: p }); }}
+                                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                            >
+                                                                <Lucide.Trash2 size={14} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Recent Bookings */}
+                            <div ref={bookingsListRef} className="bg-white rounded-2xl border border-slate-200 p-6">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                                        {bookingFilter === 'recent' ? 'Recent Bookings' : 'All Bookings'}
+                                    </h3>
+                                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                                        <button
+                                            onClick={() => setBookingFilter('recent')}
+                                            className={clsx(
+                                                "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                                bookingFilter === 'recent'
+                                                    ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
+                                                    : "text-slate-500 hover:text-slate-700"
+                                            )}
+                                        >
+                                            Recent
+                                        </button>
+                                        <button
+                                            onClick={() => setBookingFilter('all')}
+                                            className={clsx(
+                                                "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                                bookingFilter === 'all'
+                                                    ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
+                                                    : "text-slate-500 hover:text-slate-700"
+                                            )}
+                                        >
+                                            History
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="grid gap-4">
+                                    {(bookingFilter === 'recent' ? bookings.slice(0, 6) : bookings).map(b => (
+                                        <div
+                                            key={b._id}
+                                            onClick={() => handleViewBookingDetails(b)}
+                                            className="border border-slate-200 rounded-xl p-4 hover:border-ocean-300 hover:shadow-md transition-all cursor-pointer group"
+                                        >
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="h-10 w-10 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
+                                                        {b.airlineName?.slice(0, 2).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-slate-900">{b.airlineName}</div>
+                                                        <div className="text-xs text-ocean-600 font-medium">{b.flightNumber}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={clsx(
+                                                        "px-3 py-1 rounded-full text-xs font-bold",
+                                                        b.status === 'confirmed' ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                                                    )}>
+                                                        {b.status}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openEditBookingModal(b);
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
+                                                    >
+                                                        <Lucide.Edit size={14} />
+                                                    </button>
+                                                    <Lucide.ArrowRight size={16} className="text-slate-400 group-hover:text-ocean-600 transition-colors" />
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold text-slate-900">{b.origin?.iata}</span>
+                                                    <Lucide.ArrowRight size={16} className="text-slate-400" />
+                                                    <span className="font-bold text-slate-900">{b.destination?.iata}</span>
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                    {new Date(b.departureDateTimeUtc).toLocaleDateString()}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
 
                         {/* Invoices Section - Modernized */}
                         <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
@@ -1273,7 +1273,7 @@ export default function SuperAdminPage() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     {invoices.length > 0 && (
-                                        <button 
+                                        <button
                                             onClick={handleDeleteAllInvoices}
                                             className="p-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-black hover:bg-rose-100 transition-all border border-rose-100/50"
                                             title="Purge All Invoices"
@@ -1281,11 +1281,11 @@ export default function SuperAdminPage() {
                                             <Lucide.Trash2 size={18} />
                                         </button>
                                     )}
-                                    <button 
+                                    <button
                                         onClick={() => setIsCreateInvoiceModalOpen(true)}
                                         className="flex-1 sm:flex-none px-5 py-3 bg-ocean-600 text-white rounded-2xl text-xs font-black hover:bg-ocean-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-ocean-600/20 active:scale-95"
                                     >
-                                        <Lucide.Plus size={18} /> 
+                                        <Lucide.Plus size={18} />
                                         <span>New Invoice</span>
                                     </button>
                                 </div>
@@ -1299,7 +1299,7 @@ export default function SuperAdminPage() {
                                         </div>
                                         <h3 className="text-slate-900 font-bold mb-1">No invoices found</h3>
                                         <p className="text-sm font-medium text-slate-400 max-w-xs mx-auto">Create and manage your professional invoices for passengers here.</p>
-                                        <button 
+                                        <button
                                             onClick={() => setIsCreateInvoiceModalOpen(true)}
                                             className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all"
                                         >
@@ -1328,26 +1328,26 @@ export default function SuperAdminPage() {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    
+
                                                     <div className="grid grid-cols-3 gap-2">
-                                                        <button 
+                                                        <button
                                                             onClick={() => {
                                                                 setSelectedInvoiceForShare(inv);
                                                                 setIsShareInvoiceModalOpen(true);
                                                             }}
                                                             className="flex items-center justify-center gap-2 py-3 bg-ocean-600 text-white rounded-xl text-xs font-black shadow-md shadow-ocean-600/10 active:scale-95 transition-all"
                                                         >
-                                                            <Lucide.Share2 size={14} /> 
+                                                            <Lucide.Share2 size={14} />
                                                             <span>Share</span>
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleDownloadInvoice(inv)}
                                                             className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-xl text-xs font-black active:scale-95 transition-all border border-slate-200/50"
                                                         >
                                                             <Lucide.Download size={14} />
                                                             <span>PDF</span>
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleDeleteInvoice(inv._id)}
                                                             className="flex items-center justify-center py-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-black active:scale-95 transition-all border border-rose-100/50"
                                                         >
@@ -1395,7 +1395,7 @@ export default function SuperAdminPage() {
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => {
                                                                             setSelectedInvoiceForShare(inv);
                                                                             setIsShareInvoiceModalOpen(true);
@@ -1405,14 +1405,14 @@ export default function SuperAdminPage() {
                                                                     >
                                                                         <Lucide.Share2 size={16} />
                                                                     </button>
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => handleDownloadInvoice(inv)}
                                                                         className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
                                                                         title="Download PDF"
                                                                     >
                                                                         <Lucide.Download size={16} />
                                                                     </button>
-                                                                    <button 
+                                                                    <button
                                                                         onClick={() => handleDeleteInvoice(inv._id)}
                                                                         className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
                                                                         title="Delete Permanently"
@@ -2828,33 +2828,33 @@ export default function SuperAdminPage() {
                     <div className="space-y-4">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">Bill To (Name)</label>
-                            <input 
-                                type="text" 
+                            <input
+                                type="text"
                                 placeholder="Full Name"
-                                value={invoiceForm.passengerName} 
-                                onChange={e => setInvoiceForm({ ...invoiceForm, passengerName: e.target.value })} 
-                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl font-bold" 
+                                value={invoiceForm.passengerName}
+                                onChange={e => setInvoiceForm({ ...invoiceForm, passengerName: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl font-bold"
                             />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
-                                <input 
-                                    type="email" 
+                                <input
+                                    type="email"
                                     placeholder="email@example.com"
-                                    value={invoiceForm.passengerEmail} 
-                                    onChange={e => setInvoiceForm({ ...invoiceForm, passengerEmail: e.target.value })} 
-                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" 
+                                    value={invoiceForm.passengerEmail}
+                                    onChange={e => setInvoiceForm({ ...invoiceForm, passengerEmail: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm"
                                 />
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Phone Number</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     placeholder="+234..."
-                                    value={invoiceForm.passengerPhone} 
-                                    onChange={e => setInvoiceForm({ ...invoiceForm, passengerPhone: e.target.value })} 
-                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm" 
+                                    value={invoiceForm.passengerPhone}
+                                    onChange={e => setInvoiceForm({ ...invoiceForm, passengerPhone: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm"
                                 />
                             </div>
                         </div>
@@ -2872,8 +2872,8 @@ export default function SuperAdminPage() {
                                 <div className="flex justify-between items-center">
                                     <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[10px] font-black uppercase">Item {idx + 1}</span>
                                     {invoiceForm.items.length > 1 && (
-                                        <button 
-                                            onClick={() => removeInvoiceItem(idx)} 
+                                        <button
+                                            onClick={() => removeInvoiceItem(idx)}
                                             className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                                             title="Remove Item"
                                         >
@@ -2884,22 +2884,22 @@ export default function SuperAdminPage() {
                                 <div className="grid grid-cols-1 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Service Description</label>
-                                        <input 
-                                            type="text" 
+                                        <input
+                                            type="text"
                                             placeholder="e.g. Flight ticket bookings, Visa processing..."
-                                            value={item.description} 
-                                            onChange={e => handleInvoiceItemChange(idx, 'description', e.target.value)} 
-                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all" 
+                                            value={item.description}
+                                            onChange={e => handleInvoiceItemChange(idx, 'description', e.target.value)}
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all"
                                         />
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Detailed Information (Optional)</label>
-                                        <textarea 
+                                        <textarea
                                             placeholder="e.g. Arik flight ticket from Abuja to Lagos for 6th May, 2026."
-                                            value={item.subText} 
+                                            value={item.subText}
                                             rows={2}
-                                            onChange={e => handleInvoiceItemChange(idx, 'subText', e.target.value)} 
-                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all resize-none" 
+                                            onChange={e => handleInvoiceItemChange(idx, 'subText', e.target.value)}
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all resize-none"
                                         />
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
@@ -2907,21 +2907,21 @@ export default function SuperAdminPage() {
                                             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Rate</label>
                                             <div className="relative">
                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{invoiceForm.currency}</span>
-                                                <input 
-                                                    type="number" 
-                                                    value={item.rate} 
-                                                    onChange={e => handleInvoiceItemChange(idx, 'rate', Number(e.target.value))} 
-                                                    className="w-full pl-8 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all" 
+                                                <input
+                                                    type="number"
+                                                    value={item.rate}
+                                                    onChange={e => handleInvoiceItemChange(idx, 'rate', Number(e.target.value))}
+                                                    className="w-full pl-8 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all"
                                                 />
                                             </div>
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Qty</label>
-                                            <input 
-                                                type="number" 
-                                                value={item.qty} 
-                                                onChange={e => handleInvoiceItemChange(idx, 'qty', Number(e.target.value))} 
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all" 
+                                            <input
+                                                type="number"
+                                                value={item.qty}
+                                                onChange={e => handleInvoiceItemChange(idx, 'qty', Number(e.target.value))}
+                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all"
                                             />
                                         </div>
                                         <div>
@@ -2994,15 +2994,15 @@ export default function SuperAdminPage() {
                                 <span>Service Charge</span>
                                 <div className="flex items-center gap-1 border-b border-slate-700 pb-1">
                                     <span className="text-slate-500">{invoiceForm.currency}</span>
-                                    <input 
-                                        type="number" 
-                                        className="w-20 text-right bg-transparent focus:outline-none text-white font-black" 
-                                        value={invoiceForm.serviceCharge} 
+                                    <input
+                                        type="number"
+                                        className="w-20 text-right bg-transparent focus:outline-none text-white font-black"
+                                        value={invoiceForm.serviceCharge}
                                         onChange={e => {
                                             const val = Number(e.target.value);
                                             const total = (invoiceForm.subTotal || 0) + val - (invoiceForm.discount || 0);
                                             setInvoiceForm({ ...invoiceForm, serviceCharge: val, total, balanceDue: invoiceForm.isPaid ? 0 : total });
-                                        }} 
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -3010,15 +3010,15 @@ export default function SuperAdminPage() {
                                 <span>Discount</span>
                                 <div className="flex items-center gap-1 border-b border-slate-700 pb-1">
                                     <span className="text-slate-500">{invoiceForm.currency}</span>
-                                    <input 
-                                        type="number" 
-                                        className="w-20 text-right bg-transparent focus:outline-none text-red-400 font-black" 
-                                        value={invoiceForm.discount} 
+                                    <input
+                                        type="number"
+                                        className="w-20 text-right bg-transparent focus:outline-none text-red-400 font-black"
+                                        value={invoiceForm.discount}
                                         onChange={e => {
                                             const val = Number(e.target.value);
                                             const total = (invoiceForm.subTotal || 0) + (invoiceForm.serviceCharge || 0) - val;
                                             setInvoiceForm({ ...invoiceForm, discount: val, total, balanceDue: invoiceForm.isPaid ? 0 : total });
-                                        }} 
+                                        }}
                                     />
                                 </div>
                             </div>
@@ -3053,7 +3053,7 @@ export default function SuperAdminPage() {
                                     <div className="text-xs text-slate-500">{selectedInvoiceForShare.passengerEmail || 'No email saved'}</div>
                                     <div className="text-xs text-slate-500">{selectedInvoiceForShare.passengerPhone || 'No phone saved'}</div>
                                 </div>
-                                <button 
+                                <button
                                     onClick={() => handleShareWithPassenger(null)}
                                     className="px-6 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-black hover:bg-ocean-700 transition-all flex items-center gap-2 shadow-lg shadow-ocean-600/20"
                                 >
@@ -3071,9 +3071,9 @@ export default function SuperAdminPage() {
 
                     <div className="relative">
                         <Lucide.Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input 
-                            type="text" 
-                            placeholder="Search passengers..." 
+                        <input
+                            type="text"
+                            placeholder="Search passengers..."
                             className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl"
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
@@ -3081,8 +3081,8 @@ export default function SuperAdminPage() {
 
                     <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                         {filteredPassengers.map(p => (
-                            <div 
-                                key={p.id || p._id} 
+                            <div
+                                key={p.id || p._id}
                                 className="flex items-center justify-between p-4 border border-slate-100 rounded-2xl hover:bg-white hover:border-ocean-300 hover:shadow-xl hover:shadow-ocean-600/5 transition-all cursor-pointer group"
                                 onClick={() => handleShareWithPassenger(p)}
                             >
@@ -3108,10 +3108,10 @@ export default function SuperAdminPage() {
                     {/* Header Section */}
                     <div className="flex justify-between items-start mb-12">
                         <div className="flex items-center gap-6">
-                            <img 
-                                src={`/D-NARAI_Logo-04.png?t=${Date.now()}`} 
-                                alt="Logo" 
-                                className="h-20 object-contain" 
+                            <img
+                                src={`/D-NARAI_Logo-04.png?t=${Date.now()}`}
+                                alt="Logo"
+                                className="h-20 object-contain"
                                 crossOrigin="anonymous"
                             />
                             <div className="border-l-2 border-ocean-100 pl-6 py-1">
@@ -3206,7 +3206,7 @@ export default function SuperAdminPage() {
                                     <h3 className="text-[10px] font-black text-ocean-600 uppercase tracking-[0.2em] mb-3">Payment Instructions</h3>
                                     <div className="text-[10px] leading-relaxed text-slate-500 space-y-2">
                                         <p>
-                                            Please ensure payment is made to the designated bank account below. 
+                                            Please ensure payment is made to the designated bank account below.
                                             Mention the invoice number <span className="font-bold text-slate-900">#{selectedInvoiceForShare.invoiceNumber}</span> as reference.
                                         </p>
                                         <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-1 font-semibold text-slate-800">
@@ -3262,7 +3262,7 @@ export default function SuperAdminPage() {
                     {/* Footer */}
                     <div className="pt-10 border-t border-slate-100 text-center">
                         <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.3em]">
-                            &quot;Our Service End when you successfully arrive your destination.&quot;
+                            &quot;Our Service End when you successfully arrive at your destination.&quot;
                         </p>
                     </div>
                 </div>

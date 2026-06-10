@@ -1,10 +1,10 @@
 {
   "brandName": "D.Narai Enterprise",
-  "motto": "Our Service End when you successfully arrive your destination.",
+  "motto": "Our Service End when you successfully arrive at your destination.",
   "home": {
     "hero": {
-      "title": "Your Journey, Perfected",
-      "subtitle": "Seamless orchestration of your global journeys. We bridge the gap between elite travelers and world-class airlines, ensuring punctuality, privacy, and precision.",
+      "title": "Your Travel Companion",
+      "subtitle": "We are a realistic, client-centric & forward thinking travel company, we use innovation and technology to serve you all through your journey.",
       "primaryCta": {
         "label": "Passenger Login",
         "to": "/dashboard"

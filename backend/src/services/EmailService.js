@@ -28,7 +28,7 @@ const sendMailViaBrevoAPI = async ({ from, to, subject, html, text, attachments 
   const formattedAttachments = [];
   for (const att of attachments) {
     const fileName = att.filename || att.name || "attachment";
-    
+
     // Brevo API strictly rejects .svg files with 400 Unsupported file format
     if (fileName.toLowerCase().endsWith('.svg')) {
       console.warn(`⚠️ [EmailService] Skipping unsupported SVG attachment for Brevo API: ${fileName}`);
@@ -359,7 +359,7 @@ export const EmailService = {
 
     // Fetch destination weather for the flight date
     const { WeatherService } = await import('./WeatherService.js');
-    const weather = await WeatherService.getCityForecast({ 
+    const weather = await WeatherService.getCityForecast({
       city: booking.destination?.city || 'the destination',
       date: booking.departureDateTimeUtc
     });
@@ -367,17 +367,17 @@ export const EmailService = {
     // Format departure date & time
     const departureDate = booking.departureDateTimeUtc
       ? new Date(booking.departureDateTimeUtc).toLocaleDateString('en-GB', {
-          weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
-        })
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+      })
       : 'TBC';
 
     const departureTime = booking.departureTime24
       ? booking.departureTime24
       : (booking.departureDateTimeUtc
-          ? new Date(booking.departureDateTimeUtc).toLocaleTimeString('en-GB', {
-              hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false
-            })
-          : 'TBC');
+        ? new Date(booking.departureDateTimeUtc).toLocaleTimeString('en-GB', {
+          hour: '2-digit', minute: '2-digit', timeZone: 'UTC', hour12: false
+        })
+        : 'TBC');
 
     // Weather icon mapping (text-based for email clients)
     const weatherIcon = { sun: '☀️', cloudSun: '⛅', cloud: '☁️', rain: '🌧️', snow: '❄️', storm: '⛈️' }[weather.type] || '🌤️';
@@ -526,7 +526,7 @@ export const EmailService = {
     if (!transporter) return { ok: false, error: 'Transporter not configured' };
 
     const { WeatherService } = await import('./WeatherService.js');
-    const weather = await WeatherService.getCityForecast({ 
+    const weather = await WeatherService.getCityForecast({
       city: booking.destination?.city || 'the destination',
       date: booking.departureDateTimeUtc
     });
@@ -573,7 +573,7 @@ export const EmailService = {
     if (!transporter) return { ok: false, error: 'Transporter not configured' };
 
     const { WeatherService } = await import('./WeatherService.js');
-    const weather = await WeatherService.getCityForecast({ 
+    const weather = await WeatherService.getCityForecast({
       city: booking.destination?.city || 'the destination',
       date: booking.departureDateTimeUtc
     });
@@ -590,7 +590,7 @@ export const EmailService = {
             <p style="margin: 10px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Quick Gear Check:</strong> ${weather.advice}</p>
           </div>
 
-          <p style="font-size: 14px; color: ${COLORS.SLATE};">Safe travels! Our Service End when you successfully arrive your destination.</p>
+          <p style="font-size: 14px; color: ${COLORS.SLATE}; font-style: italic; text-align: center;">"Our Service End when you successfully arrive your destination."</p>
         </td>
       </tr>
     `;
@@ -662,7 +662,7 @@ export const EmailService = {
             </table>
           </div>
 
-          <p style="margin: 0; font-size: 14px; color: ${COLORS.SLATE}; font-style: italic;">"Our Service End when you successfully arrive your destination."</p>
+          <p style="margin: 0; font-size: 14px; color: ${COLORS.SLATE}; font-style: italic;">"Our Service End when you successfully arrive at your destination."</p>
         </td>
       </tr>
     `;

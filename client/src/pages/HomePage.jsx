@@ -112,12 +112,11 @@ export default function HomePage() {
       {/* --- STATS SECTION --- */}
       <section className="bg-sand-50 py-24 border-y border-sand-200 dark:bg-slate-950 dark:border-slate-800 relative z-20">
         <div className="container mx-auto max-w-[1400px] px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-12">
             {[
-              { label: 'Happy Travelers', value: '12K+' },
-              { label: 'Destinations', value: '850+' },
-              { label: 'Years Experience', value: '15+' },
-              { label: 'Travel Partners', value: '120+' },
+              { label: 'Years of experience', value: '10+' },
+              { label: 'Happy Travelers', value: '5k' },
+              { label: 'Travel Partners', value: '50+' },
             ].map(stat => (
               <div key={stat.label} className="text-center space-y-3">
                 <div className="text-4xl md:text-5xl font-black tracking-tight text-ocean-700 dark:text-ocean-400 font-display">{stat.value}</div>
@@ -134,30 +133,36 @@ export default function HomePage() {
           <div className="max-w-3xl mx-auto text-center space-y-6">
             <h2 className="text-sm font-bold uppercase tracking-widest text-ocean-600">Why Choose Us</h2>
             <p className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
-              Tailored Travel <br />
-              <span className="text-ocean-600">For Every Journey</span>
+              We set the<br />
+              <span className="text-ocean-600">"PACE" so others can follow.</span>
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
-                icon: Lucide.Compass,
-                title: 'Expert Planning',
-                desc: 'Personalized itineraries crafted by travel specialists with deep destination knowledge.',
-                color: 'ocean'
+                icon: Lucide.Target,
+                title: 'Precision',
+                desc: 'Attention to every travel detail. Accuracy is our hallmark.',
+                colorClass: 'bg-ocean-100 text-ocean-600 dark:bg-ocean-500/10 dark:text-ocean-400'
               },
               {
-                icon: Lucide.Shield,
-                title: 'Secure Booking',
-                desc: 'Bank-grade security for all transactions with comprehensive travel insurance options.',
-                color: 'coral'
+                icon: Lucide.ShieldCheck,
+                title: 'Accuracy',
+                desc: 'Reliable and Trustworthy; we keep to our words.',
+                colorClass: 'bg-coral-500/10 text-coral-600 dark:bg-coral-500/20 dark:text-coral-400'
               },
               {
-                icon: Lucide.HeartHandshake,
-                title: '24/7 Support',
-                desc: 'Round-the-clock assistance from our dedicated travel concierge team.',
-                color: 'sand'
+                icon: Lucide.UserCheck,
+                title: 'Client - Centric',
+                desc: "Tailored services to meet customer's needs. Customer's need is top.",
+                colorClass: 'bg-sand-100 text-sand-600 dark:bg-sand-500/10 dark:text-sand-400'
+              },
+              {
+                icon: Lucide.Award,
+                title: 'Excellence',
+                desc: 'Always striving for the highest quality service and performance.',
+                colorClass: 'bg-amber-100 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400'
               },
             ].map((feature, idx) => (
               <div
@@ -165,15 +170,12 @@ export default function HomePage() {
                 className="group bg-white dark:bg-slate-900 border border-sand-200 dark:border-slate-800 rounded-3xl p-8 shadow-card hover:shadow-card-hover transition-all duration-400 hover:-translate-y-1"
               >
                 <div className="space-y-6">
-                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${feature.color === 'ocean' ? 'bg-ocean-100 text-ocean-600' :
-                    feature.color === 'coral' ? 'bg-coral-100 text-coral-600' :
-                      'bg-sand-200 text-sand-500'
-                    } group-hover:scale-110 transition-transform duration-400`}>
+                  <div className={`h-14 w-14 rounded-2xl flex items-center justify-center ${feature.colorClass} group-hover:scale-110 transition-transform duration-400`}>
                     <feature.icon size={28} strokeWidth={2} />
                   </div>
                   <div className="space-y-3">
                     <h3 className="text-2xl font-black text-slate-900 dark:text-white font-display">{feature.title}</h3>
-                    <p className="text-slate-600 dark:text-slate-400 leading-relaxed">{feature.desc}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{feature.desc}</p>
                   </div>
                 </div>
               </div>
@@ -293,7 +295,7 @@ export default function HomePage() {
               />
               <div className="absolute bottom-0 left-0 p-10 z-20 space-y-4">
                 <div className="text-[10px] font-black uppercase tracking-widest text-sky-400">Live Infrastructure</div>
-                <div className="text-2xl font-black text-white italic uppercase leading-tight font-display">Monitoring <br /> Global Fleet</div>
+                <div className="text-1.98xl font-black text-white italic uppercase leading-tight font-display">Real-time progress status of your flight enroute your destination.  </div>
               </div>
             </div>
           </div>
@@ -339,7 +341,7 @@ export default function HomePage() {
               <span className="text-sand-100">Adventure Today</span>
             </h2>
             <p className="max-w-2xl text-lg md:text-xl font-medium text-white/90 leading-relaxed">
-              Join thousands of travelers who trust us to make their journeys extraordinary. Your perfect trip is just a click away.
+              Trust us with your journey and get the satisfaction you deserve. Your satisfaction is just a click away
             </p>
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <Link
