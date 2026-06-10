@@ -289,9 +289,9 @@ export default function HomePage() {
             <div className="h-[500px] w-full lg:w-[400px] rounded-[3rem] bg-slate-900 overflow-hidden relative shadow-2xl group border-4 border-white dark:border-slate-800">
               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900 z-10" />
               <img
-                src="https://images.unsplash.com/photo-1542296332-2e4473faf563?q=80&w=2070&auto=format&fit=crop"
+                src="/chicago.jpeg"
                 className="h-full w-full object-cover grayscale opacity-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
-                alt="Flight Deck"
+                alt="Flight Status Map"
               />
               <div className="absolute bottom-0 left-0 p-10 z-20 space-y-4">
                 <div className="text-[10px] font-black uppercase tracking-widest text-sky-400">Live Infrastructure</div>
