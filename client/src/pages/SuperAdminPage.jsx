@@ -125,11 +125,11 @@ export default function SuperAdminPage() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isCreatePassengerModalOpen, setIsCreatePassengerModalOpen] = useState(false)
     const [isCreateBookingModalOpen, setIsCreateBookingModalOpen] = useState(false)
+    const [isCreateReminderModalOpen, setIsCreateReminderModalOpen] = useState(false)
+    const [isPassengerDetailsModalOpen, setIsPassengerDetailsModalOpen] = useState(false)
     const [onboardingSuccess, setOnboardingSuccess] = useState(null)
     const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { passenger: {...} }
     const [isEditBookingModalOpen, setIsEditBookingModalOpen] = useState(false)
-    const [showPassportAccordion, setShowPassportAccordion] = useState(false)
-    const [isFFModalOpen, setIsFFModalOpen] = useState(false)
     const [isAllNotificationsModalOpen, setIsAllNotificationsModalOpen] = useState(false)
     const [bookingFilter, setBookingFilter] = useState('recent') // 'recent' or 'all'
     const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false)
@@ -168,6 +168,12 @@ export default function SuperAdminPage() {
     const [editForm, setEditForm] = useState({})
     const [createPassengerForm, setCreatePassengerForm] = useState({ fullName: '', email: '', phone: '' })
     const [createBookingForm, setCreateBookingForm] = useState({
+        airlineName: '', flightNumber: '', originCity: '', originIata: '',
+        destCity: '', destIata: '', departureDate: '', departureTime: '',
+        bookingReference: '', ticketNumber: ''
+    })
+    const [reminderForm, setReminderForm] = useState({
+        email: '', fullName: '', phone: '',
         airlineName: '', flightNumber: '', originCity: '', originIata: '',
         destCity: '', destIata: '', departureDate: '', departureTime: '',
         bookingReference: '', ticketNumber: ''
@@ -344,6 +350,57 @@ export default function SuperAdminPage() {
             setBookings([data, ...bookings])
             setIsCreateBookingModalOpen(false)
             setCreateBookingForm({
+                airlineName: '', flightNumber: '', originCity: '', originIata: '',
+                destCity: '', destIata: '', departureDate: '', departureTime: '',
+                bookingReference: '', ticketNumber: ''
+            })
+        })
+    }
+
+    async function handleCreateReminder(e) {
+        if (e) e.preventDefault()
+
+        if (!reminderForm.originCity || !reminderForm.originIata || !reminderForm.destCity || !reminderForm.destIata) {
+            triggerOverlay('Error: All Route details required', async () => { throw new Error('All Route details (City and IATA) are required') })
+            return
+        }
+
+        triggerOverlay('Scheduling Reminder...', async () => {
+            const payload = {
+                email: reminderForm.email,
+                fullName: reminderForm.fullName,
+                phone: reminderForm.phone || undefined,
+                airlineName: reminderForm.airlineName,
+                flightNumber: reminderForm.flightNumber,
+                origin: { city: reminderForm.originCity, iata: reminderForm.originIata.toUpperCase() },
+                destination: { city: reminderForm.destCity, iata: reminderForm.destIata.toUpperCase() },
+                departureDateTimeUtc: new Date(`${reminderForm.departureDate}T${reminderForm.departureTime || '00:00'}:00Z`).toISOString(),
+                departureTime24: reminderForm.departureTime || undefined,
+                bookingReference: reminderForm.bookingReference || undefined,
+                ticketNumber: reminderForm.ticketNumber || undefined
+            }
+
+            const res = await fetch(`${baseUrl}/api/bookings/set-reminder-no-account`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(payload),
+            })
+
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.message || 'Failed to set reminder')
+
+            // Refresh passengers and bookings list
+            const headers = { Authorization: `Bearer ${token}` }
+            const [pRes, bRes] = await Promise.all([
+                fetch(`${baseUrl}/api/passengers`, { headers }),
+                fetch(`${baseUrl}/api/bookings`, { headers })
+            ])
+            if (pRes.ok) setPassengers(await pRes.json())
+            if (bRes.ok) setBookings(await bRes.json())
+
+            setIsCreateReminderModalOpen(false)
+            setReminderForm({
+                email: '', fullName: '', phone: '',
                 airlineName: '', flightNumber: '', originCity: '', originIata: '',
                 destCity: '', destIata: '', departureDate: '', departureTime: '',
                 bookingReference: '', ticketNumber: ''
@@ -984,6 +1041,13 @@ export default function SuperAdminPage() {
                                                 New Passenger
                                             </button>
                                             <button
+                                                onClick={() => setIsCreateReminderModalOpen(true)}
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-bold hover:bg-amber-700 transition-all shadow-md whitespace-nowrap"
+                                            >
+                                                <Lucide.BellPlus size={18} />
+                                                Set Reminder
+                                            </button>
+                                            <button
                                                 onClick={() => setIsCreateInvoiceModalOpen(true)}
                                                 className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-md whitespace-nowrap"
                                             >
@@ -1073,10 +1137,12 @@ export default function SuperAdminPage() {
                                     {filteredPassengers.map(p => (
                                         <div
                                             key={p.id || p._id}
-                                            onClick={() => setSelectedPassenger(p)}
+                                            onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
                                             className={clsx(
-                                                "p-5 border-b border-slate-100 flex items-center justify-between transition-colors",
-                                                (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) ? "bg-ocean-50" : "bg-white"
+                                                "p-5 border-b border-slate-100 flex items-center justify-between transition-all duration-200 cursor-pointer border-l-4",
+                                                (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id)
+                                                    ? "bg-ocean-50/90 border-ocean-600 font-bold shadow-sm animate-in fade-in duration-300"
+                                                    : "bg-white hover:bg-ocean-50/40 hover:border-ocean-300 border-transparent"
                                             )}
                                         >
                                             <div className="flex items-center gap-4">
@@ -1112,13 +1178,20 @@ export default function SuperAdminPage() {
                                             {filteredPassengers.map(p => (
                                                 <tr
                                                     key={p.id || p._id}
-                                                    onClick={() => setSelectedPassenger(p)}
+                                                    onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
                                                     className={clsx(
-                                                        "hover:bg-slate-50 cursor-pointer transition-colors",
-                                                        (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id) && "bg-ocean-50"
+                                                        "group cursor-pointer transition-all duration-200",
+                                                        (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id)
+                                                            ? "bg-ocean-50/90 font-bold text-ocean-950 shadow-sm"
+                                                            : "bg-white hover:bg-ocean-50/40 hover:text-ocean-900"
                                                     )}
                                                 >
-                                                    <td className="px-6 py-4">
+                                                    <td className={clsx(
+                                                        "px-6 py-4 border-l-4 transition-all duration-200",
+                                                        (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id)
+                                                            ? "border-ocean-600"
+                                                            : "border-transparent group-hover:border-ocean-300"
+                                                    )}>
                                                         <div className="flex items-center gap-3">
                                                             <div className="h-10 w-10 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-bold text-sm">
                                                                 {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
@@ -1432,143 +1505,18 @@ export default function SuperAdminPage() {
                         </div>
                     </div>
 
-                    {/* Right Column - Selected Passenger & Notifications */}
+                    {/* Right Column - Info Card & Notifications */}
                     <div className="space-y-6">
-                        {/* Selected Passenger Details */}
-                        <div className="bg-white rounded-2xl border-2 border-slate-900 p-6">
-                            {selectedPassenger ? (
-                                <div className="space-y-6">
-                                    <div className="text-center pb-6 border-b border-slate-200">
-                                        <div className="h-20 w-20 rounded-full bg-ocean-600 text-white flex items-center justify-center text-2xl font-black mx-auto mb-4">
-                                            {selectedPassenger.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                        </div>
-                                        <h3 className="text-xl font-black text-slate-900">{selectedPassenger.fullName}</h3>
-                                        <p className="text-sm text-slate-500 mt-1">Verified Passenger</p>
-                                    </div>
-
-                                    <div className="space-y-3">
-                                        <div className="bg-slate-50 rounded-xl p-4">
-                                            <div className="text-xs font-bold text-slate-500 uppercase mb-1">Email</div>
-                                            <div className="text-sm font-medium text-slate-900">{selectedPassenger.email}</div>
-                                        </div>
-                                        <div className="bg-slate-50 rounded-xl p-4 flex justify-between items-center group">
-                                            <div>
-                                                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Phone</div>
-                                                <div className="text-sm font-medium text-slate-900">{selectedPassenger.phone || 'Not provided'}</div>
-                                            </div>
-                                            {selectedPassenger.phone && (
-                                                <a
-                                                    href={`https://wa.me/${(selectedPassenger.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise%2C%20we%20got%20your%20request%20and%20we%20will%20get%20back%20to%20you%20shortly%2C`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="p-2 bg-green-100 text-green-700 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-green-200"
-                                                >
-                                                    <Lucide.Phone size={16} />
-                                                </a>
-                                            )}
-                                        </div>
-                                        <div className="bg-slate-50 rounded-xl border border-slate-200/50 overflow-hidden">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassportAccordion(!showPassportAccordion)}
-                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-100 transition-colors text-left"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <Lucide.ShieldCheck className="text-ocean-600 h-4 w-4" />
-                                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Passport Details</span>
-                                                </div>
-                                                <div className="text-slate-400">
-                                                    {showPassportAccordion ? <Lucide.ChevronUp size={16} /> : <Lucide.ChevronDown size={16} />}
-                                                </div>
-                                            </button>
-                                            {showPassportAccordion && (
-                                                <div className="p-4 bg-white border-t border-slate-200/50 grid grid-cols-2 gap-3 animate-in fade-in duration-300">
-                                                    <div className="col-span-2">
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Name on Passport</div>
-                                                        <div className="text-sm font-bold text-slate-900">{selectedPassenger.passportName || 'Not provided'}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Passport Number</div>
-                                                        <div className="text-sm font-bold text-slate-900">{selectedPassenger.documentNumberFull || 'Not provided'}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Country of Issue</div>
-                                                        <div className="text-sm font-bold text-slate-900">{selectedPassenger.passportCountryIssue || 'Not provided'}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Date of Birth (DOB)</div>
-                                                        <div className="text-sm font-bold text-slate-900">
-                                                            {selectedPassenger.passportDob ? new Date(selectedPassenger.passportDob).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Issue Date</div>
-                                                        <div className="text-sm font-bold text-slate-900">
-                                                            {selectedPassenger.passportIssueDate ? new Date(selectedPassenger.passportIssueDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
-                                                        </div>
-                                                    </div>
-                                                    <div className="col-span-2 border-t border-slate-100 pt-2 mt-1">
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Expiry Date</div>
-                                                        <div className="text-sm font-bold text-slate-900">
-                                                            {selectedPassenger.documentExpiryDate ? new Date(selectedPassenger.documentExpiryDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="bg-slate-50 rounded-xl border border-slate-200/50 overflow-hidden">
-                                            <button
-                                                type="button"
-                                                onClick={() => setIsFFModalOpen(true)}
-                                                className="w-full flex items-center justify-between p-4 hover:bg-slate-100 transition-colors text-left"
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <Lucide.Plane className="text-ocean-600 h-4 w-4" />
-                                                    <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Frequent Flyer Numbers</span>
-                                                </div>
-                                                <div className="flex items-center gap-2 text-slate-400">
-                                                    {selectedPassenger.frequentFlyerNumbers && selectedPassenger.frequentFlyerNumbers.length > 0 ? (
-                                                        <span className="bg-ocean-100 text-ocean-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                                                            {selectedPassenger.frequentFlyerNumbers.length}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] font-bold text-slate-400 uppercase">None</span>
-                                                    )}
-                                                    <Lucide.ArrowRight size={14} />
-                                                </div>
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4">
-                                        <button
-                                            onClick={() => setIsCreateBookingModalOpen(true)}
-                                            className="px-4 py-3 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all"
-                                        >
-                                            Add Flight
-                                        </button>
-                                        <button
-                                            onClick={() => { setEditForm(selectedPassenger); setIsEditModalOpen(true); }}
-                                            className="px-4 py-3 bg-slate-100 text-slate-900 rounded-xl text-sm font-bold hover:bg-slate-200 transition-all"
-                                        >
-                                            Edit Info
-                                        </button>
-                                    </div>
-                                    <button
-                                        onClick={() => setDeleteConfirmation({ passenger: selectedPassenger })}
-                                        className="w-full mt-2 px-4 py-3 bg-red-50 text-red-600 border border-red-100 rounded-xl text-sm font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2"
-                                    >
-                                        <Lucide.Trash2 size={16} />
-                                        Delete Passenger
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="text-center py-12">
-                                    <Lucide.UserCircle size={48} className="text-slate-300 mx-auto mb-4" />
-                                    <p className="text-sm font-medium text-slate-500">Select a passenger to view details</p>
-                                </div>
-                            )}
+                        {/* Passenger Registry Summary Card */}
+                        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
+                                <Lucide.Users size={120} />
+                            </div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3 font-display">Registry Control</h3>
+                            <h2 className="text-2xl font-black mb-2 uppercase tracking-tight font-display">Passenger Management</h2>
+                            <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                                Click on any passenger in the registry list to view and manage their detailed itineraries, frequent flyer numbers, passport credentials, and invoices.
+                            </p>
                         </div>
 
                         {/* Notifications */}
@@ -1699,49 +1647,6 @@ export default function SuperAdminPage() {
                     </div>
                 </div>
             )}
-
-            <Modal
-                open={isFFModalOpen}
-                title="Frequent Flyer Programs"
-                onClose={() => setIsFFModalOpen(false)}
-                footer={
-                    <div className="flex justify-end p-4 border-t border-slate-200">
-                        <button
-                            onClick={() => setIsFFModalOpen(false)}
-                            className="px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800 transition-all"
-                        >
-                            Close
-                        </button>
-                    </div>
-                }
-            >
-                <div className="p-6 space-y-4">
-                    {selectedPassenger && selectedPassenger.frequentFlyerNumbers && selectedPassenger.frequentFlyerNumbers.length > 0 ? (
-                        <div className="space-y-3">
-                            {selectedPassenger.frequentFlyerNumbers.map((ff, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                                    <div>
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Airline</div>
-                                        <div className="text-sm font-bold text-slate-900">{ff.airlineName}</div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Flyer Number</div>
-                                        <div className="text-sm font-mono font-bold text-ocean-600 bg-ocean-50 px-3 py-1 rounded-lg">
-                                            {ff.frequentFlyerNumber}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <Lucide.Plane className="text-slate-300 mx-auto mb-4" size={48} />
-                            <p className="text-sm font-bold text-slate-900 uppercase tracking-wide">No Registered Numbers</p>
-                            <p className="text-xs text-slate-500 mt-1">This passenger has not registered any frequent flyer numbers yet.</p>
-                        </div>
-                    )}
-                </div>
-            </Modal>
 
             <Modal
                 open={isAddStaffModalOpen}
@@ -1920,6 +1825,117 @@ export default function SuperAdminPage() {
             </Modal>
 
             <Modal
+                open={isCreateReminderModalOpen}
+                title="Set Journey Reminder (No Account)"
+                onClose={() => setIsCreateReminderModalOpen(false)}
+                footer={
+                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
+                        <button onClick={() => setIsCreateReminderModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+                        <ActionButton
+                            onClick={handleCreateReminder}
+                            loadingMessage="Scheduling..."
+                            successMessage="Reminder Set"
+                        >
+                            Set Reminder
+                        </ActionButton>
+                    </div>
+                }
+            >
+                <form onSubmit={handleCreateReminder} className="p-6 space-y-4">
+                    <div className="border-b border-slate-100 pb-4 mb-4">
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Passenger Information</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Full Name</label>
+                                <input type="text" required value={reminderForm.fullName} onChange={e => setReminderForm({ ...reminderForm, fullName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" placeholder="e.g. John Doe" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
+                                <input type="email" required value={reminderForm.email} onChange={e => setReminderForm({ ...reminderForm, email: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" placeholder="e.g. john@example.com" />
+                            </div>
+                        </div>
+                        <div className="mt-4">
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Phone Number (Optional)</label>
+                            <input type="tel" value={reminderForm.phone} onChange={e => setReminderForm({ ...reminderForm, phone: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" placeholder="e.g. +234..." />
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Flight Details</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Airline</label>
+                                <input type="text" required value={reminderForm.airlineName} onChange={e => setReminderForm({ ...reminderForm, airlineName: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" placeholder="e.g. Qatar Airways" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Flight Number</label>
+                                <input type="text" required value={reminderForm.flightNumber} onChange={e => setReminderForm({ ...reminderForm, flightNumber: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" placeholder="e.g. QR 1308" />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <AirportAutocomplete
+                                label="Origin"
+                                initialCity={reminderForm.originCity}
+                                initialIata={reminderForm.originIata}
+                                onChange={(val) => setReminderForm({ ...reminderForm, originCity: val, originIata: '' })}
+                                onSelect={(airport) => setReminderForm({
+                                    ...reminderForm,
+                                    originCity: airport.city,
+                                    originIata: airport.iata
+                                })}
+                            />
+                            <AirportAutocomplete
+                                label="Destination"
+                                initialCity={reminderForm.destCity}
+                                initialIata={reminderForm.destIata}
+                                onChange={(val) => setReminderForm({ ...reminderForm, destCity: val, destIata: '' })}
+                                onSelect={(airport) => setReminderForm({
+                                    ...reminderForm,
+                                    destCity: airport.city,
+                                    destIata: airport.iata
+                                })}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Booking Reference (PNR)</label>
+                                <input
+                                    type="text"
+                                    value={reminderForm.bookingReference}
+                                    onChange={e => setReminderForm({ ...reminderForm, bookingReference: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500 font-mono uppercase"
+                                    placeholder="e.g. XJ59LZ"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Ticket Number</label>
+                                <input
+                                    type="text"
+                                    value={reminderForm.ticketNumber}
+                                    onChange={e => setReminderForm({ ...reminderForm, ticketNumber: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500 font-mono"
+                                    placeholder="e.g. 176-238471923"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Departure Date</label>
+                                <input type="date" required value={reminderForm.departureDate} onChange={e => setReminderForm({ ...reminderForm, departureDate: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">Departure Time</label>
+                                <input type="time" required value={reminderForm.departureTime} onChange={e => setReminderForm({ ...reminderForm, departureTime: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal
                 open={isEditModalOpen}
                 title="Edit Passenger"
                 onClose={() => setIsEditModalOpen(false)}
@@ -1950,6 +1966,177 @@ export default function SuperAdminPage() {
                         <input type="tel" value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500" />
                     </div>
                 </div>
+            </Modal>
+
+            <Modal
+                open={isPassengerDetailsModalOpen}
+                title="Passenger Profile Details"
+                onClose={() => setIsPassengerDetailsModalOpen(false)}
+                footer={
+                    <div className="flex flex-wrap justify-between items-center p-4 border-t border-slate-200 bg-slate-50 gap-3 shrink-0 rounded-b-2xl">
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    setIsPassengerDetailsModalOpen(false);
+                                    setIsCreateBookingModalOpen(true);
+                                }}
+                                className="px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all flex items-center gap-1.5 shadow-sm"
+                            >
+                                <Lucide.Plus size={16} />
+                                Add Flight
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setEditForm(selectedPassenger);
+                                    setIsEditModalOpen(true);
+                                }}
+                                className="px-4 py-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm"
+                            >
+                                Edit Profile
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setDeleteConfirmation({ passenger: selectedPassenger });
+                            }}
+                            className="px-4 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-sm font-bold hover:bg-rose-100 transition-all border border-rose-100/50"
+                        >
+                            Delete Passenger
+                        </button>
+                    </div>
+                }
+            >
+                {selectedPassenger && (
+                    <div className="space-y-6 py-2">
+                        {/* Passenger Hero Header */}
+                        <div className="flex flex-col items-center text-center pb-6 border-b border-slate-100">
+                            <div className="h-20 w-20 rounded-full bg-ocean-100 text-ocean-700 flex items-center justify-center text-2xl font-black mb-4 border-2 border-white shadow-md ring-4 ring-ocean-50">
+                                {selectedPassenger.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 leading-tight">{selectedPassenger.fullName}</h3>
+                            <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider rounded-full border border-slate-200/50">
+                                <Lucide.ShieldCheck size={12} className="text-ocean-600" />
+                                <span>Passenger ID: {(selectedPassenger.id || selectedPassenger._id)?.slice(-8).toUpperCase()}</span>
+                            </div>
+                        </div>
+
+                        {/* Contact Details Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex items-start gap-3">
+                                <div className="p-2 bg-ocean-50 text-ocean-600 rounded-xl shrink-0">
+                                    <Lucide.Mail size={16} />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Email Address</div>
+                                    <div className="text-sm font-bold text-slate-900 dark:text-slate-100 break-all mt-0.5">{selectedPassenger.email}</div>
+                                </div>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl p-4 border border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3">
+                                <div className="flex items-start gap-3 min-w-0">
+                                    <div className="p-2 bg-green-50 text-green-600 rounded-xl shrink-0">
+                                        <Lucide.Phone size={16} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Phone Number</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-slate-100 mt-0.5">{selectedPassenger.phone || 'Not provided'}</div>
+                                    </div>
+                                </div>
+                                {selectedPassenger.phone && (
+                                    <a
+                                        href={`https://wa.me/${(selectedPassenger.phone || '').replace(/[^0-9]/g, '').replace(/^0/, '234')}?text=Hello%20${encodeURIComponent(selectedPassenger.fullName)}%20This%20is%20a%20representative%20from%20Dnarai%20Enterprise.`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-xl transition-all self-center shadow-sm"
+                                        title="Send WhatsApp Message"
+                                    >
+                                        <Lucide.MessageSquare size={16} />
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Passport Details Card */}
+                        <div className="bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-900 dark:to-slate-900/50 rounded-2xl border border-slate-200/60 p-5 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4 border-b border-slate-200/50 dark:border-slate-800 pb-3">
+                                <Lucide.FileText className="text-ocean-600 shrink-0" size={18} />
+                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Passport Credentials</h4>
+                            </div>
+                            
+                            {selectedPassenger.documentNumberFull || selectedPassenger.passportName ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="sm:col-span-2">
+                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Name on Passport</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{selectedPassenger.passportName || 'Not provided'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Passport Number</div>
+                                        <div className="text-sm font-mono font-bold text-slate-900 dark:text-slate-100 uppercase">{selectedPassenger.documentNumberFull || 'Not provided'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Country of Issue</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-slate-100">{selectedPassenger.passportCountryIssue || 'Not provided'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Date of Birth (DOB)</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                            {selectedPassenger.passportDob ? new Date(selectedPassenger.passportDob).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Issue Date</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                                            {selectedPassenger.passportIssueDate ? new Date(selectedPassenger.passportIssueDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}
+                                        </div>
+                                    </div>
+                                    <div className="sm:col-span-2 border-t border-slate-200/50 dark:border-slate-800 pt-3 mt-1">
+                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Expiry Date</div>
+                                        <div className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                                            <span>{selectedPassenger.documentExpiryDate ? new Date(selectedPassenger.documentExpiryDate).toLocaleDateString('en-US', { dateStyle: 'medium' }) : 'Not provided'}</span>
+                                            {selectedPassenger.documentExpiryDate && new Date(selectedPassenger.documentExpiryDate) < new Date() && (
+                                                <span className="bg-red-100 text-red-700 text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-red-200/50">Expired</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center py-6 text-slate-400 italic text-sm">
+                                    No passport details registered for this passenger.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Frequent Flyer Programs Card */}
+                        <div className="bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-slate-200/60 p-5 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4 border-b border-slate-200/50 dark:border-slate-800 pb-3">
+                                <Lucide.Plane className="text-ocean-600 shrink-0" size={18} />
+                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Frequent Flyer Programs</h4>
+                            </div>
+
+                            {selectedPassenger.frequentFlyerNumbers && selectedPassenger.frequentFlyerNumbers.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {selectedPassenger.frequentFlyerNumbers.map((ff, idx) => (
+                                        <div key={idx} className="flex items-center justify-between p-3.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-sm">
+                                            <div className="min-w-0">
+                                                <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Airline</div>
+                                                <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{ff.airlineName}</div>
+                                            </div>
+                                            <div className="text-right shrink-0">
+                                                <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Number</div>
+                                                <div className="text-xs font-mono font-bold text-ocean-600 bg-ocean-50/50 px-2.5 py-1 rounded-lg border border-ocean-100/30">
+                                                    {ff.frequentFlyerNumber}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6 text-slate-400 italic text-sm">
+                                    No frequent flyer programs registered.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </Modal>
 
             {/* Delete Confirmation Modal */}
@@ -2349,8 +2536,8 @@ export default function SuperAdminPage() {
                                 const p = passengers.find(pass => (pass.id || pass._id) === viewingBooking.passengerId);
                                 if (p) {
                                     setSelectedPassenger(p);
+                                    setIsPassengerDetailsModalOpen(true);
                                     setIsBookingDetailsModalOpen(false);
-                                    scrollToPassengerList();
                                 }
                             }}>
                                 <div className="flex items-center gap-3">
@@ -2493,7 +2680,7 @@ export default function SuperAdminPage() {
                                                     onClick={() => {
                                                         setIsTravelingTodayModalOpen(false);
                                                         setSelectedPassenger(p);
-                                                        scrollToPassengerList();
+                                                        setIsPassengerDetailsModalOpen(true);
                                                     }}
                                                     className="text-xs font-bold text-ocean-600 hover:text-ocean-700"
                                                 >
