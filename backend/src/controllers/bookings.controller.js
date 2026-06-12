@@ -62,7 +62,7 @@ export const bookingsController = {
             try {
                 await EmailService.sendBookingConfirmation({
                     booking: booking.toObject(),
-                    passenger: { fullName: passenger.fullName, email: passenger.email },
+                    passenger: { id: passenger._id, fullName: passenger.fullName, email: passenger.email },
                 });
             } catch (emailErr) {
                 console.error('Failed to send booking confirmation email:', emailErr);
@@ -163,7 +163,7 @@ export const bookingsController = {
                 try {
                     await EmailService.sendBookingConfirmation({
                         booking: booking.toObject(),
-                        passenger: { fullName: passenger.fullName, email: passenger.email },
+                        passenger: { id: passenger._id, fullName: passenger.fullName, email: passenger.email },
                     });
                 } catch (err) {
                     console.error('Failed to send status-change confirmation email:', err);
@@ -266,7 +266,7 @@ export const bookingsController = {
             try {
                 await EmailService.sendBookingConfirmation({
                     booking: booking.toObject(),
-                    passenger: { fullName: passenger.fullName, email: passenger.email },
+                    passenger: { id: passenger._id, fullName: passenger.fullName, email: passenger.email },
                 });
             } catch (emailErr) {
                 console.error('Failed to send booking confirmation email:', emailErr);

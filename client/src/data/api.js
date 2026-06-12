@@ -91,6 +91,7 @@ async function request(path, { method = 'GET', body, baseUrl, signal, token } = 
       localStorage.removeItem('token')
       localStorage.removeItem('refreshToken')
       localStorage.removeItem('user')
+      localStorage.removeItem('lastActivityTime')
       if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
         window.location.href = '/login'
       }

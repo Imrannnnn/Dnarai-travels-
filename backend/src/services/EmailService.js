@@ -368,8 +368,15 @@ export const EmailService = {
     let hasAccount = false;
     try {
       const { User } = await import('../models/User.js');
-      const user = await User.findOne({ $or: [{ passengerId: passenger.id || passenger._id }, { email: passenger.email }] });
-      hasAccount = !!user;
+      const conditions = [];
+      const passId = passenger.id || passenger._id;
+      if (passId) conditions.push({ passengerId: passId });
+      if (passenger.email) conditions.push({ email: passenger.email.toLowerCase() });
+
+      if (conditions.length > 0) {
+        const user = await User.findOne({ $or: conditions });
+        hasAccount = !!user;
+      }
     } catch (err) {
       console.error('Failed to check if user has account in sendBookingConfirmation:', err);
     }
@@ -556,8 +563,15 @@ export const EmailService = {
     let hasAccount = false;
     try {
       const { User } = await import('../models/User.js');
-      const user = await User.findOne({ $or: [{ passengerId: passenger.id || passenger._id }, { email: passenger.email }] });
-      hasAccount = !!user;
+      const conditions = [];
+      const passId = passenger.id || passenger._id;
+      if (passId) conditions.push({ passengerId: passId });
+      if (passenger.email) conditions.push({ email: passenger.email.toLowerCase() });
+
+      if (conditions.length > 0) {
+        const user = await User.findOne({ $or: conditions });
+        hasAccount = !!user;
+      }
     } catch (err) {
       console.error('Failed to check if user has account in send24HourReminder:', err);
     }
@@ -624,8 +638,15 @@ export const EmailService = {
     let hasAccount = false;
     try {
       const { User } = await import('../models/User.js');
-      const user = await User.findOne({ $or: [{ passengerId: passenger.id || passenger._id }, { email: passenger.email }] });
-      hasAccount = !!user;
+      const conditions = [];
+      const passId = passenger.id || passenger._id;
+      if (passId) conditions.push({ passengerId: passId });
+      if (passenger.email) conditions.push({ email: passenger.email.toLowerCase() });
+
+      if (conditions.length > 0) {
+        const user = await User.findOne({ $or: conditions });
+        hasAccount = !!user;
+      }
     } catch (err) {
       console.error('Failed to check if user has account in send3HourReminder:', err);
     }
@@ -653,7 +674,7 @@ export const EmailService = {
           </div>
           ` : ''}
 
-          <p style="font-size: 14px; color: ${COLORS.SLATE}; font-style: italic; text-align: center;">"Our Service End when you successfully arrive your destination."</p>
+          <p style="font-size: 14px; color: ${COLORS.SLATE}; font-style: italic; text-align: center;">"Our Service End when you successfully arrive at your destination."</p>
         </td>
       </tr>
     `;

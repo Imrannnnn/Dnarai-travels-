@@ -52,7 +52,7 @@ export const AgendaService = {
         if (passenger?.email) {
           const result = await EmailService.send24HourReminder({
             booking: booking.toObject(),
-            passenger: { fullName: passenger.fullName, email: passenger.email },
+            passenger: { id: passenger._id, fullName: passenger.fullName, email: passenger.email },
           });
           console.log(`[Agenda] 24h email sent result for booking ${bookingId}:`, result);
         } else {
@@ -85,7 +85,7 @@ export const AgendaService = {
         if (passenger?.email) {
           const result = await EmailService.send3HourReminder({
             booking: booking.toObject(),
-            passenger: { fullName: passenger.fullName, email: passenger.email },
+            passenger: { id: passenger._id, fullName: passenger.fullName, email: passenger.email },
           });
           console.log(`[Agenda] 3h email sent result for booking ${bookingId}:`, result);
         } else {

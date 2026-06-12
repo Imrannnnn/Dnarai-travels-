@@ -37,7 +37,7 @@ export async function runFlightReminderJob() {
       if (passenger?.email) {
         await EmailService.send24HourReminder({
           booking: booking.toObject(),
-          passenger: { fullName: passenger.fullName, email: passenger.email },
+          passenger: { id: passenger._id, fullName: passenger.fullName, email: passenger.email },
         });
       }
     } catch (err) {
@@ -52,7 +52,7 @@ export async function runFlightReminderJob() {
       if (passenger?.email) {
         await EmailService.send3HourReminder({
           booking: booking.toObject(),
-          passenger: { fullName: passenger.fullName, email: passenger.email },
+          passenger: { id: passenger._id, fullName: passenger.fullName, email: passenger.email },
         });
       }
     } catch (err) {

@@ -2,64 +2,132 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 
 const AuthContext = createContext(null)
 
+const IDLE_TIME = 15 * 60 * 1000 // 15 minutes
+
+const getInitialAuthState = () => {
+    const token = localStorage.getItem('token')
+    const userSaved = localStorage.getItem('user')
+    const lastActivity = localStorage.getItem('lastActivityTime')
+
+    if (token) {
+        if (lastActivity) {
+            const elapsed = Date.now() - parseInt(lastActivity, 10)
+            if (elapsed > IDLE_TIME) {
+                // Expired, clear storage and return nulls
+                localStorage.removeItem('token')
+                localStorage.removeItem('refreshToken')
+                localStorage.removeItem('user')
+                localStorage.removeItem('lastActivityTime')
+                return { token: null, user: null }
+            }
+        } else {
+            // If they have a token but no last activity, initialize it to now
+            localStorage.setItem('lastActivityTime', Date.now().toString())
+        }
+    }
+    return {
+        token: token || null,
+        user: userSaved ? JSON.parse(userSaved) : null
+    }
+}
+
 export function AuthProvider({ children }) {
-    const [token, setToken] = useState(localStorage.getItem('token'))
-    const [user, setUser] = useState(() => {
-        const saved = localStorage.getItem('user')
-        return saved ? JSON.parse(saved) : null
-    })
+    const [authState, setAuthState] = useState(() => getInitialAuthState())
+    const token = authState.token
+    const user = authState.user
 
     const login = (newToken, userData, refreshToken) => {
         localStorage.setItem('token', newToken)
         if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
         localStorage.setItem('user', JSON.stringify(userData))
-        setToken(newToken)
-        setUser(userData)
+        localStorage.setItem('lastActivityTime', Date.now().toString())
+        setAuthState({ token: newToken, user: userData })
     }
 
     const logout = useCallback(() => {
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
-        setToken(null)
-        setUser(null)
+        localStorage.removeItem('lastActivityTime')
+        setAuthState({ token: null, user: null })
         window.location.href = '/'
     }, [])
 
     const isAuthenticated = !!token
 
     // Idle timeout logic
-    const idleTimeoutRef = useRef(null);
-    const IDLE_TIME = 30 * 60 * 1000; // 30 minutes
+    const idleTimeoutRef = useRef(null)
+    const lastStorageWriteRef = useRef(0)
+
+    const updateLastActivity = useCallback(() => {
+        const now = Date.now()
+        // Throttle writing to localStorage to once every 5 seconds
+        if (now - lastStorageWriteRef.current > 5000) {
+            localStorage.setItem('lastActivityTime', now.toString())
+            lastStorageWriteRef.current = now
+        }
+    }, [])
+
+    const checkTimeout = useCallback(() => {
+        if (!isAuthenticated) return false
+        const lastActivity = localStorage.getItem('lastActivityTime')
+        if (lastActivity) {
+            const elapsed = Date.now() - parseInt(lastActivity, 10)
+            if (elapsed > IDLE_TIME) {
+                logout()
+                return true
+            }
+        }
+        return false
+    }, [isAuthenticated, logout])
 
     const resetIdleTimer = useCallback(() => {
-        if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+        if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current)
         if (isAuthenticated) {
             idleTimeoutRef.current = setTimeout(() => {
-                // User has been idle for 30 minutes, log them out
-                logout();
-            }, IDLE_TIME);
+                if (!checkTimeout()) {
+                    logout()
+                }
+            }, IDLE_TIME)
         }
-    }, [isAuthenticated, logout, IDLE_TIME]);
+    }, [isAuthenticated, logout, checkTimeout])
+
+    const handleActivity = useCallback(() => {
+        if (!isAuthenticated) return
+
+        // Check if they already timed out before resetting
+        if (checkTimeout()) return
+
+        resetIdleTimer()
+        updateLastActivity()
+    }, [isAuthenticated, checkTimeout, resetIdleTimer, updateLastActivity])
 
     useEffect(() => {
-        if (!isAuthenticated) return;
+        if (!isAuthenticated) return
 
-        // Initialize the timer
-        resetIdleTimer();
+        // Initialize/verify on mount
+        if (checkTimeout()) return
 
-        const events = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
-        // Use a throttled version or just direct if performance is acceptable.
-        // For simple timeout resets, direct is usually fine as clearTimeout is fast.
-        const handleActivity = () => resetIdleTimer();
+        resetIdleTimer()
+        updateLastActivity()
 
-        events.forEach(event => window.addEventListener(event, handleActivity, { passive: true }));
+        const events = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click']
+        events.forEach(event => window.addEventListener(event, handleActivity, { passive: true }))
+
+        const checkTimeoutOnFocus = () => {
+            checkTimeout()
+        }
+
+        window.addEventListener('visibilitychange', checkTimeoutOnFocus)
+        window.addEventListener('focus', checkTimeoutOnFocus)
 
         return () => {
-            if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
-            events.forEach(event => window.removeEventListener(event, handleActivity));
-        };
-    }, [isAuthenticated, resetIdleTimer]);
+            if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current)
+            events.forEach(event => window.removeEventListener(event, handleActivity))
+            window.removeEventListener('visibilitychange', checkTimeoutOnFocus)
+            window.removeEventListener('focus', checkTimeoutOnFocus)
+        }
+    }, [isAuthenticated, resetIdleTimer, handleActivity, checkTimeout, updateLastActivity])
 
     const value = {
         token,
