@@ -134,7 +134,7 @@ export default function HomePage() {
             <h2 className="text-sm font-bold uppercase tracking-widest text-ocean-600">Why Choose Us</h2>
             <p className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
               We set the<br />
-              <span className="text-ocean-600">&ldquo;PACE&rdquo; so others can follow.</span>
+              <span className="text-ocean-600">&ldquo;PACE&rdquo;  others follow...</span>
             </p>
           </div>
 
