@@ -364,6 +364,17 @@ export const EmailService = {
       date: booking.departureDateTimeUtc
     });
 
+    // Check if passenger has user account
+    let hasAccount = false;
+    try {
+      const { User } = await import('../models/User.js');
+      const user = await User.findOne({ $or: [{ passengerId: passenger.id || passenger._id }, { email: passenger.email }] });
+      hasAccount = !!user;
+    } catch (err) {
+      console.error('Failed to check if user has account in sendBookingConfirmation:', err);
+    }
+    const signupUrl = `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/register`;
+
     // Format departure date & time
     const departureDate = booking.departureDateTimeUtc
       ? new Date(booking.departureDateTimeUtc).toLocaleDateString('en-GB', {
@@ -465,6 +476,16 @@ export const EmailService = {
             <p style="margin: 14px 0 0 0; font-size: 14px; opacity: 0.9; line-height: 1.6; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px;"><strong>Packing Tip:</strong> ${weather.advice}</p>
           </div>
 
+          ${!hasAccount ? `
+          <!-- Signup CTA -->
+          <div style="margin: 30px 0; padding: 25px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #f8fafc; text-align: center;">
+            <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 800; color: ${COLORS.GOLD}; text-transform: uppercase; letter-spacing: 2px;">Exclusive Member Access</p>
+            <h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 900; color: ${COLORS.NAVY};">Create Your D.narai Enterprise Account</h3>
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: ${COLORS.SLATE}; line-height: 1.6;">Register now to easily manage your itineraries, view real-time updates, download invoices, and access premium services.</p>
+            <a href="${signupUrl}" style="display: inline-block; padding: 14px 30px; background-color: ${COLORS.NAVY}; color: white; text-decoration: none; border-radius: 12px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Create Account</a>
+          </div>
+          ` : ''}
+
           <!-- Footer Note -->
           <p style="margin: 0; font-size: 13px; color: ${COLORS.SLATE}; line-height: 1.6; font-style: italic; text-align: center;">
             "Our Service End when you successfully arrive your destination."<br>Safe travels from the Dnarai Travel team. ✈️
@@ -531,6 +552,17 @@ export const EmailService = {
       date: booking.departureDateTimeUtc
     });
 
+    // Check if passenger has user account
+    let hasAccount = false;
+    try {
+      const { User } = await import('../models/User.js');
+      const user = await User.findOne({ $or: [{ passengerId: passenger.id || passenger._id }, { email: passenger.email }] });
+      hasAccount = !!user;
+    } catch (err) {
+      console.error('Failed to check if user has account in send24HourReminder:', err);
+    }
+    const signupUrl = `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/register`;
+
     const content = `
       <tr>
         <td style="padding: 40px;">
@@ -547,6 +579,16 @@ export const EmailService = {
             <p style="margin: 5px 0;"><strong>Departure:</strong> ${booking.origin?.city} (${booking.origin?.iata})</p>
             <p style="margin: 5px 0;"><strong>Arrival:</strong> ${booking.destination?.city} (${booking.destination?.iata})</p>
           </div>
+
+          ${!hasAccount ? `
+          <!-- Signup CTA -->
+          <div style="margin: 30px 0; padding: 25px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #f8fafc; text-align: center;">
+            <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 800; color: ${COLORS.GOLD}; text-transform: uppercase; letter-spacing: 2px;">Exclusive Member Access</p>
+            <h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 900; color: ${COLORS.NAVY};">Create Your D.narai Enterprise Account</h3>
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: ${COLORS.SLATE}; line-height: 1.6;">Register now to easily manage your itineraries, view real-time updates, download invoices, and access premium services.</p>
+            <a href="${signupUrl}" style="display: inline-block; padding: 14px 30px; background-color: ${COLORS.NAVY}; color: white; text-decoration: none; border-radius: 12px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Create Account</a>
+          </div>
+          ` : ''}
 
           <p style="font-size: 14px; color: ${COLORS.SLATE};">Please ensure you have all your travel documents ready. We look forward to your journey.</p>
         </td>
@@ -578,6 +620,17 @@ export const EmailService = {
       date: booking.departureDateTimeUtc
     });
 
+    // Check if passenger has user account
+    let hasAccount = false;
+    try {
+      const { User } = await import('../models/User.js');
+      const user = await User.findOne({ $or: [{ passengerId: passenger.id || passenger._id }, { email: passenger.email }] });
+      hasAccount = !!user;
+    } catch (err) {
+      console.error('Failed to check if user has account in send3HourReminder:', err);
+    }
+    const signupUrl = `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/register`;
+
     const content = `
       <tr>
         <td style="padding: 40px;">
@@ -589,6 +642,16 @@ export const EmailService = {
             <div style="font-size: 20px; font-weight: 800; color: ${COLORS.NAVY};">${weather.tempC}°C - ${weather.desc}</div>
             <p style="margin: 10px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Quick Gear Check:</strong> ${weather.advice}</p>
           </div>
+
+          ${!hasAccount ? `
+          <!-- Signup CTA -->
+          <div style="margin: 30px 0; padding: 25px; border: 1px solid #e2e8f0; border-radius: 20px; background-color: #f8fafc; text-align: center;">
+            <p style="margin: 0 0 10px 0; font-size: 11px; font-weight: 800; color: ${COLORS.GOLD}; text-transform: uppercase; letter-spacing: 2px;">Exclusive Member Access</p>
+            <h3 style="margin: 0 0 10px 0; font-size: 18px; font-weight: 900; color: ${COLORS.NAVY};">Create Your D.narai Enterprise Account</h3>
+            <p style="margin: 0 0 20px 0; font-size: 14px; color: ${COLORS.SLATE}; line-height: 1.6;">Register now to easily manage your itineraries, view real-time updates, download invoices, and access premium services.</p>
+            <a href="${signupUrl}" style="display: inline-block; padding: 14px 30px; background-color: ${COLORS.NAVY}; color: white; text-decoration: none; border-radius: 12px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Create Account</a>
+          </div>
+          ` : ''}
 
           <p style="font-size: 14px; color: ${COLORS.SLATE}; font-style: italic; text-align: center;">"Our Service End when you successfully arrive your destination."</p>
         </td>

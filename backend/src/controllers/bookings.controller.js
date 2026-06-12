@@ -203,5 +203,78 @@ export const bookingsController = {
         } catch (err) {
             next(err);
         }
+    },
+
+    createReminderNoAccount: async (req, res, next) => {
+        try {
+            const {
+                email,
+                fullName,
+                phone,
+                airlineName,
+                flightNumber,
+                origin,
+                destination,
+                departureDateTimeUtc,
+                departureTime24,
+                bookingReference,
+                ticketNumber
+            } = req.validated.body;
+
+            // Check if User already exists with this email
+            const { User } = await import('../models/User.js');
+            const existingUser = await User.findOne({ email: email.toLowerCase() });
+            if (existingUser) {
+                return next({
+                    status: 400,
+                    code: 'USER_ACCOUNT_EXISTS',
+                    message: 'This passenger already has an account. Please use the standard booking system.'
+                });
+            }
+
+            // Find or create Passenger record
+            let passenger = await Passenger.findOne({ email: email.toLowerCase() });
+            if (!passenger) {
+                passenger = await Passenger.create({ fullName, email: email.toLowerCase(), phone });
+            }
+
+            // Create Booking
+            const booking = await Booking.create({
+                passengerId: passenger._id,
+                airlineName,
+                flightNumber,
+                origin,
+                destination,
+                departureDateTimeUtc: new Date(departureDateTimeUtc),
+                departureTime24,
+                bookingReference,
+                ticketNumber
+            });
+
+            // Audit logging
+            await AuditService.log({
+                action: 'BOOKING_CREATED_NO_ACCOUNT',
+                entityType: 'Booking',
+                entityId: booking._id,
+                actorUserId: req.user?.sub,
+            });
+
+            // Trigger system notifications
+            await NotificationService.notifyBookingCreated({ bookingId: booking._id });
+
+            // Send immediate booking confirmation email
+            try {
+                await EmailService.sendBookingConfirmation({
+                    booking: booking.toObject(),
+                    passenger: { fullName: passenger.fullName, email: passenger.email },
+                });
+            } catch (emailErr) {
+                console.error('Failed to send booking confirmation email:', emailErr);
+            }
+
+            res.status(201).json(booking);
+        } catch (err) {
+            next(err);
+        }
     }
 };

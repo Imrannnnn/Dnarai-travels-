@@ -54,3 +54,31 @@ export const updateBookingSchema = z.object({
   }),
   params: z.object({ id: z.string() }),
 });
+
+export const createReminderNoAccountSchema = z.object({
+  body: z.object({
+    email: z.string().email(),
+    fullName: z.string().min(2),
+    phone: z.string().optional(),
+    airlineName: z.string().min(2),
+    flightNumber: z.string().min(2),
+    origin: z.object({
+      city: z.string().min(2),
+      iata: z.string().min(2),
+      countryCode: z.string().optional(),
+    }),
+    destination: z.object({
+      city: z.string().min(2),
+      iata: z.string().min(2),
+      countryCode: z.string().optional(),
+    }),
+    bookingReference: z.string().optional(),
+    ticketNumber: z.string().optional(),
+    departureDateTimeUtc: z.string().datetime(),
+    departureTime24: z
+      .string()
+      .regex(/^\d{2}:\d{2}$/)
+      .optional(),
+  }),
+});
+
