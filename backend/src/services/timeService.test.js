@@ -17,6 +17,19 @@ const { default: fs } = await import('fs/promises');
 const tzHelper = await import('../utils/timeZoneHelper.js');
 
 describe('Time Service', () => {
+  let consoleLogSpy;
+  let consoleWarnSpy;
+
+  beforeAll(() => {
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    consoleLogSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+  });
+
   const mockAirports = [
     { city: 'Lagos', country: 'Nigeria', iata: 'LOS', latitude: '6.577', longitude: '3.321', airport_name: 'Murtala Muhammed International Airport' },
     { city: 'London', country: 'United Kingdom', iata: 'LHR', latitude: '51.470', longitude: '-0.454', airport_name: 'London Heathrow Airport' },

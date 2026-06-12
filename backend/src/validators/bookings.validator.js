@@ -57,7 +57,7 @@ export const updateBookingSchema = z.object({
 
 export const createReminderNoAccountSchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    email: z.string().email().toLowerCase(),
     fullName: z.string().min(2),
     phone: z.string().optional(),
     airlineName: z.string().min(2),

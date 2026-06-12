@@ -10,6 +10,19 @@ const { WeatherService } = await import('./WeatherService.js');
 const { default: axios } = await import('axios');
 
 describe('Weather Service', () => {
+  let consoleErrorSpy;
+  let consoleWarnSpy;
+
+  beforeAll(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+  });
+
   describe('getClothingAdvice', () => {
     it('should return advice for extremely cold temperatures', () => {
       expect(WeatherService.getClothingAdvice(-5)).toContain('Extremely cold');

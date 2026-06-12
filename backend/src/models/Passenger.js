@@ -4,7 +4,7 @@ import { encryptSensitive, decryptSensitive, maskLast4 } from '../utils/crypto.j
 const PassengerSchema = new mongoose.Schema(
   {
     fullName: { type: String, required: true },
-    email: { type: String, required: true, index: true },
+    email: { type: String, required: true, index: true, lowercase: true },
     phone: { type: String },
 
     documentType: { type: String, enum: ['passport', 'international_card'], default: 'passport' },

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const registerSchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    email: z.string().email().toLowerCase(),
     password: z.string().min(8),
     role: z.enum(['admin', 'agent', 'passenger', 'staff']).optional(),
   }),
@@ -10,7 +10,7 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    email: z.string().email().toLowerCase(),
     password: z.string().min(1),
   }),
 });
@@ -30,7 +30,7 @@ export const changePasswordSchema = z.object({
 
 export const addStaffSchema = z.object({
   body: z.object({
-    email: z.string().email(),
+    email: z.string().email().toLowerCase(),
     role: z.enum(['admin', 'staff', 'agent']),
     password: z.union([z.string().min(8), z.literal('')]).optional(),
   }),

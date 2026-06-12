@@ -106,7 +106,7 @@ export default function SuperAdminPage() {
     const [role, setRole] = useState(localStorage.getItem('admin_role') || null)
     const [activeView, setActiveView] = useState('all') // 'all' or 'today'
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
-    const { documents, triggerOverlay } = useAppData()
+    const { triggerOverlay } = useAppData()
 
     // Data State
     const [passengers, setPassengers] = useState([])
@@ -1109,29 +1109,7 @@ export default function SuperAdminPage() {
                                     </div>
                                 </div>
 
-                                <div className="mb-6">
-                                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-widest mb-3">Pending Document Reviews</h3>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                        {documents.filter(d => d.status === 'Pending').length > 0 ? (
-                                            documents.filter(d => d.status === 'Pending').map((doc, idx) => (
-                                                <div key={idx} className="bg-white border border-yellow-200 rounded-xl p-4 shadow-sm flex items-center justify-between">
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <Lucide.FileText size={16} className="text-yellow-600" />
-                                                            <span className="font-bold text-slate-900 text-sm">{doc.title}</span>
-                                                        </div>
-                                                        <div className="text-xs text-slate-500">Exp: {doc.expiry}</div>
-                                                    </div>
-                                                    <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase">Review</span>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="col-span-full bg-slate-50 border border-slate-100 rounded-xl p-4 text-center text-sm text-slate-500 italic">
-                                                No documents pending review
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+
 
                                 <div className="block md:hidden">
                                     {filteredPassengers.map(p => (

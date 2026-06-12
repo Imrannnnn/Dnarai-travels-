@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const createPassengerSchema = z.object({
   body: z.object({
     fullName: z.string().min(2),
-    email: z.string().email(),
+    email: z.string().email().toLowerCase(),
     phone: z.string().optional(),
   }),
 });
@@ -11,7 +11,7 @@ export const createPassengerSchema = z.object({
 export const updatePassengerSchema = z.object({
   body: z.object({
     fullName: z.string().min(2).optional(),
-    email: z.string().email().optional(),
+    email: z.string().email().toLowerCase().optional(),
     phone: z.string().optional(),
     documentType: z.enum(['passport', 'international_card']).optional(),
     documentExpiryDate: z.string().datetime().optional(),
