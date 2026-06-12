@@ -775,6 +775,90 @@ export default function SuperAdminPage() {
         )
     }, [passengers, travelingPassengers, searchQuery, activeView])
 
+    const PASSENGERS_PER_PAGE = 10
+    const [passengerPage, setPassengerPage] = useState(1)
+
+    useEffect(() => {
+        setPassengerPage(1)
+    }, [searchQuery, activeView, selectedDate])
+
+    const totalPages = Math.ceil(filteredPassengers.length / PASSENGERS_PER_PAGE)
+
+    // Clamp passengerPage to totalPages if it exceeds it (e.g. after deletions)
+    useEffect(() => {
+        if (passengerPage > totalPages && totalPages > 0) {
+            setPassengerPage(totalPages)
+        }
+    }, [totalPages, passengerPage])
+
+    const startIndex = (passengerPage - 1) * PASSENGERS_PER_PAGE
+    const endIndex = startIndex + PASSENGERS_PER_PAGE
+    const paginatedPassengers = filteredPassengers.slice(startIndex, endIndex)
+
+    // Bookings Pagination
+    const BOOKINGS_PER_PAGE = 5
+    const [bookingPage, setBookingPage] = useState(1)
+
+    const displayedBookings = useMemo(() => {
+        return bookingFilter === 'recent' ? bookings.slice(0, 6) : bookings
+    }, [bookings, bookingFilter])
+
+    useEffect(() => {
+        setBookingPage(1)
+    }, [bookingFilter])
+
+    const totalBookingPages = Math.ceil(displayedBookings.length / BOOKINGS_PER_PAGE)
+
+    useEffect(() => {
+        if (bookingPage > totalBookingPages && totalBookingPages > 0) {
+            setBookingPage(totalBookingPages)
+        }
+    }, [totalBookingPages, bookingPage])
+
+    const paginatedBookings = useMemo(() => {
+        const start = (bookingPage - 1) * BOOKINGS_PER_PAGE
+        return displayedBookings.slice(start, start + BOOKINGS_PER_PAGE)
+    }, [displayedBookings, bookingPage])
+
+    // Invoices Pagination
+    const INVOICES_PER_PAGE = 5
+    const [invoicePage, setInvoicePage] = useState(1)
+    const totalInvoicePages = Math.ceil(invoices.length / INVOICES_PER_PAGE)
+
+    useEffect(() => {
+        if (invoicePage > totalInvoicePages && totalInvoicePages > 0) {
+            setInvoicePage(totalInvoicePages)
+        }
+    }, [totalInvoicePages, invoicePage])
+
+    const paginatedInvoices = useMemo(() => {
+        const start = (invoicePage - 1) * INVOICES_PER_PAGE
+        return invoices.slice(start, start + INVOICES_PER_PAGE)
+    }, [invoices, invoicePage])
+
+    // Insights/Blogs Pagination
+    const INSIGHTS_PER_PAGE = 5
+    const [insightPage, setInsightPage] = useState(1)
+    const totalInsightPages = Math.ceil(blogs.length / INSIGHTS_PER_PAGE)
+
+    useEffect(() => {
+        if (insightPage > totalInsightPages && totalInsightPages > 0) {
+            setInsightPage(totalInsightPages)
+        }
+    }, [totalInsightPages, insightPage])
+
+    const paginatedBlogs = useMemo(() => {
+        const start = (insightPage - 1) * INSIGHTS_PER_PAGE
+        return blogs.slice(start, start + INSIGHTS_PER_PAGE)
+    }, [blogs, insightPage])
+
+    useEffect(() => {
+        if (isBlogManagerModalOpen) {
+            setInsightPage(1)
+        }
+    }, [isBlogManagerModalOpen])
+
+
     const stats = useMemo(() => ({
         totalPassengers: passengers.length,
         activeBookings: bookings.filter(b => b.status === 'confirmed' && new Date(b.departureDateTimeUtc) >= new Date()).length,
@@ -1112,7 +1196,7 @@ export default function SuperAdminPage() {
 
 
                                 <div className="block md:hidden">
-                                    {filteredPassengers.map(p => (
+                                    {paginatedPassengers.map(p => (
                                         <div
                                             key={p.id || p._id}
                                             onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
@@ -1153,7 +1237,7 @@ export default function SuperAdminPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100">
-                                            {filteredPassengers.map(p => (
+                                            {paginatedPassengers.map(p => (
                                                 <tr
                                                     key={p.id || p._id}
                                                     onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
@@ -1225,6 +1309,77 @@ export default function SuperAdminPage() {
                                         </tbody>
                                     </table>
                                 </div>
+                                {totalPages > 1 && (
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 pb-6 pt-4 border-t border-slate-100">
+                                        <div className="text-xs font-semibold text-slate-500">
+                                            Showing <span className="font-bold text-slate-900">{startIndex + 1}</span> to{' '}
+                                            <span className="font-bold text-slate-900">
+                                                {Math.min(endIndex, filteredPassengers.length)}
+                                            </span>{' '}
+                                            of <span className="font-bold text-slate-900">{filteredPassengers.length}</span> passengers
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                disabled={passengerPage === 1}
+                                                onClick={() => setPassengerPage(prev => Math.max(prev - 1, 1))}
+                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                            >
+                                                <Lucide.ChevronLeft size={16} />
+                                            </button>
+                                            
+                                            {(() => {
+                                                if (totalPages <= 7) {
+                                                    return Array.from({ length: totalPages }, (_, i) => i + 1);
+                                                }
+                                                const pages = [];
+                                                for (let i = 1; i <= totalPages; i++) {
+                                                    if (
+                                                        i === 1 ||
+                                                        i === totalPages ||
+                                                        (i >= passengerPage - 1 && i <= passengerPage + 1)
+                                                    ) {
+                                                        pages.push(i);
+                                                    } else if (
+                                                        pages[pages.length - 1] !== '...'
+                                                    ) {
+                                                        pages.push('...');
+                                                    }
+                                                }
+                                                return pages;
+                                            })().map((pageNum, idx) => {
+                                                if (pageNum === '...') {
+                                                    return (
+                                                        <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs font-bold">
+                                                            ...
+                                                        </span>
+                                                    );
+                                                }
+                                                return (
+                                                    <button
+                                                        key={pageNum}
+                                                        onClick={() => setPassengerPage(pageNum)}
+                                                        className={clsx(
+                                                            "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
+                                                            passengerPage === pageNum
+                                                                ? "bg-ocean-600 border-ocean-600 text-white shadow-sm shadow-ocean-600/20"
+                                                                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                        )}
+                                                    >
+                                                        {pageNum}
+                                                    </button>
+                                                );
+                                            })}
+                                            
+                                            <button
+                                                disabled={passengerPage === totalPages}
+                                                onClick={() => setPassengerPage(prev => Math.min(prev + 1, totalPages))}
+                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                            >
+                                                <Lucide.ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Recent Bookings */}
@@ -1259,7 +1414,7 @@ export default function SuperAdminPage() {
                                     </div>
                                 </div>
                                 <div className="grid gap-4">
-                                    {(bookingFilter === 'recent' ? bookings.slice(0, 6) : bookings).map(b => (
+                                    {paginatedBookings.map(b => (
                                         <div
                                             key={b._id}
                                             onClick={() => handleViewBookingDetails(b)}
@@ -1307,6 +1462,77 @@ export default function SuperAdminPage() {
                                         </div>
                                     ))}
                                 </div>
+                                {totalBookingPages > 1 && (
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-4 border-t border-slate-100">
+                                        <div className="text-xs font-semibold text-slate-500">
+                                            Showing <span className="font-bold text-slate-900">{(bookingPage - 1) * BOOKINGS_PER_PAGE + 1}</span> to{' '}
+                                            <span className="font-bold text-slate-900">
+                                                {Math.min(bookingPage * BOOKINGS_PER_PAGE, displayedBookings.length)}
+                                            </span>{' '}
+                                            of <span className="font-bold text-slate-900">{displayedBookings.length}</span> bookings
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                disabled={bookingPage === 1}
+                                                onClick={() => setBookingPage(prev => Math.max(prev - 1, 1))}
+                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                            >
+                                                <Lucide.ChevronLeft size={16} />
+                                            </button>
+                                            
+                                            {(() => {
+                                                if (totalBookingPages <= 7) {
+                                                    return Array.from({ length: totalBookingPages }, (_, i) => i + 1);
+                                                }
+                                                const pages = [];
+                                                for (let i = 1; i <= totalBookingPages; i++) {
+                                                    if (
+                                                        i === 1 ||
+                                                        i === totalBookingPages ||
+                                                        (i >= bookingPage - 1 && i <= bookingPage + 1)
+                                                    ) {
+                                                        pages.push(i);
+                                                    } else if (
+                                                        pages[pages.length - 1] !== '...'
+                                                    ) {
+                                                        pages.push('...');
+                                                    }
+                                                }
+                                                return pages;
+                                            })().map((pageNum, idx) => {
+                                                if (pageNum === '...') {
+                                                    return (
+                                                        <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs font-bold">
+                                                            ...
+                                                        </span>
+                                                    );
+                                                }
+                                                return (
+                                                    <button
+                                                        key={pageNum}
+                                                        onClick={() => setBookingPage(pageNum)}
+                                                        className={clsx(
+                                                            "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
+                                                            bookingPage === pageNum
+                                                                ? "bg-ocean-600 border-ocean-600 text-white shadow-sm shadow-ocean-600/20"
+                                                                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                        )}
+                                                    >
+                                                        {pageNum}
+                                                    </button>
+                                                );
+                                            })}
+                                            
+                                            <button
+                                                disabled={bookingPage === totalBookingPages}
+                                                onClick={() => setBookingPage(prev => Math.min(prev + 1, totalBookingPages))}
+                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                            >
+                                                <Lucide.ChevronRight size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -1361,7 +1587,7 @@ export default function SuperAdminPage() {
                                     <>
                                         {/* Mobile Card List - Neat and Professional */}
                                         <div className="md:hidden divide-y divide-slate-50">
-                                            {invoices.map(inv => (
+                                            {paginatedInvoices.map(inv => (
                                                 <div key={inv._id} className="p-5 hover:bg-slate-50/50 transition-colors">
                                                     <div className="flex items-start gap-4 mb-4">
                                                         <div className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg">
@@ -1421,7 +1647,7 @@ export default function SuperAdminPage() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-50">
-                                                    {invoices.map(inv => (
+                                                    {paginatedInvoices.map(inv => (
                                                         <tr key={inv._id} className="hover:bg-slate-50/80 transition-colors group">
                                                             <td className="px-6 py-4">
                                                                 <div className="flex items-center gap-3">
@@ -1477,6 +1703,77 @@ export default function SuperAdminPage() {
                                                 </tbody>
                                             </table>
                                         </div>
+                                        {totalInvoicePages > 1 && (
+                                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+                                                <div className="text-xs font-semibold text-slate-500">
+                                                    Showing <span className="font-bold text-slate-900">{(invoicePage - 1) * INVOICES_PER_PAGE + 1}</span> to{' '}
+                                                    <span className="font-bold text-slate-900">
+                                                        {Math.min(invoicePage * INVOICES_PER_PAGE, invoices.length)}
+                                                    </span>{' '}
+                                                    of <span className="font-bold text-slate-900">{invoices.length}</span> invoices
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        disabled={invoicePage === 1}
+                                                        onClick={() => setInvoicePage(prev => Math.max(prev - 1, 1))}
+                                                        className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                                    >
+                                                        <Lucide.ChevronLeft size={16} />
+                                                    </button>
+                                                    
+                                                    {(() => {
+                                                        if (totalInvoicePages <= 7) {
+                                                            return Array.from({ length: totalInvoicePages }, (_, i) => i + 1);
+                                                        }
+                                                        const pages = [];
+                                                        for (let i = 1; i <= totalInvoicePages; i++) {
+                                                            if (
+                                                                i === 1 ||
+                                                                i === totalInvoicePages ||
+                                                                (i >= invoicePage - 1 && i <= invoicePage + 1)
+                                                            ) {
+                                                                pages.push(i);
+                                                            } else if (
+                                                                pages[pages.length - 1] !== '...'
+                                                            ) {
+                                                                pages.push('...');
+                                                            }
+                                                        }
+                                                        return pages;
+                                                    })().map((pageNum, idx) => {
+                                                        if (pageNum === '...') {
+                                                            return (
+                                                                <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs font-bold">
+                                                                    ...
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <button
+                                                                key={pageNum}
+                                                                onClick={() => setInvoicePage(pageNum)}
+                                                                className={clsx(
+                                                                    "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
+                                                                    invoicePage === pageNum
+                                                                        ? "bg-ocean-600 border-ocean-600 text-white shadow-sm shadow-ocean-600/20"
+                                                                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                                )}
+                                                            >
+                                                                {pageNum}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                    
+                                                    <button
+                                                        disabled={invoicePage === totalInvoicePages}
+                                                        onClick={() => setInvoicePage(prev => Math.min(prev + 1, totalInvoicePages))}
+                                                        className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                                    >
+                                                        <Lucide.ChevronRight size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -2837,54 +3134,127 @@ export default function SuperAdminPage() {
                     {blogs.length === 0 ? (
                         <div className="p-12 text-center text-slate-400 font-medium">No insights published yet.</div>
                     ) : (
-                        <div className="divide-y divide-slate-100">
-                            {blogs.map(blog => (
-                                <div key={blog._id} className="p-6 hover:bg-slate-50 transition-colors">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="h-16 w-24 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
-                                            <img
-                                                src={blog.imageUrl || `https://source.unsplash.com/featured/100x100?airline,airplane,${blog.slug}`}
-                                                className="w-full h-full object-cover"
-                                                alt="Insight Thumbnail"
-                                            />
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-slate-900 truncate">{blog.title}</h4>
-                                            <p className="text-xs text-slate-500 mt-1">Slug: {blog.slug}</p>
-                                            <div className="mt-3 flex items-center gap-3">
-                                                <a
-                                                    href={`/blog/${blog.slug}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-[10px] font-black uppercase text-ocean-600 hover:underline"
+                        <div className="flex flex-col h-full justify-between">
+                            <div className="divide-y divide-slate-100 flex-1">
+                                {paginatedBlogs.map(blog => (
+                                    <div key={blog._id} className="p-6 hover:bg-slate-50 transition-colors">
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div className="h-16 w-24 rounded-lg bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                                                <img
+                                                    src={blog.imageUrl || `https://source.unsplash.com/featured/100x100?airline,airplane,${blog.slug}`}
+                                                    className="w-full h-full object-cover"
+                                                    alt="Insight Thumbnail"
+                                                />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-slate-900 truncate">{blog.title}</h4>
+                                                <p className="text-xs text-slate-500 mt-1">Slug: {blog.slug}</p>
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <a
+                                                        href={`/blog/${blog.slug}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-[10px] font-black uppercase text-ocean-600 hover:underline"
+                                                    >
+                                                        View Public Link
+                                                    </a>
+                                                    <span className="text-slate-300">•</span>
+                                                    <span className="text-[10px] font-bold text-slate-400">
+                                                        {new Date(blog.createdAt).toLocaleDateString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setEditingBlog(blog)}
+                                                    className="p-2 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
+                                                    title="Edit"
                                                 >
-                                                    View Public Link
-                                                </a>
-                                                <span className="text-slate-300">•</span>
-                                                <span className="text-[10px] font-bold text-slate-400">
-                                                    {new Date(blog.createdAt).toLocaleDateString()}
-                                                </span>
+                                                    <Lucide.Edit size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteBlog(blog._id)}
+                                                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                                    title="Delete"
+                                                >
+                                                    <Lucide.Trash2 size={16} />
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={() => setEditingBlog(blog)}
-                                                className="p-2 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
-                                                title="Edit"
-                                            >
-                                                <Lucide.Edit size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteBlog(blog._id)}
-                                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Delete"
-                                            >
-                                                <Lucide.Trash2 size={16} />
-                                            </button>
-                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            {totalInsightPages > 1 && (
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 pb-6 pt-4 border-t border-slate-100 bg-slate-50/50">
+                                    <div className="text-xs font-semibold text-slate-500">
+                                        Showing <span className="font-bold text-slate-900">{(insightPage - 1) * INSIGHTS_PER_PAGE + 1}</span> to{' '}
+                                        <span className="font-bold text-slate-900">
+                                            {Math.min(insightPage * INSIGHTS_PER_PAGE, blogs.length)}
+                                        </span>{' '}
+                                        of <span className="font-bold text-slate-900">{blogs.length}</span> insights
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <button
+                                            disabled={insightPage === 1}
+                                            onClick={() => setInsightPage(prev => Math.max(prev - 1, 1))}
+                                            className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                        >
+                                            <Lucide.ChevronLeft size={16} />
+                                        </button>
+                                        
+                                        {(() => {
+                                            if (totalInsightPages <= 7) {
+                                                return Array.from({ length: totalInsightPages }, (_, i) => i + 1);
+                                            }
+                                            const pages = [];
+                                            for (let i = 1; i <= totalInsightPages; i++) {
+                                                if (
+                                                    i === 1 ||
+                                                    i === totalInsightPages ||
+                                                    (i >= insightPage - 1 && i <= insightPage + 1)
+                                                ) {
+                                                    pages.push(i);
+                                                } else if (
+                                                    pages[pages.length - 1] !== '...'
+                                                ) {
+                                                    pages.push('...');
+                                                }
+                                            }
+                                            return pages;
+                                        })().map((pageNum, idx) => {
+                                            if (pageNum === '...') {
+                                                return (
+                                                    <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs font-bold">
+                                                        ...
+                                                    </span>
+                                                );
+                                            }
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    onClick={() => setInsightPage(pageNum)}
+                                                    className={clsx(
+                                                        "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
+                                                        insightPage === pageNum
+                                                            ? "bg-ocean-600 border-ocean-600 text-white shadow-sm shadow-ocean-600/20"
+                                                            : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                    )}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        })}
+                                        
+                                        <button
+                                            disabled={insightPage === totalInsightPages}
+                                            onClick={() => setInsightPage(prev => Math.min(prev + 1, totalInsightPages))}
+                                            className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                        >
+                                            <Lucide.ChevronRight size={16} />
+                                        </button>
                                     </div>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     )}
                 </div>
