@@ -8,6 +8,16 @@ function = "seo-preview"
 path = "/blog/*"
 
 [[redirects]]
+  from = "/robots.txt"
+  to = "https://api.dnaraitravels.com/robots.txt"
+  status = 200
+
+[[redirects]]
+  from = "/sitemap.xml"
+  to = "https://api.dnaraitravels.com/sitemap.xml"
+  status = 200
+
+[[redirects]]
 from   = "/*"
 to     = "/index.html"
 status = 200
