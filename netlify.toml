@@ -7,15 +7,13 @@ publish = "dist"
 function = "seo-preview"
 path = "/blog/*"
 
-[[redirects]]
-  from = "/robots.txt"
-  to = "https://api.dnaraitravels.com/robots.txt"
-  status = 200
+[[edge_functions]]
+function = "seo-redirects"
+path = "/robots.txt"
 
-[[redirects]]
-  from = "/sitemap.xml"
-  to = "https://api.dnaraitravels.com/sitemap.xml"
-  status = 200
+[[edge_functions]]
+function = "seo-redirects"
+path = "/sitemap.xml"
 
 [[redirects]]
 from   = "/*"
