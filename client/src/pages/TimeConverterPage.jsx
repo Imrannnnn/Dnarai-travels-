@@ -332,7 +332,7 @@ export default function TimeConverterPage() {
           Global Time Intelligence
         </div>
         <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight font-display">
-          Global Flight <span className="text-gradient-premium">Time Zone Converter</span>
+          Global <span className="text-gradient-premium">Converter</span>
         </h1>
         <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto text-sm md:text-base font-medium">
           Synchronize your world. Seamlessly track travel time zones with D.narai Travels.

@@ -3,8 +3,8 @@
   "motto": "Our Service End when you successfully arrive at your destination.",
   "home": {
     "hero": {
-      "title": "Affordable Travel Packages & Flight Bookings in Nigeria",
-      "subtitle": "We are a client-centric travel company in Nigeria offering standard flight bookings, premium hotel reservations, and custom tour packages.",
+      "title": "Your Travel Companion",
+      "subtitle": "We are a realistic, client-centric & forward thinking travel company, we use innovation and technology to serve you all through your journey.",
       "primaryCta": {
         "label": "Passenger Login",
         "to": "/dashboard"
@@ -61,20 +61,20 @@
     }
   },
   "about": {
-    "title": "About D.Narai Travels | Travel Packages & Flights in Nigeria",
-    "subtitle": "D.narai Travels is the premier travel agency in Nigeria for flight bookings, hotels, and custom travel packages.",
+    "title": "The Agency Standard",
+    "subtitle": "D.narai Travels is the premier infrastructure for modern travel management.",
     "sections": [
       {
-        "heading": "Our Mandate for Travel Packages in Nigeria",
-        "body": "To provide an uncompromising layer of intelligence and support between the discerning traveler and the global aviation network, ensuring affordable travel packages in Nigeria."
+        "heading": "Our Mandate",
+        "body": "To provide an uncompromising layer of intelligence and support between the discerning traveler and the global aviation network."
       },
       {
-        "heading": "Our Capabilities in Flight Bookings & Hotel Reservations",
-        "body": "We deploy advanced tracking algorithms and secure data vaults to ensure your flights and hotels are managed with the precision of a private flight operation."
+        "heading": "Our Capabilities",
+        "body": "We deploy advanced tracking algorithms and secure data vaults to ensure your journey is managed with the precision of a private flight operation."
       },
       {
-        "heading": "Our Promise to Every Traveler",
-        "body": "We remain vigilant until you have safely arrived. Excellence is not a goal; it is our baseline for every journey."
+        "heading": "Our Promise",
+        "body": "We remain vigilant until you have safely arrived. Excellence is not a goal; it is our baseline."
       }
     ]
   }

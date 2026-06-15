@@ -81,7 +81,7 @@ export default function BlogListPage() {
                         Dnarai Insights
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight leading-none italic uppercase font-display">
-                        Travel Packages & <span className="text-dnarai-gold-400">Flight Insights</span>
+                        Travel <span className="text-dnarai-gold-400">Intelligence</span>
                     </h1>
                     <p className="max-w-2xl mx-auto text-slate-400 text-lg font-medium leading-relaxed">
                         Expert perspectives, destination guides, and the latest updates from the heart of Dnarai Enterprise.
