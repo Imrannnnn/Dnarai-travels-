@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import * as Lucide from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 import { getApiBaseUrl } from '../data/api';
 
 /**
@@ -40,50 +41,18 @@ export default function BlogPostPage() {
         fetchBlog();
     }, [slug, baseUrl]);
 
-    useEffect(() => {
-        if (blog) {
-            document.title = `${blog.title} | D.Narai Insight`;
+    const plainText = (blog?.content || '').replace(/<[^>]*>?/gm, '');
+    let description = plainText.substring(0, 150);
+    if (plainText.length > 150) description += '...';
 
-            const setMeta = (property, content) => {
-                let element = document.querySelector(`meta[property="${property}"]`) || document.querySelector(`meta[name="${property}"]`);
-                if (!element) {
-                    element = document.createElement('meta');
-                    if (property.startsWith('og:')) {
-                        element.setAttribute('property', property);
-                    } else {
-                        element.setAttribute('name', property);
-                    }
-                    document.head.appendChild(element);
-                }
-                element.setAttribute('content', content);
-            };
-
-            const plainText = (blog.content || '').replace(/<[^>]*>?/gm, '');
-            let description = plainText.substring(0, 150);
-            if (plainText.length > 150) description += '...';
-
-            let imageUrl = blog.imageUrl;
-            if (!imageUrl) {
-                // Determine absolute URL for logo fallback
-                imageUrl = `${window.location.origin}/D-NARAI_Logo%2001.svg`;
-            } else if (imageUrl.startsWith('/')) {
-                // Ensure any relative URL is absolute
-                imageUrl = `${window.location.origin}${imageUrl}`;
-            }
-
-            setMeta('og:title', blog.title);
-            setMeta('og:description', description);
-            setMeta('og:image', imageUrl);
-            setMeta('og:url', window.location.href);
-            setMeta('og:type', 'article');
-
-            setMeta('twitter:card', 'summary_large_image');
-            setMeta('twitter:title', blog.title);
-            setMeta('twitter:description', description);
-            setMeta('twitter:image', imageUrl);
-            setMeta('description', description);
+    let imageUrl = blog?.imageUrl;
+    if (blog) {
+        if (!imageUrl) {
+            imageUrl = `${window.location.origin}/D-NARAI_Logo%2001.svg`;
+        } else if (imageUrl.startsWith('/')) {
+            imageUrl = `${window.location.origin}${imageUrl}`;
         }
-    }, [blog]);
+    }
 
     const renderContentWithLinks = (text) => {
         if (!text) return null;
@@ -164,6 +133,22 @@ export default function BlogPostPage() {
 
     return (
         <div className="min-h-screen bg-white dark:bg-slate-950 pb-20">
+            {blog && (
+                <Helmet>
+                    <title>{`${blog.title} | D.Narai Travels`}</title>
+                    <meta name="description" content={description} />
+                    <link rel="canonical" href={window.location.origin + `/blog/${blog.slug}`} />
+                    <meta property="og:title" content={blog.title} />
+                    <meta property="og:description" content={description} />
+                    <meta property="og:type" content="article" />
+                    <meta property="og:url" content={window.location.href} />
+                    <meta property="og:image" content={imageUrl} />
+                    <meta name="twitter:card" content="summary_large_image" />
+                    <meta name="twitter:title" content={blog.title} />
+                    <meta name="twitter:description" content={description} />
+                    <meta name="twitter:image" content={imageUrl} />
+                </Helmet>
+            )}
             {/* Navigation Top Bar */}
             <div className="sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
                 <div className="container mx-auto max-w-4xl px-6 h-16 flex items-center justify-between">

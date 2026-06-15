@@ -66,7 +66,7 @@ export default async (request, context) => {
 
             const metaTags = `
     <!-- Dynamic Open Graph Tags from Edge Function -->
-    <title>${safeTitle} | D.Narai Insight</title>
+    <title>${safeTitle} | D.narai Travels</title>
     <meta name="description" content="${safeDesc}" />
     <meta property="og:title" content="${safeTitle}" />
     <meta property="og:description" content="${safeDesc}" />

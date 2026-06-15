@@ -1,3 +1,4 @@
+import { Helmet } from 'react-helmet-async'
 import content from '../content/siteContent.json'
 
 export default function AboutPage() {
@@ -5,6 +6,20 @@ export default function AboutPage() {
 
   return (
     <div className="container mx-auto px-6 py-10 max-w-[1600px] space-y-10 pb-20">
+      <Helmet>
+        <title>About Us | D.Narai Travels</title>
+        <meta name="description" content="Learn more about D.Narai Travels, the premier travel agency in Nigeria for flight bookings, hotels, and custom travel packages." />
+        <link rel="canonical" href="https://dnaraitravels.com/about" />
+        <meta property="og:title" content="About Us | D.Narai Travels" />
+        <meta property="og:description" content="Learn more about D.Narai Travels, the premier travel agency in Nigeria for flight bookings, hotels, and custom travel packages." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://dnaraitravels.com/about" />
+        <meta property="og:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="About Us | D.Narai Travels" />
+        <meta name="twitter:description" content="Learn more about D.Narai Travels, the premier travel agency in Nigeria for flight bookings, hotels, and custom travel packages." />
+        <meta name="twitter:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+      </Helmet>
       <section className="rounded-[2.5rem] border border-slate-200 bg-white p-10 shadow-sm dark:border-slate-800 dark:bg-slate-900/30 premium-shadow">
         <div className="space-y-4">
           <div className="text-sm font-bold text-sky-700 dark:text-sky-300 font-display text-[11px] uppercase tracking-widest">{brandName}</div>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Helmet } from 'react-helmet-async'
 import content from '../content/siteContent.json'
 import * as Lucide from 'lucide-react'
 import { useAuth } from '../data/AuthContext'
@@ -10,6 +11,20 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen pb-24 md:pb-0">
+      <Helmet>
+        <title>D.Narai Travels | Affordable Travel Packages in Nigeria</title>
+        <meta name="description" content="D.Narai Travels is a Nigerian travel agency offering standard flight bookings, and tour packages. Contact us today." />
+        <link rel="canonical" href="https://dnaraitravels.com/" />
+        <meta property="og:title" content="D.Narai Travels | Affordable Travel Packages in Nigeria" />
+        <meta property="og:description" content="D.Narai Travels is a Nigerian travel agency offering standard flight bookings, and tour packages. Contact us today." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://dnaraitravels.com/" />
+        <meta property="og:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="D.Narai Travels | Affordable Travel Packages in Nigeria" />
+        <meta name="twitter:description" content="D.Narai Travels is a Nigerian travel agency offering standard flight bookings, and tour packages. Contact us today." />
+        <meta name="twitter:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+      </Helmet>
       {/* --- HERO SECTION --- */}
       <section className="relative min-h-[92vh] flex items-center justify-center overflow-hidden px-6 py-32 lg:py-40">
         {/* Background with overlay gradient */}
@@ -131,7 +146,7 @@ export default function HomePage() {
       <section className="py-32 bg-slate-50 dark:bg-slate-900/20 px-6 relative overflow-hidden">
         <div className="container mx-auto max-w-[1400px] space-y-20 relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h2 className="text-sm font-bold uppercase tracking-widest text-ocean-600">Why Choose Us</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-ocean-600">Why Choose Us for Flights & Hotels</h2>
             <p className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
               We set the<br />
               <span className="text-ocean-600">&ldquo;PACE&rdquo;  others follow...</span>
@@ -199,8 +214,8 @@ export default function HomePage() {
                   New Intelligence Feature
                 </div>
                 <h2 className="text-4xl md:text-6xl font-black text-white leading-tight font-display">
-                  Global Time <br />
-                  <span className="text-ocean-400">Intelligence.</span>
+                  Global Time Zone Converter <br />
+                  <span className="text-ocean-400">for Flight Bookings.</span>
                 </h2>
                 <p className="text-slate-400 text-lg md:text-xl leading-relaxed max-w-xl">
                   Never miss a flight or a meeting again. Our new real-time Global Time Converter helps you navigate world time zones with precision.
@@ -260,7 +275,7 @@ export default function HomePage() {
         <div className="container mx-auto max-w-[1600px] grid lg:grid-cols-[1fr_auto] items-center gap-20">
           <div className="space-y-12">
             <div className="space-y-6">
-              <h2 className="text-sm font-black uppercase tracking-[0.4em] text-sky-600">Why Dnarai Enterprise?</h2>
+              <h2 className="text-sm font-black uppercase tracking-[0.4em] text-sky-600">Why D.Narai Travels?</h2>
               <p className="text-4xl md:text-6xl font-black text-slate-950 dark:text-white tracking-tighter italic uppercase leading-none font-display">
                 ENGINEERED FOR <br />
                 TRUST & SPEED.
@@ -305,8 +320,8 @@ export default function HomePage() {
       <section className="py-32 bg-white dark:bg-slate-950 px-6">
         <div className="container mx-auto max-w-4xl space-y-20">
           <div className="text-center space-y-4">
-            <h2 className="text-sm font-black uppercase tracking-[0.4em] text-sky-600 italic">Frequency</h2>
-            <p className="text-4xl md:text-5xl font-black text-slate-950 dark:text-white tracking-tight italic uppercase font-display">Common Intelligence</p>
+            <h2 className="text-sm font-black uppercase tracking-[0.4em] text-sky-600 italic">FAQ</h2>
+            <h3 className="text-4xl md:text-5xl font-black text-slate-950 dark:text-white tracking-tight italic uppercase font-display">Common Travel & Flights Questions</h3>
           </div>
 
           <div className="grid gap-6">
@@ -337,8 +352,8 @@ export default function HomePage() {
 
           <div className="relative z-10 flex flex-col items-center space-y-8 max-w-3xl mx-auto">
             <h2 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight font-display">
-              Start Your Next <br />
-              <span className="text-sand-100">Adventure Today</span>
+              Book Cheap Flights & <br />
+              <span className="text-sand-100">Travel Packages Today</span>
             </h2>
             <p className="max-w-2xl text-lg md:text-xl font-medium text-white/90 leading-relaxed">
               Trust us with your journey and get the satisfaction you deserve. Your satisfaction is just a click away

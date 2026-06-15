@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DateTime } from 'luxon';
 import * as Lucide from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 import { popularCities } from '../data/timezones';
 import { searchAirports, getAirportTime, convertTime, getApiBaseUrl } from '../data/api';
 import clsx from 'clsx';
@@ -310,6 +311,20 @@ export default function TimeConverterPage() {
 
   return (
     <div className="min-h-screen pb-12 pt-2 px-4 md:px-6 max-w-5xl mx-auto space-y-6 animate-in fade-in duration-700">
+      <Helmet>
+        <title>Global Flight Time Zone Converter | D.Narai Travels</title>
+        <meta name="description" content="Convert travel time zones instantly to stay on schedule for your international flights and hotel bookings. Engineered by D.Narai Travels." />
+        <link rel="canonical" href="https://dnaraitravels.com/time-converter" />
+        <meta property="og:title" content="Global Flight Time Zone Converter | D.Narai Travels" />
+        <meta property="og:description" content="Convert travel time zones instantly to stay on schedule for your international flights and hotel bookings. Engineered by D.Narai Travels." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://dnaraitravels.com/time-converter" />
+        <meta property="og:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Global Flight Time Zone Converter | D.Narai Travels" />
+        <meta name="twitter:description" content="Convert travel time zones instantly to stay on schedule for your international flights and hotel bookings. Engineered by D.Narai Travels." />
+        <meta name="twitter:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+      </Helmet>
       {/* Header Section */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-ocean-50 dark:bg-ocean-900/30 text-ocean-600 dark:text-ocean-400 text-[10px] font-black uppercase tracking-widest border border-ocean-100 dark:border-ocean-800">
@@ -317,10 +332,10 @@ export default function TimeConverterPage() {
           Global Time Intelligence
         </div>
         <h1 className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight font-display">
-          Global <span className="text-gradient-premium">Converter</span>
+          Global Flight <span className="text-gradient-premium">Time Zone Converter</span>
         </h1>
         <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto text-sm md:text-base font-medium">
-          Synchronize your world. Seamlessly track travel time zones with D.Narai Enterprise.
+          Synchronize your world. Seamlessly track travel time zones with D.narai Travels.
         </p>
 
         {/* Time Format Toggle */}

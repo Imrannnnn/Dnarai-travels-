@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import * as Lucide from 'lucide-react';
+import { Helmet } from 'react-helmet-async';
 import { getApiBaseUrl } from '../data/api';
 
 /**
@@ -53,6 +54,20 @@ export default function BlogListPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+            <Helmet>
+                <title>Travel Insights & Nigeria Flight Updates | D.Narai Travels</title>
+                <meta name="description" content="Stay updated with the latest travel insights, tour guide tips, cheap flight deals, and hotel packages in Nigeria from D.Narai Travels." />
+                <link rel="canonical" href="https://dnaraitravels.com/blog" />
+                <meta property="og:title" content="Travel Insights & Nigeria Flight Updates | D.Narai Travels" />
+                <meta property="og:description" content="Stay updated with the latest travel insights, tour guide tips, cheap flight deals, and hotel packages in Nigeria from D.Narai Travels." />
+                <meta property="og:type" content="website" />
+                <meta property="og:url" content="https://dnaraitravels.com/blog" />
+                <meta property="og:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <meta name="twitter:title" content="Travel Insights & Nigeria Flight Updates | D.Narai Travels" />
+                <meta name="twitter:description" content="Stay updated with the latest travel insights, tour guide tips, cheap flight deals, and hotel packages in Nigeria from D.Narai Travels." />
+                <meta name="twitter:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
+            </Helmet>
             {/* Header section */}
             <section className="relative py-24 px-6 overflow-hidden bg-dnarai-navy-900">
                 <div className="absolute inset-0 opacity-20">
@@ -66,7 +81,7 @@ export default function BlogListPage() {
                         Dnarai Insights
                     </div>
                     <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight leading-none italic uppercase font-display">
-                        Travel <span className="text-dnarai-gold-400">Intelligence</span>
+                        Travel Packages & <span className="text-dnarai-gold-400">Flight Insights</span>
                     </h1>
                     <p className="max-w-2xl mx-auto text-slate-400 text-lg font-medium leading-relaxed">
                         Expert perspectives, destination guides, and the latest updates from the heart of Dnarai Enterprise.

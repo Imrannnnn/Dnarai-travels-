@@ -16,6 +16,7 @@ import agencyRoutes from './routes/agency.routes.js';
 import blogRoutes from './routes/blog.routes.js';
 import timeRoutes from './routes/time.routes.js';
 import invoiceRoutes from './routes/invoices.routes.js';
+import seoRoutes from './routes/seo.routes.js';
 
 
 import { startSchedulers } from './jobs/scheduler.js';
@@ -70,6 +71,7 @@ app.use('/api/agency', agencyRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/time', timeRoutes);
 app.use('/api/invoices', invoiceRoutes);
+app.use('/', seoRoutes);
 
 
 
