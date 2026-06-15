@@ -25,7 +25,7 @@ export default async (request, context) => {
     try {
         // Try getting the backend URL from environment variables
         // We look for VITE_API_BASE_URL, but fallback to known production URLs if needed
-        let apiUrl = "http://localhost:5000";
+        let apiUrl = "https://dnarai-travels.onrender.com";
         if (typeof Netlify !== "undefined" && Netlify.env && Netlify.env.get) {
             apiUrl = Netlify.env.get("VITE_API_BASE_URL") || apiUrl;
         } else if (typeof Deno !== "undefined" && Deno.env && Deno.env.get) {
