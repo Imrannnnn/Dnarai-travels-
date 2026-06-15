@@ -285,7 +285,7 @@ export default function HomePage() {
             <div className="grid sm:grid-cols-2 gap-10">
               {[
                 { title: 'Create Your Profile', desc: 'Sign up to build your personalized traveler profile. We securely save your preferences, frequent flyer details, and travel documents.', icon: Lucide.UserPlus },
-                { title: 'Book Affordable Flights', desc: 'Discover and book cheap flights, hotels, and customized travel packages tailored to your schedule and budget.', icon: Lucide.PlaneTakeoff },
+                { title: 'Book Affordable Flights', desc: 'Discover and book affordable flights and customized travel packages tailored to your schedule and budget.', icon: Lucide.PlaneTakeoff },
                 { title: 'Automated Reminders', desc: 'Receive real-time flight status updates, visa guidance alerts, and boarding notifications sent directly to your device.', icon: Lucide.BellRing },
                 { title: 'Destination Weather', desc: 'Stay prepared with live weather forecasts and travel advisories for your destination before you even pack your bags.', icon: Lucide.CloudSun },
               ].map(step => (
