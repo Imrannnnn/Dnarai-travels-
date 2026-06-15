@@ -270,31 +270,31 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- REASONS SECTION --- */}
+      {/* --- HOW IT WORKS SECTION --- */}
       <section className="py-32 px-6 overflow-hidden">
         <div className="container mx-auto max-w-[1600px] grid lg:grid-cols-[1fr_auto] items-center gap-20">
           <div className="space-y-12">
             <div className="space-y-6">
-              <h2 className="text-sm font-black uppercase tracking-[0.4em] text-sky-600">Why Dnarai Enterprise?</h2>
+              <h2 className="text-sm font-black uppercase tracking-[0.4em] text-ocean-600">How It Works</h2>
               <p className="text-4xl md:text-6xl font-black text-slate-950 dark:text-white tracking-tighter italic uppercase leading-none font-display">
-                ENGINEERED FOR <br />
-                TRUST & SPEED.
+                SEAMLESS TRAVEL <br />
+                EXPERIENCE.
               </p>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-10">
               {[
-                { title: 'Zero-Latency Sync', desc: 'Direct protocol handlers ensure airline data reaches passengers with no operational delay.', icon: Lucide.Zap },
-                { title: 'Military Grade', desc: 'Travel identities are secured behind enterprise-grade encryption and masked for maximum privacy.', icon: Lucide.Lock },
-                { title: 'Automated Alerting', desc: 'System-wide intelligence monitors flight windows and document expiry cycles automatically.', icon: Lucide.BellRing },
-                { title: 'Global Backbone', desc: 'Integrated with major aviation data nodes to provide consistent coverage across all continents.', icon: Lucide.Network },
-              ].map(reason => (
-                <div key={reason.title} className="space-y-4">
-                  <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sky-600">
-                    <reason.icon size={22} />
+                { title: 'Create Your Profile', desc: 'Sign up to build your personalized traveler profile. We securely save your preferences, frequent flyer details, and travel documents.', icon: Lucide.UserPlus },
+                { title: 'Book Affordable Flights', desc: 'Discover and book cheap flights, hotels, and customized travel packages tailored to your schedule and budget.', icon: Lucide.PlaneTakeoff },
+                { title: 'Automated Reminders', desc: 'Receive real-time flight status updates, visa guidance alerts, and boarding notifications sent directly to your device.', icon: Lucide.BellRing },
+                { title: 'Destination Weather', desc: 'Stay prepared with live weather forecasts and travel advisories for your destination before you even pack your bags.', icon: Lucide.CloudSun },
+              ].map(step => (
+                <div key={step.title} className="space-y-4">
+                  <div className="h-12 w-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-ocean-600">
+                    <step.icon size={22} />
                   </div>
-                  <h4 className="text-xl font-black uppercase italic dark:text-white font-display">{reason.title}</h4>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{reason.desc}</p>
+                  <h4 className="text-xl font-black uppercase italic dark:text-white font-display">{step.title}</h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{step.desc}</p>
                 </div>
               ))}
             </div>
@@ -306,11 +306,11 @@ export default function HomePage() {
               <img
                 src="/chicago.jpeg"
                 className="h-full w-full object-cover grayscale opacity-50 group-hover:grayscale-0 group-hover:scale-110 transition-all duration-700"
-                alt="Flight Status Map"
+                alt="Travel Agency Destination"
               />
               <div className="absolute bottom-0 left-0 p-10 z-20 space-y-4">
-                <div className="text-[10px] font-black uppercase tracking-widest text-sky-400">Live Infrastructure</div>
-                <div className="text-1.98xl font-black text-white italic uppercase leading-tight font-display">Real-time progress status of your flight enroute your destination.  </div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-ocean-400">Your Journey Starts Here</div>
+                <div className="text-1.98xl font-black text-white italic uppercase leading-tight font-display">Expert visa assistance and travel consultation for your peace of mind.</div>
               </div>
             </div>
           </div>
