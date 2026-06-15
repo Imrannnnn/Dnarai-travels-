@@ -35,7 +35,7 @@ export default function SuccessNotification({
     if (!visible && !exiting) return null
 
     return (
-        <div className="fixed top-6 right-6 z-[9999] pointer-events-none">
+        <div className="fixed top-4 left-4 right-4 sm:top-6 sm:left-auto sm:right-6 sm:w-96 z-[9999] pointer-events-none pt-safe">
             <div
                 className={`
           pointer-events-auto
@@ -43,12 +43,12 @@ export default function SuccessNotification({
           bg-white dark:bg-slate-900 
           border-2 border-emerald-500/30 
           rounded-2xl 
-          px-6 py-4 
+          px-4 py-3 sm:px-6 sm:py-4
           shadow-2xl shadow-emerald-500/20
           transition-all duration-300 ease-out
           ${visible && !exiting
-                        ? 'translate-x-0 opacity-100'
-                        : 'translate-x-[120%] opacity-0'
+                        ? 'translate-y-0 opacity-100 scale-100'
+                        : '-translate-y-4 sm:translate-y-0 sm:translate-x-[120%] opacity-0 scale-95'
                     }
         `}
             >

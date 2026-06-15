@@ -264,3 +264,13 @@
 ::-webkit-scrollbar-thumb {
   @apply rounded-full bg-slate-300 hover:bg-slate-400 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors;
 }
+
+/* Safe Area Utilities for Native-like Mobile Experience */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+}

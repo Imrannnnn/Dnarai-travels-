@@ -181,14 +181,23 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Overlay Backdrop */}
+      <div 
+        className={clsx(
+          'fixed inset-0 z-30 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300 md:hidden',
+          isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setIsMenuOpen(false)}
+      />
+
+      {/* Mobile Menu Drawer */}
       <div
         className={clsx(
-          'fixed inset-0 z-30 bg-white/95 dark:bg-slate-950/98 backdrop-blur-2xl transition-all duration-500 md:hidden flex flex-col',
-          isMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
+          'fixed top-0 right-0 bottom-0 z-30 w-[85vw] max-w-sm bg-white dark:bg-slate-950 shadow-2xl transition-transform duration-500 ease-in-out md:hidden flex flex-col border-l border-slate-200 dark:border-slate-800',
+          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >
-        <div className="flex-1 flex flex-col pt-24 px-8 pb-10 overflow-y-auto">
+        <div className="flex-1 flex flex-col pt-24 px-8 pb-10 overflow-y-auto pb-safe">
           {/* Mobile Navigation List */}
           <nav className="flex flex-col gap-6">
             <div className="space-y-1">

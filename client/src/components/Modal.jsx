@@ -2,14 +2,23 @@ import { useEffect } from 'react'
 
 export default function Modal({ open, title, children, onClose, footer }) {
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      document.body.style.overflow = 'unset'
+      return
+    }
+
+    // Lock body scroll
+    document.body.style.overflow = 'hidden'
 
     function onKeyDown(e) {
       if (e.key === 'Escape') onClose?.()
     }
 
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = 'unset'
+    }
   }, [open, onClose])
 
   if (!open) return null
@@ -23,7 +32,12 @@ export default function Modal({ open, title, children, onClose, footer }) {
       />
 
       {/* Modal Container */}
-      <div className="relative w-full max-h-[85dvh] sm:max-h-[90dvh] sm:max-w-3xl flex flex-col bg-white dark:bg-slate-950 rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden transition-all duration-300 transform scale-100 opacity-100 z-10 pointer-events-auto">
+      <div className="relative w-full mt-auto sm:mt-0 max-h-[90dvh] sm:max-h-[90dvh] sm:max-w-3xl flex flex-col bg-white dark:bg-slate-950 rounded-t-3xl sm:rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden transition-all duration-300 transform scale-100 opacity-100 z-10 pointer-events-auto pb-safe">
+        
+        {/* Drag Handle (Mobile only) */}
+        <div className="sm:hidden w-full flex justify-center pt-4 pb-2 bg-slate-50 dark:bg-slate-900/50 shrink-0">
+          <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+        </div>
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-4 sm:px-6 py-4 dark:border-slate-800 shrink-0 bg-slate-50 dark:bg-slate-900/50">
           <div className="min-w-0">
