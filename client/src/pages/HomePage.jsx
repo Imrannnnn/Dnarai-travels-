@@ -12,17 +12,17 @@ export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen pb-24 md:pb-0">
       <Helmet>
-        <title>D.Narai Travels | Affordable Travel Packages in Nigeria</title>
-        <meta name="description" content="D.Narai Travels is a Nigerian travel agency offering standard flight bookings, and tour packages. Contact us today." />
+        <title>D.Narai Travels | Flight Booking, Visa Assistance & Travel Agency in Nigeria</title>
+        <meta name="description" content="D.Narai Travels provides affordable flight bookings, travel consultation, visa guidance, and personalized travel solutions for local and international travelers in Nigeria." />
         <link rel="canonical" href="https://dnaraitravels.com/" />
-        <meta property="og:title" content="D.Narai Travels | Affordable Travel Packages in Nigeria" />
-        <meta property="og:description" content="D.Narai Travels is a Nigerian travel agency offering standard flight bookings, and tour packages. Contact us today." />
+        <meta property="og:title" content="D.Narai Travels | Flight Booking, Visa Assistance & Travel Agency in Nigeria" />
+        <meta property="og:description" content="D.Narai Travels provides affordable flight bookings, travel consultation, visa guidance, and personalized travel solutions for local and international travelers in Nigeria." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://dnaraitravels.com/" />
         <meta property="og:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="D.Narai Travels | Affordable Travel Packages in Nigeria" />
-        <meta name="twitter:description" content="D.Narai Travels is a Nigerian travel agency offering standard flight bookings, and tour packages. Contact us today." />
+        <meta name="twitter:title" content="D.Narai Travels | Flight Booking, Visa Assistance & Travel Agency in Nigeria" />
+        <meta name="twitter:description" content="D.Narai Travels provides affordable flight bookings, travel consultation, visa guidance, and personalized travel solutions for local and international travelers in Nigeria." />
         <meta name="twitter:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
       </Helmet>
       {/* --- HERO SECTION --- */}
