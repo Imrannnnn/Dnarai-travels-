@@ -643,7 +643,7 @@ export default function HomePage() {
               Real Proof of <span className="text-ocean-600">Successful Journeys</span>
             </p>
             <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-medium">
-              Don't just take our word for it. Here are real chat logs and arrival verifications from clients we've helped reach their destinations.
+              {"Don't just take our word for it. Here are real chat logs and arrival verifications from clients we've helped reach their destinations."}
             </p>
           </div>
 
