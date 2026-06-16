@@ -93,12 +93,55 @@ const packages = [
   }
 ];
 
+const testimonials = [
+  {
+    image: '/testimonials/client_arrived_2.png',
+    title: 'London Flight Success',
+    type: 'Chat Confirmation',
+    badge: 'Arrived Safely',
+    quote: '"We arrived London safely... Great, thank God"',
+    context: 'Direct message confirmation from our client after boarding their flight and landing safely at London Heathrow.'
+  },
+  {
+    image: '/testimonials/client_arrived_1.png',
+    title: 'Transit Support to LHR',
+    type: 'WhatsApp Update',
+    badge: 'Transit Guidance',
+    quote: '"You people should be at Chicago Airport onward London Heathrow... We are boarding now"',
+    context: 'Proactive tracking and coordination by D.Narai agents guiding clients through transits to their final destination.'
+  },
+  {
+    image: '/testimonials/res.png',
+    title: 'Chicago Transit Coordination',
+    type: 'WhatsApp Update',
+    badge: 'Transit Support',
+    quote: '"Arrived Chicago safely... We just boarded. Thank you sir"',
+    context: 'Proactive coordination by our travel agents checking transit windows and flight boarding updates for the client.'
+  },
+  {
+    image: '/testimonials/touchdown.jpeg',
+    title: 'Las Vegas Arrival Confirmation',
+    type: 'Chat Notification',
+    badge: 'Arrived Safely',
+    quote: '"Touchdown Las Vegas... We thank God for journey mercies"',
+    context: 'Direct message arrival verification confirming successful touchdown and travel satisfaction in Las Vegas.'
+  },
+  {
+    image: '/testimonials/client_flight_2.png',
+    title: 'ORD to LHR Flight Path',
+    type: 'Flight Status Map',
+    badge: 'Flight Tracking',
+    quote: '"Client arrived successfully"',
+    context: 'System log maps displaying successful tracking and arrival of flight ORD to London Heathrow (LHR).'
+  }
+];
 
 export default function HomePage() {
   const { brandName, home } = content
   const { isAuthenticated, logout } = useAuth()
 
   const [activeDest, setActiveDest] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -106,6 +149,32 @@ export default function HomePage() {
     }, 4000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setLightboxIndex(null);
+      if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => (prev + 1) % testimonials.length);
+      }
+      if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxIndex]);
+
+  useEffect(() => {
+    if (lightboxIndex !== null) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [lightboxIndex]);
 
   return (
     <div className="flex flex-col min-h-screen pb-6 md:pb-0">
@@ -561,6 +630,83 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* --- TESTIMONIALS SECTION --- */}
+      <section className="py-16 md:py-24 bg-slate-50 dark:bg-slate-900/20 px-6 border-b border-sand-100 dark:border-slate-800 relative overflow-hidden">
+        {/* Decorative background gradients */}
+        <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-dnarai-gold-500/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-1/3 right-1/4 w-96 h-96 bg-ocean-500/5 blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="container mx-auto max-w-[1400px] space-y-12 relative z-10">
+          <div className="max-w-3xl mx-auto text-center space-y-4">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-ocean-600">Client Stories</h2>
+            <p className="text-3xl md:text-5xl font-black text-slate-900 dark:text-white tracking-tight leading-tight font-display">
+              Real Proof of <span className="text-ocean-600">Successful Journeys</span>
+            </p>
+            <p className="text-slate-500 dark:text-slate-400 text-sm md:text-base font-medium">
+              Don't just take our word for it. Here are real chat logs and arrival verifications from clients we've helped reach their destinations.
+            </p>
+          </div>
+
+          {/* Testimonial Gallery Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 justify-center">
+            {testimonials.map((test, index) => (
+              <div
+                key={index}
+                onClick={() => setLightboxIndex(index)}
+                className="group bg-white dark:bg-slate-900 border border-sand-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-card hover:shadow-card-hover transition-all duration-400 hover:-translate-y-1.5 flex flex-col h-full cursor-pointer"
+              >
+                {/* Image Showcase Container */}
+                <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 dark:bg-slate-800 border-b border-sand-100 dark:border-slate-800">
+                  <img
+                    src={test.image}
+                    alt={test.title}
+                    className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-105"
+                  />
+                  {/* Subtle hover overlay */}
+                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl px-4 py-2 flex items-center gap-2 text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white shadow-soft">
+                      <Lucide.Maximize2 size={14} />
+                      <span>View Screenshot</span>
+                    </div>
+                  </div>
+                  {/* Category badge */}
+                  <span className="absolute top-4 left-4 px-3 py-1.5 rounded-full bg-white/95 dark:bg-slate-900/95 text-slate-950 dark:text-white text-[10px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md">
+                    {test.type}
+                  </span>
+                </div>
+
+                {/* Content */}
+                <div className="p-6 md:p-8 flex flex-col flex-grow justify-between space-y-4">
+                  <div className="space-y-3">
+                    {/* Badge & Title */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-ocean-600 dark:text-ocean-400">
+                        {test.badge}
+                      </span>
+                    </div>
+                    <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-white font-display leading-tight group-hover:text-ocean-600 transition-colors duration-300">
+                      {test.title}
+                    </h3>
+                    
+                    {/* Quote */}
+                    <div className="relative pl-4 border-l-2 border-dnarai-gold-500/60 dark:border-dnarai-gold-500/40 py-1">
+                      <p className="text-sm font-medium italic text-slate-700 dark:text-slate-300">
+                        {test.quote}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Context */}
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed pt-2 border-t border-sand-100 dark:border-slate-800">
+                    {test.context}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* --- FAQ SECTION --- */}
       <section className="py-16 md:py-24 bg-white dark:bg-slate-950 px-6">
         <div className="container mx-auto max-w-4xl space-y-12">
@@ -711,6 +857,82 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      {/* --- LIGHTBOX MODAL --- */}
+      {lightboxIndex !== null && (
+        <div 
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md transition-all duration-300"
+          onClick={() => setLightboxIndex(null)}
+        >
+          {/* Close button */}
+          <button 
+            onClick={() => setLightboxIndex(null)}
+            className="absolute top-6 right-6 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110 active:scale-95"
+            aria-label="Close lightbox"
+          >
+            <Lucide.X size={24} />
+          </button>
+
+          {/* Navigation left */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+            }}
+            className="absolute left-4 md:left-8 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110 active:scale-95"
+            aria-label="Previous testimonial"
+          >
+            <Lucide.ChevronLeft size={24} />
+          </button>
+
+          {/* Navigation right */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxIndex((prev) => (prev + 1) % testimonials.length);
+            }}
+            className="absolute right-4 md:right-8 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110 active:scale-95"
+            aria-label="Next testimonial"
+          >
+            <Lucide.ChevronRight size={24} />
+          </button>
+
+          {/* Lightbox content */}
+          <div 
+            className="relative max-w-[90vw] max-h-[80vh] md:max-w-[70vw] md:max-h-[85vh] lg:max-w-[50vw] flex flex-col items-center gap-4 animate-in zoom-in duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-white/10 shadow-2xl flex items-center justify-center p-1 md:p-2">
+              <img
+                src={testimonials[lightboxIndex].image}
+                alt={testimonials[lightboxIndex].title}
+                className="max-w-full max-h-[60vh] md:max-h-[70vh] object-contain rounded-xl"
+              />
+            </div>
+            
+            {/* Context details underneath the screenshot */}
+            <div className="text-center text-white space-y-2 max-w-2xl px-4">
+              <div className="inline-flex gap-2 items-center">
+                <span className="px-2.5 py-0.5 rounded-full bg-dnarai-gold-500 text-slate-950 text-[10px] font-black uppercase tracking-wider">
+                  {testimonials[lightboxIndex].badge}
+                </span>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  {testimonials[lightboxIndex].type}
+                </span>
+              </div>
+              <h4 className="text-lg md:text-xl font-black font-display text-white">
+                {testimonials[lightboxIndex].title}
+              </h4>
+              <p className="text-sm text-slate-300 font-medium italic">
+                {testimonials[lightboxIndex].quote}
+              </p>
+              <p className="text-xs text-slate-400">
+                {testimonials[lightboxIndex].context}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
