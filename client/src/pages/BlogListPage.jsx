@@ -53,7 +53,7 @@ export default function BlogListPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-10 md:pb-12">
             <Helmet>
                 <title>Travel Insights & Nigeria Flight Updates | D.Narai Travels</title>
                 <meta name="description" content="Stay updated with the latest travel insights, tour guide tips, cheap flight deals, and hotel packages in Nigeria from D.Narai Travels." />
@@ -69,7 +69,7 @@ export default function BlogListPage() {
                 <meta name="twitter:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
             </Helmet>
             {/* Header section */}
-            <section className="relative py-24 px-6 overflow-hidden bg-dnarai-navy-900">
+            <section className="relative py-12 md:py-16 px-6 overflow-hidden bg-dnarai-navy-900">
                 <div className="absolute inset-0 opacity-20">
                     <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=2070')] bg-cover bg-center" />
                     <div className="absolute inset-0 bg-gradient-to-b from-dnarai-navy-900 via-dnarai-navy-800 to-transparent" />
@@ -151,7 +151,7 @@ export default function BlogListPage() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <div className="mt-16 flex justify-center items-center gap-2">
+                    <div className="mt-10 flex justify-center items-center gap-2">
                         <button
                             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                             disabled={currentPage === 1}

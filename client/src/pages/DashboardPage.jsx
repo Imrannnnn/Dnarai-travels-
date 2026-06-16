@@ -24,7 +24,7 @@ export default function DashboardPage() {
   })
 
   return (
-    <div className="container mx-auto px-5 md:px-8 py-8 md:py-10 max-w-7xl space-y-10 pb-28 md:pb-20">
+    <div className="container mx-auto px-5 md:px-8 py-6 md:py-8 max-w-7xl space-y-6 pb-10 md:pb-12">
       <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <PageHeader
           title={`Welcome back, ${passenger?.name?.split(' ')[0] || 'Traveler'}`}
@@ -64,7 +64,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
         <div className="space-y-8">
           <div className="space-y-6 md:space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">

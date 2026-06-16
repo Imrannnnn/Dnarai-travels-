@@ -132,7 +132,7 @@ export default function BlogPostPage() {
     );
 
     return (
-        <div className="min-h-screen bg-white dark:bg-slate-950 pb-20">
+        <div className="min-h-screen bg-white dark:bg-slate-950 pb-10 md:pb-12">
             {blog && (
                 <Helmet>
                     <title>{`${blog.title} | D.Narai Travels`}</title>
@@ -172,7 +172,7 @@ export default function BlogPostPage() {
                 </div>
             </div>
 
-            <article className="container mx-auto max-w-4xl px-6 pt-16 space-y-12">
+            <article className="container mx-auto max-w-4xl px-6 pt-8 md:pt-12 space-y-8">
                 {/* Post Title Section */}
                 <header className="space-y-6 text-center lg:text-left">
                     <div className="text-[10px] font-black uppercase tracking-[0.5em] text-dnarai-gold-500 italic">
@@ -215,7 +215,7 @@ export default function BlogPostPage() {
                 </div>
 
                 {/* Comments Section */}
-                <section className="pt-20 border-t border-slate-100 dark:border-slate-800 space-y-10">
+                <section className="pt-10 md:pt-12 border-t border-slate-100 dark:border-slate-800 space-y-6">
                     <div className="flex items-center justify-between">
                         <h2 className="text-3xl font-black text-slate-900 dark:text-white uppercase italic font-display">
                             Interaction <span className="text-dnarai-gold-500">Node</span>
@@ -260,7 +260,7 @@ export default function BlogPostPage() {
                     </form>
 
                     {/* Comments List */}
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {blog.comments && blog.comments.length > 0 ? (
                             blog.comments.map((comment, i) => (
                                 <div key={i} className="flex gap-4 p-6 bg-white dark:bg-slate-900 rounded-2xl shadow-soft border border-slate-50 dark:border-slate-800 transition-all hover:bg-slate-50 dark:hover:bg-slate-900/80">

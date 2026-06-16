@@ -5,7 +5,7 @@ export default function AboutPage() {
   const { brandName, motto, about } = content
 
   return (
-    <div className="container mx-auto px-6 py-10 max-w-[1600px] space-y-10 pb-20">
+    <div className="container mx-auto px-6 py-6 md:py-8 max-w-[1600px] space-y-6 pb-10 md:pb-12">
       <Helmet>
         <title>About Us | D.Narai Travels</title>
         <meta name="description" content="Learn more about D.Narai Travels, the premier travel agency in Nigeria for flight bookings, hotels, and custom travel packages." />
