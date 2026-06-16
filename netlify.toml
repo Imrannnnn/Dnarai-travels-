@@ -8,14 +8,16 @@ function = "seo-preview"
 path = "/blog/*"
 
 [[redirects]]
-from = "/sitemap.xml"
-to = "https://dnarai-travels.onrender.com/sitemap.xml"
+from   = "/sitemap.xml"
+to     = "https://dnarai-travels.onrender.com/sitemap.xml"
 status = 200
+force  = true
 
 [[redirects]]
-from = "/robots.txt"
-to = "https://dnarai-travels.onrender.com/robots.txt"
+from   = "/robots.txt"
+to     = "https://dnarai-travels.onrender.com/robots.txt"
 status = 200
+force  = true
 
 [[redirects]]
 from   = "/*"
