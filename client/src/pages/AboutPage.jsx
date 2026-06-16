@@ -20,7 +20,7 @@ export default function AboutPage() {
         <meta name="twitter:description" content="Learn more about D.Narai Travels, the premier travel agency in Nigeria for flight bookings, hotels, and custom travel packages." />
         <meta name="twitter:image" content="https://dnaraitravels.com/D-NARAI_Logo%2001.svg" />
       </Helmet>
-      <section className="rounded-[2.5rem] border border-slate-200 bg-white p-10 shadow-sm dark:border-slate-800 dark:bg-slate-900/30 premium-shadow">
+      <section className="rounded-3xl sm:rounded-[2.5rem] border border-slate-200 bg-white p-6 sm:p-10 shadow-sm dark:border-slate-800 dark:bg-slate-900/30 premium-shadow">
         <div className="space-y-4">
           <div className="text-sm font-bold text-sky-700 dark:text-sky-300 font-display text-[11px] uppercase tracking-widest">{brandName}</div>
           <h1 className="text-4xl font-semibold tracking-tight text-navy-900 dark:text-slate-100 font-display">{about.title}</h1>
@@ -33,7 +33,7 @@ export default function AboutPage() {
         {about.sections.map((section) => (
           <div
             key={section.heading}
-            className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/30 premium-shadow"
+            className="rounded-2xl sm:rounded-[2rem] border border-slate-200 bg-white p-6 sm:p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900/30 premium-shadow"
           >
             <h2 className="text-lg font-bold text-navy-900 dark:text-slate-100 font-display uppercase tracking-tight">{section.heading}</h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">{section.body}</p>

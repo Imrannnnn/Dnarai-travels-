@@ -37,6 +37,8 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     /* Slightly reduced from default 16px */
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   h1,
@@ -54,6 +56,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     position: relative;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
   body::before {

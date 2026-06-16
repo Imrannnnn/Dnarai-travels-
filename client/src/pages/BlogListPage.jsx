@@ -92,7 +92,7 @@ export default function BlogListPage() {
             {/* Blog Cards Grid */}
             <section className="container mx-auto max-w-6xl px-6 -mt-10 relative z-20">
                 {blogs.length === 0 ? (
-                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] p-20 text-center shadow-premium border border-slate-100 dark:border-slate-800">
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-12 md:p-20 text-center shadow-premium border border-slate-100 dark:border-slate-800">
                         <Lucide.Inbox size={48} className="mx-auto text-slate-300 mb-6" />
                         <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic font-display">No stories yet</h3>
                         <p className="text-slate-500 mt-2">Check back soon for premium travel insights.</p>

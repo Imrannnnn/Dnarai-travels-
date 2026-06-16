@@ -48,7 +48,7 @@ export default function BlogPostPage() {
     let imageUrl = blog?.imageUrl;
     if (blog) {
         if (!imageUrl) {
-            imageUrl = `${window.location.origin}/D-NARAI_Logo%2001.svg`;
+            imageUrl = `${window.location.origin}/D-NARAI_LOGO_04.jpg`;
         } else if (imageUrl.startsWith('/')) {
             imageUrl = `${window.location.origin}${imageUrl}`;
         }
@@ -60,11 +60,11 @@ export default function BlogPostPage() {
         return text.split(urlRegex).map((part, index) => {
             if (part.match(urlRegex)) {
                 return (
-                    <a 
-                        key={index} 
-                        href={part} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
+                    <a
+                        key={index}
+                        href={part}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="text-dnarai-gold-500 hover:text-dnarai-gold-600 underline font-bold transition-colors"
                     >
                         {part}
@@ -226,7 +226,7 @@ export default function BlogPostPage() {
                     </div>
 
                     {/* Comment Form */}
-                    <form onSubmit={handleComment} className="bg-slate-50 dark:bg-slate-900/50 rounded-[2rem] p-8 border border-slate-100 dark:border-slate-800 space-y-6">
+                    <form onSubmit={handleComment} className="bg-slate-50 dark:bg-slate-900/50 rounded-2xl sm:rounded-[2rem] p-6 sm:p-8 border border-slate-100 dark:border-slate-800 space-y-6">
                         <div className="grid md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2">Identity (Optional)</label>

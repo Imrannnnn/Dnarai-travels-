@@ -341,7 +341,7 @@ export default function HomePage() {
 
       {/* --- CTA SECTION --- */}
       <section className="container mx-auto max-w-[1400px] px-6 mb-32">
-        <div className="bg-gradient-to-br from-dnarai-navy-600 via-dnarai-navy-700 to-dnarai-navy-800 rounded-4xl p-16 lg:p-24 text-center text-white relative overflow-hidden shadow-premium">
+        <div className="bg-gradient-to-br from-dnarai-navy-600 via-dnarai-navy-700 to-dnarai-navy-800 rounded-3xl sm:rounded-4xl p-6 sm:p-16 lg:p-24 text-center text-white relative overflow-hidden shadow-premium">
           {/* Background pattern */}
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1559827260-dc66d52bef19?q=80&w=2670')] bg-cover bg-center opacity-10 mix-blend-overlay" />
           <div className="absolute inset-0 bg-gradient-to-t from-dnarai-navy-900/80 to-transparent" />
