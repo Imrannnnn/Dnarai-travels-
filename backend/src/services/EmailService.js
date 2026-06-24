@@ -1,8 +1,5 @@
 import nodemailer from 'nodemailer';
-import path from 'path';
 import fs from 'fs';
-import { fileURLToPath } from 'url';
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 let _transporter = null;
 
@@ -143,15 +140,7 @@ const COLORS = {
   BG: '#f8fafc'
 };
 
-// Path to logo for CID attachment
-const LOGO_PATH = path.resolve(__dirname, '../../../client/public/D-NARAI_Logo-04.png');
 
-// Debug the path
-if (!fs.existsSync(LOGO_PATH)) {
-  console.warn(`⚠️ [EmailService] Logo not found at: ${LOGO_PATH}`);
-} else {
-  console.log(`✅ [EmailService] Logo found at: ${LOGO_PATH}`);
-}
 
 const getEmailWrapper = (content, previewText = '') => `
   <!DOCTYPE html>
@@ -168,7 +157,7 @@ const getEmailWrapper = (content, previewText = '') => `
         <td align="center" style="padding: 40px 0 20px 0; text-align: center;">
           <center>
             <a href="${process.env.CORS_ORIGIN || '#'}" style="text-decoration: none; display: inline-block;">
-              <img src="cid:logo.png" alt="DNARAI TRAVEL" width="200" style="display: block; border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 900; color: ${COLORS.NAVY}; letter-spacing: -1px; width: 200px; max-width: 200px;">
+              <img src="https://dnaraitravels.com/D-NARAI_Logo-04.png" alt="DNARAI TRAVEL" width="200" style="display: block; border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 24px; font-weight: 900; color: ${COLORS.NAVY}; letter-spacing: -1px; width: 200px; max-width: 200px;">
               <div style="margin-top: -5px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11px; font-weight: 800; color: ${COLORS.GOLD}; letter-spacing: 4px; text-transform: uppercase;">Executive Travel</div>
             </a>
           </center>
@@ -199,14 +188,6 @@ const getEmailWrapper = (content, previewText = '') => `
 `;
 
 const getAttachments = () => {
-  if (fs.existsSync(LOGO_PATH)) {
-    return [{
-      filename: 'logo.png',
-      path: LOGO_PATH,
-      cid: 'logo.png',
-      contentType: 'image/png'
-    }];
-  }
   return [];
 };
 
