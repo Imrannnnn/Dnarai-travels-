@@ -309,7 +309,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* --- CORE SOLUTIONS --- */}
+      {/* --- CORE VALUES --- */}
       <section className="py-16 md:py-24 bg-slate-50 dark:bg-slate-900/20 px-6 relative overflow-hidden">
         <div className="container mx-auto max-w-[1400px] space-y-12 relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
@@ -324,19 +324,19 @@ export default function HomePage() {
             {[
               {
                 icon: Lucide.Target,
-                title: 'Precision',
+                title: 'Precise',
                 desc: 'Attention to every travel detail. Accuracy is our hallmark.',
                 colorClass: 'bg-ocean-100 text-ocean-600 dark:bg-ocean-500/10 dark:text-ocean-400'
               },
               {
                 icon: Lucide.ShieldCheck,
-                title: 'Accuracy',
+                title: 'Authentic',
                 desc: 'Reliable and Trustworthy; we keep to our words.',
                 colorClass: 'bg-coral-500/10 text-coral-600 dark:bg-coral-500/20 dark:text-coral-400'
               },
               {
                 icon: Lucide.UserCheck,
-                title: 'Client - Centric',
+                title: 'Client-Centric',
                 desc: "Tailored services to meet customer's needs. Customer's need is top.",
                 colorClass: 'bg-sand-100 text-sand-600 dark:bg-sand-500/10 dark:text-sand-400'
               },
@@ -385,9 +385,8 @@ export default function HomePage() {
               {destinations.map((dest, idx) => (
                 <div
                   key={dest.city + '-slide'}
-                  className={`absolute inset-0 transition-opacity duration-1000 flex flex-col justify-end ${
-                    activeDest === idx ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
-                  }`}
+                  className={`absolute inset-0 transition-opacity duration-1000 flex flex-col justify-end ${activeDest === idx ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'
+                    }`}
                 >
                   <img
                     src={dest.image}
@@ -399,7 +398,7 @@ export default function HomePage() {
                   />
                   {/* Visual gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
-                  
+
                   <div className="relative z-10 p-6 sm:p-10 md:p-12 space-y-6 text-white text-left">
                     <div className="space-y-3">
                       <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.3em] text-ocean-400">{dest.country}</span>
@@ -416,7 +415,7 @@ export default function HomePage() {
                           </span>
                         ))}
                       </div>
-                      
+
                       <Link
                         to="/dashboard"
                         className="inline-flex items-center justify-center gap-2 rounded-xl bg-white hover:bg-slate-50 text-slate-950 px-6 py-3.5 text-xs font-black uppercase tracking-wider transition-all duration-300 self-start sm:self-auto shadow-md"
@@ -546,7 +545,7 @@ export default function HomePage() {
                     <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white font-display leading-tight group-hover:text-ocean-600 transition-colors duration-300">
                       {pkg.title}
                     </h3>
-                    
+
                     {/* Duration */}
                     <div className="flex items-center gap-2 text-xs font-bold text-ocean-600 dark:text-ocean-400 uppercase tracking-wider">
                       <Lucide.Calendar size={14} />
@@ -687,7 +686,7 @@ export default function HomePage() {
                     <h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-white font-display leading-tight group-hover:text-ocean-600 transition-colors duration-300">
                       {test.title}
                     </h3>
-                    
+
                     {/* Quote */}
                     <div className="relative pl-4 border-l-2 border-dnarai-gold-500/60 dark:border-dnarai-gold-500/40 py-1">
                       <p className="text-sm font-medium italic text-slate-700 dark:text-slate-300">
@@ -743,7 +742,7 @@ export default function HomePage() {
 
           <div className="relative z-10 flex flex-col items-center space-y-8 max-w-3xl mx-auto">
             <h2 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight font-display">
-              Start Your Next <br />
+              Start Your Next Travel<br />
               <span className="text-sand-100">Adventure Today</span>
             </h2>
             <p className="max-w-2xl text-lg md:text-xl font-medium text-white/90 leading-relaxed">
@@ -860,12 +859,12 @@ export default function HomePage() {
 
       {/* --- LIGHTBOX MODAL --- */}
       {lightboxIndex !== null && (
-        <div 
+        <div
           className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-950/90 backdrop-blur-md transition-all duration-300"
           onClick={() => setLightboxIndex(null)}
         >
           {/* Close button */}
-          <button 
+          <button
             onClick={() => setLightboxIndex(null)}
             className="absolute top-6 right-6 z-50 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white transition-all hover:scale-110 active:scale-95"
             aria-label="Close lightbox"
@@ -898,7 +897,7 @@ export default function HomePage() {
           </button>
 
           {/* Lightbox content */}
-          <div 
+          <div
             className="relative max-w-[90vw] max-h-[80vh] md:max-w-[70vw] md:max-h-[85vh] lg:max-w-[50vw] flex flex-col items-center gap-4 animate-in zoom-in duration-300"
             onClick={(e) => e.stopPropagation()}
           >
@@ -909,7 +908,7 @@ export default function HomePage() {
                 className="max-w-full max-h-[60vh] md:max-h-[70vh] object-contain rounded-xl"
               />
             </div>
-            
+
             {/* Context details underneath the screenshot */}
             <div className="text-center text-white space-y-2 max-w-2xl px-4">
               <div className="inline-flex gap-2 items-center">
