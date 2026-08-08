@@ -4,7 +4,7 @@
   "home": {
     "hero": {
       "title": "Your Travel Companion",
-      "subtitle": "We are a realistic, client-centric & forward thinking travel company, we use innovation and technology to serve you all through your journey.",
+      "subtitle": "We are a realistic, client-centric & forward thinking travel company, we use innovation and technology to  serve you throughout your journey.",
       "primaryCta": {
         "label": "Passenger Login",
         "to": "/dashboard"
