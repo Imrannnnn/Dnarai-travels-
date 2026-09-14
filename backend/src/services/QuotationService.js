@@ -1,5 +1,4 @@
 import { DateTime } from 'luxon';
-import { AgencySettings } from '../models/AgencySettings.js';
 
 /**
  * Helper to get ordinal suffix for day of month (e.g. 1st, 2nd, 3rd, 16th, 19th)
@@ -178,7 +177,6 @@ export const QuotationService = {
     const outboundDateStr = formatFlightDate(quotation.departureDate);
     const returnDateStr = formatFlightDate(quotation.returnDate);
 
-    const fee = quotation.cardProcessingFee ?? settings?.cardProcessingFee ?? 3000;
     const { serviceChargePerPerson, totalServiceCharge, passengerCount } =
       this.calculateServiceCharge(quotation.tripType, quotation.passengerCount, settings);
 

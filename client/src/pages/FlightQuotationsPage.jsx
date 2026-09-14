@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as Lucide from 'lucide-react'
 import clsx from 'clsx'
@@ -110,7 +110,7 @@ function formatAirlineBlock(airline, cardFee) {
   return formattedGroups.length > 0 ? lines.join('\n') : ''
 }
 
-export function generateWhatsAppMessage(data, settings) {
+function generateWhatsAppMessage(data, settings) {
   const isReturn = data.tripType === 'return'
   const origin = data.originCity?.trim() || 'Abuja'
   const destination = data.destinationCity?.trim() || 'Lagos'
