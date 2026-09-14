@@ -12,6 +12,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import BlogListPage from './pages/BlogListPage'
 import BlogPostPage from './pages/BlogPostPage'
 import TimeConverterPage from './pages/TimeConverterPage'
+import FlightQuotationsPage from './pages/FlightQuotationsPage'
 import { useAuth } from './data/AuthContext'
 import { useAppData } from './data/AppDataContext'
 import LoadingOverlay from './components/LoadingOverlay'
@@ -48,6 +49,14 @@ export default function App() {
         <Route
           path="/super-admin"
           element={<SuperAdminPage />}
+        />
+        <Route
+          path="/super-admin/quotations"
+          element={<FlightQuotationsPage />}
+        />
+        <Route
+          path="/flight-quotations"
+          element={<FlightQuotationsPage />}
         />
 
         {/* Main Pages */}

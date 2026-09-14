@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import * as Lucide from 'lucide-react'
 import { getApiBaseUrl } from '../data/api'
 import Modal from '../components/Modal'
@@ -102,6 +103,7 @@ function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIa
 }
 
 export default function SuperAdminPage() {
+    const navigate = useNavigate()
     const [token, setToken] = useState(localStorage.getItem('admin_token') || null)
     const [role, setRole] = useState(localStorage.getItem('admin_role') || null)
     const [activeView, setActiveView] = useState('all') // 'all' or 'today'
@@ -978,6 +980,15 @@ export default function SuperAdminPage() {
                                 )}
 
                                 <button
+                                    onClick={() => navigate('/super-admin/quotations')}
+                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
+                                    title="Flight Quotations & Comparisons"
+                                >
+                                    <Lucide.PlaneTakeoff size={16} />
+                                    <span>Flight Quotations</span>
+                                </button>
+
+                                <button
                                     onClick={() => setIsBlogManagerModalOpen(true)}
                                     className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
                                     title="Manage Insights"
@@ -1037,6 +1048,13 @@ export default function SuperAdminPage() {
                                     Add Staff
                                 </button>
                             )}
+                            <button
+                                onClick={() => { navigate('/super-admin/quotations'); setIsMobileMenuOpen(false); }}
+                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-ocean-700 bg-ocean-50 hover:bg-ocean-100 rounded-xl transition-all border border-ocean-100"
+                            >
+                                <Lucide.PlaneTakeoff size={18} />
+                                Flight Quotations
+                            </button>
                             <button
                                 onClick={() => { setIsBlogManagerModalOpen(true); setIsMobileMenuOpen(false); }}
                                 className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
@@ -1137,6 +1155,13 @@ export default function SuperAdminPage() {
                                             >
                                                 <Lucide.FileText size={18} />
                                                 New Invoice
+                                            </button>
+                                            <button
+                                                onClick={() => navigate('/super-admin/quotations')}
+                                                className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all shadow-md whitespace-nowrap"
+                                            >
+                                                <Lucide.PlaneTakeoff size={18} />
+                                                Flight Quotations
                                             </button>
                                         </div>
 
@@ -3421,20 +3446,23 @@ export default function SuperAdminPage() {
                                         <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Service Description</label>
                                         <input
                                             type="text"
-                                            placeholder="e.g. Flight ticket bookings, Visa processing..."
+                                            placeholder="e.g. Flight Ticketing, Visa Processing..."
                                             value={item.description}
                                             onChange={e => handleInvoiceItemChange(idx, 'description', e.target.value)}
                                             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Detailed Information (Optional)</label>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Detailed Information (Optional)</label>
+                                            <span className="text-[10px] text-slate-400 font-medium">Press Enter for new line</span>
+                                        </div>
                                         <textarea
-                                            placeholder="e.g. Arik flight ticket from Abuja to Lagos for 6th May, 2026."
+                                            placeholder="e.g.&#10;Going: Lagos (LOS) to London (LHR) - 12th May&#10;Return: London (LHR) to Lagos (LOS) - 26th May"
                                             value={item.subText}
-                                            rows={2}
+                                            rows={3}
                                             onChange={e => handleInvoiceItemChange(idx, 'subText', e.target.value)}
-                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all resize-none"
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all resize-y leading-relaxed"
                                         />
                                     </div>
                                     <div className="grid grid-cols-3 gap-4">
@@ -3720,13 +3748,23 @@ export default function SuperAdminPage() {
                             <tbody className="divide-y divide-slate-100">
                                 {selectedInvoiceForShare.items.map((item, idx) => (
                                     <tr key={idx} className="group">
-                                        <td className="py-6 pr-8">
-                                            <div className="font-bold text-slate-900 text-sm mb-1">{item.description}</div>
-                                            <div className="text-xs text-slate-500 leading-relaxed max-w-md">{item.subText}</div>
+                                        <td className="py-6 pr-8 align-top">
+                                            <div className="font-bold text-slate-900 text-sm mb-1 whitespace-pre-line leading-relaxed">
+                                                {item.description ? item.description.split('\n').map((line, lIdx) => (
+                                                    <span key={lIdx} className="block">{line || '\u00A0'}</span>
+                                                )) : null}
+                                            </div>
+                                            {item.subText && (
+                                                <div className="text-xs text-slate-500 leading-relaxed max-w-md whitespace-pre-line mt-1">
+                                                    {item.subText.split('\n').map((line, lIdx) => (
+                                                        <span key={lIdx} className="block">{line || '\u00A0'}</span>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </td>
-                                        <td className="py-6 text-right text-sm font-medium text-slate-600">{selectedInvoiceForShare.currency}{item.rate?.toLocaleString()}</td>
-                                        <td className="py-6 text-right text-sm font-medium text-slate-600">{item.qty}</td>
-                                        <td className="py-6 text-right text-sm font-black text-slate-900">{selectedInvoiceForShare.currency}{item.amount?.toLocaleString()}</td>
+                                        <td className="py-6 text-right text-sm font-medium text-slate-600 align-top">{selectedInvoiceForShare.currency}{item.rate?.toLocaleString()}</td>
+                                        <td className="py-6 text-right text-sm font-medium text-slate-600 align-top">{item.qty}</td>
+                                        <td className="py-6 text-right text-sm font-black text-slate-900 align-top">{selectedInvoiceForShare.currency}{item.amount?.toLocaleString()}</td>
                                     </tr>
                                 ))}
                             </tbody>

@@ -36,15 +36,15 @@ export default function AirportAutocomplete({
     const handleInputChange = (e) => {
         const query = e.target.value
         setInputValue(query)
-        onChange(query)
+        if (onChange) onChange(query)
 
         if (query.length > 1) {
+            const searchLower = query.toLowerCase()
             const filtered = airportsData.filter(item => {
-                const searchLower = query.toLowerCase()
                 return (
-                    item.city.toLowerCase().includes(searchLower) ||
-                    item.airport_name.toLowerCase().includes(searchLower) ||
-                    item.iata.toLowerCase().includes(searchLower)
+                    item.city?.toLowerCase().includes(searchLower) ||
+                    item.airport_name?.toLowerCase().includes(searchLower) ||
+                    item.iata?.toLowerCase().includes(searchLower)
                 )
             }).slice(0, 10) // Limit to top 10
 
@@ -57,12 +57,20 @@ export default function AirportAutocomplete({
         }
     }
 
+    const handleClear = (e) => {
+        e.stopPropagation()
+        setInputValue('')
+        setSuggestions([])
+        setShowSuggestions(false)
+        if (onChange) onChange('')
+    }
+
     const handleSelect = (airport) => {
         const formattedValue = `${airport.city} (${airport.iata})`
         setInputValue(formattedValue)
-        onSelect(airport)
+        if (onSelect) onSelect(airport)
         setShowSuggestions(false)
-        onChange(formattedValue) // Update parent form value to display format
+        if (onChange) onChange(formattedValue)
     }
 
     const handleKeyDown = (e) => {
@@ -94,13 +102,24 @@ export default function AirportAutocomplete({
                 <input
                     type="text"
                     {...props}
-                    className="w-full rounded-2xl border border-sand-200 bg-sand-50/50 py-3 pl-11 pr-4 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white transition-all"
+                    className="w-full rounded-2xl border border-sand-200 bg-sand-50/50 py-3 pl-11 pr-10 text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:border-ocean-500 focus:ring-1 focus:ring-ocean-500 dark:border-slate-800 dark:bg-slate-900 dark:text-white transition-all"
                     placeholder={placeholder}
                     value={inputValue}
                     onChange={handleInputChange}
                     onFocus={() => inputValue.length > 1 && setShowSuggestions(true)}
                     onKeyDown={handleKeyDown}
                 />
+
+                {inputValue && (
+                    <button
+                        type="button"
+                        onClick={handleClear}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        title="Clear input"
+                    >
+                        <Lucide.X size={14} />
+                    </button>
+                )}
 
                 {showSuggestions && (
                     <div className="absolute z-50 w-full mt-2 bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-sand-200 dark:border-slate-800 overflow-hidden text-left animate-in fade-in zoom-in duration-200">
@@ -129,8 +148,9 @@ export default function AirportAutocomplete({
                                 ))}
                             </ul>
                         ) : (
-                            <div className="px-4 py-3 text-sm text-slate-500 dark:text-slate-400 text-center italic">
-                                No airport found
+                            <div className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                                <div className="font-semibold text-slate-700 dark:text-slate-300">Custom / Dummy Location:</div>
+                                <div className="italic text-slate-500 dark:text-slate-400 mt-0.5">&ldquo;{inputValue}&rdquo; will be used</div>
                             </div>
                         )}
                     </div>

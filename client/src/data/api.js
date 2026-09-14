@@ -33,7 +33,7 @@ function withTimeout(signal, ms) {
 async function request(path, { method = 'GET', body, baseUrl, signal, token } = {}) {
   const url = `${baseUrl?.replace(/\/$/, '') || ''}${path}`
   console.log(`[API] ${method} ${url}`, { body });
-  const authToken = token || localStorage.getItem('token')
+  const authToken = token || localStorage.getItem('admin_token') || localStorage.getItem('token')
 
   const headers = {
     Accept: 'application/json',
@@ -135,6 +135,10 @@ export async function fetchPassenger({ baseUrl, signal } = {}) {
   return request('/api/portal/me', { baseUrl, signal })
 }
 
+export async function fetchPassengers({ baseUrl, signal, token } = {}) {
+  return request('/api/passengers', { baseUrl, signal, token })
+}
+
 export async function fetchFlights({ baseUrl, signal } = {}) {
   return request('/api/portal/bookings', { baseUrl, signal })
 }
@@ -205,6 +209,45 @@ export async function convertTime({ from, to, time, baseUrl, signal }) {
   let path = `/api/time/convert?from=${from}&to=${to}`
   if (time) path += `&time=${encodeURIComponent(time)}`
   return request(path, { baseUrl, signal })
+}
+
+export async function fetchQuotations({ status, search, page = 1, limit = 20, baseUrl, signal, token } = {}) {
+  let path = `/api/quotations?page=${page}&limit=${limit}`
+  if (status && status !== 'all') path += `&status=${encodeURIComponent(status)}`
+  if (search) path += `&search=${encodeURIComponent(search)}`
+  return request(path, { baseUrl, signal, token })
+}
+
+export async function fetchQuotationById({ id, baseUrl, signal, token } = {}) {
+  return request(`/api/quotations/${id}`, { baseUrl, signal, token })
+}
+
+export async function createQuotation({ data, baseUrl, token } = {}) {
+  return request('/api/quotations', { method: 'POST', body: data, baseUrl, token })
+}
+
+export async function updateQuotation({ id, data, baseUrl, token } = {}) {
+  return request(`/api/quotations/${id}`, { method: 'PATCH', body: data, baseUrl, token })
+}
+
+export async function updateQuotationStatus({ id, status, baseUrl, token } = {}) {
+  return request(`/api/quotations/${id}/status`, { method: 'PATCH', body: { status }, baseUrl, token })
+}
+
+export async function deleteQuotation({ id, baseUrl, token } = {}) {
+  return request(`/api/quotations/${id}`, { method: 'DELETE', baseUrl, token })
+}
+
+export async function fetchQuotationSettings({ baseUrl, signal, token } = {}) {
+  return request('/api/quotations/settings', { baseUrl, signal, token })
+}
+
+export async function updateQuotationSettings({ data, baseUrl, token } = {}) {
+  return request('/api/quotations/settings', { method: 'PATCH', body: data, baseUrl, token })
+}
+
+export async function previewQuotationMessage({ data, baseUrl, token } = {}) {
+  return request('/api/quotations/preview', { method: 'POST', body: data, baseUrl, token })
 }
 
 export function getApiBaseUrl() {
