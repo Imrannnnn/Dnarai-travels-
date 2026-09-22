@@ -15,7 +15,7 @@ export function getOrdinalSuffix(day) {
 }
 
 /**
- * Formats a Date object or ISO string to e.g. "Wednesday, 16th"
+ * Formats a Date object or ISO string to e.g. "Wed, 21st, October"
  */
 export function formatFlightDate(dateInput) {
   if (!dateInput) return '';
@@ -34,9 +34,10 @@ export function formatFlightDate(dateInput) {
 
   if (!dt.isValid) return '';
 
-  const weekday = dt.toFormat('cccc'); // 'Wednesday', 'Saturday', etc.
+  const weekday = dt.toFormat('ccc'); // 'Wed', 'Sat', etc.
   const dayWithOrdinal = getOrdinalSuffix(dt.day);
-  return `${weekday}, ${dayWithOrdinal}`;
+  const month = dt.toFormat('LLLL'); // 'October', 'September', etc.
+  return `${weekday}, ${dayWithOrdinal}, ${month}`;
 }
 
 /**
@@ -63,6 +64,24 @@ export function normalizeWhatsAppPhone(rawPhone) {
   return digits;
 }
 
+/**
+ * Formats airline name so the first letter of each word is capitalized (e.g. "Fly United", "Air Peace").
+ */
+export function formatAirlineName(name) {
+  if (!name) return '';
+  return String(name)
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return '';
+      if (word === word.toUpperCase() && word.length > 1) {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+}
+
 export const QuotationService = {
   /**
    * Recalculates and validates all fare groups within airline options.
@@ -73,7 +92,7 @@ export const QuotationService = {
 
     return airlineOptions
       .map((option) => {
-        const airlineName = String(option.airlineName || '').trim();
+        const airlineName = formatAirlineName(option.airlineName);
         if (!airlineName) return null;
 
         const rawFareGroups = Array.isArray(option.fareGroups) ? option.fareGroups : [];
@@ -135,7 +154,8 @@ export const QuotationService = {
   formatAirlineBlock(airline) {
     if (!airline || !airline.airlineName) return '';
 
-    const lines = [`*${airline.airlineName}*`];
+    const formattedName = formatAirlineName(airline.airlineName);
+    const lines = [`*${formattedName}*`];
 
     const fareGroups = Array.isArray(airline.fareGroups) ? airline.fareGroups : [];
     const formattedGroups = [];
@@ -151,17 +171,17 @@ export const QuotationService = {
       const hasFare = total > 0 || baseFare > 0;
       const fareStr = hasFare
         ? fee > 0
-          ? `(@₦${formatCurrency(total)} fare + card processing fee)`
-          : `(@₦${formatCurrency(total)} fare)`
+          ? `@ ₦${formatCurrency(total)} (Fare + Card Processing Fee)`
+          : `@ ₦${formatCurrency(total)} (Fare)`
         : '';
 
       if ((fg.times || []).length <= 1 && timesStr && fareStr) {
-        // Single time on same line: "5pm (@₦741,400 fare + card processing fee)"
+        // Single time on same line: "8:40am @ ₦119,500 (Fare + Card Processing Fee)"
         formattedGroups.push(`${timesStr} ${fareStr}`);
       } else if (timesStr && fareStr) {
         // Multiple times on line 1, breakdown on line 2:
         // "03:05pm, 4:40pm, 8:00pm"
-        // "(@₦108,000 fare + card processing fee)"
+        // "@ ₦108,000 (Fare + Card Processing Fee)"
         formattedGroups.push(`${timesStr}\n${fareStr}`);
       } else if (timesStr) {
         formattedGroups.push(timesStr);

@@ -1,4 +1,4 @@
-import { QuotationService, getOrdinalSuffix, formatFlightDate, formatCurrency, normalizeWhatsAppPhone } from './QuotationService.js';
+import { QuotationService, getOrdinalSuffix, formatFlightDate, formatAirlineName, formatCurrency, normalizeWhatsAppPhone } from './QuotationService.js';
 
 describe('QuotationService', () => {
   describe('Utility functions', () => {
@@ -18,20 +18,27 @@ describe('QuotationService', () => {
       expect(getOrdinalSuffix(31)).toBe('31st');
     });
 
-    test('formatFlightDate formats to Weekday, Day with ordinal', () => {
+    test('formatFlightDate formats to Weekday, Day with ordinal, and Month', () => {
       // 2026-10-14 is a Wednesday
       const wednesday = '2026-10-14';
-      expect(formatFlightDate(wednesday)).toBe('Wednesday, 14th');
+      expect(formatFlightDate(wednesday)).toBe('Wed, 14th, October');
 
       // 2026-09-19 is a Saturday
       const saturday = '2026-09-19';
-      expect(formatFlightDate(saturday)).toBe('Saturday, 19th');
+      expect(formatFlightDate(saturday)).toBe('Sat, 19th, September');
     });
 
     test('formatCurrency formats amounts with comma separators', () => {
       expect(formatCurrency(105000)).toBe('105,000');
       expect(formatCurrency(3000)).toBe('3,000');
       expect(formatCurrency(131394)).toBe('131,394');
+    });
+
+    test('formatAirlineName capitalizes each word properly', () => {
+      expect(formatAirlineName('fly united')).toBe('Fly United');
+      expect(formatAirlineName('air peace')).toBe('Air Peace');
+      expect(formatAirlineName('IBOM AIR')).toBe('Ibom Air');
+      expect(formatAirlineName('ValueJet')).toBe('ValueJet');
     });
 
     test('normalizeWhatsAppPhone cleans and prepends 234', () => {
@@ -160,18 +167,18 @@ describe('QuotationService', () => {
 
       expect(msg).toContain('*Flight Option Inbound Ticket:*');
       expect(msg).toContain('*Abuja → Lagos*');
-      expect(msg).toContain('*Wednesday, 16th*');
+      expect(msg).toContain('*Wed, 16th, September*');
       expect(msg).toContain('*Air Peace*');
       expect(msg).toContain('03:05pm, 4:40pm, 8:00pm');
-      expect(msg).toContain('(@₦108,000 fare + card processing fee)');
+      expect(msg).toContain('@ ₦108,000 (Fare + Card Processing Fee)');
 
       expect(msg).toContain('*Arik Air*');
-      expect(msg).toContain('1:00pm (@₦134,394 fare + card processing fee)');
-      expect(msg).toContain('4:00pm (@₦112,965 fare + card processing fee)');
+      expect(msg).toContain('1:00pm @ ₦134,394 (Fare + Card Processing Fee)');
+      expect(msg).toContain('4:00pm @ ₦112,965 (Fare + Card Processing Fee)');
 
-      expect(msg).toContain('*Saturday, 19th*');
+      expect(msg).toContain('*Sat, 19th, September*');
       expect(msg).toContain('*Lagos → Abuja*');
-      expect(msg).toContain('(@₦243,100 fare + card processing fee)');
+      expect(msg).toContain('@ ₦243,100 (Fare + Card Processing Fee)');
 
       expect(msg).toContain('*Service Charge:* ₦10,000 per person for a two-way local ticket');
       expect(msg).toContain('Please note: The airline prices are subject to changes.');
@@ -179,20 +186,20 @@ describe('QuotationService', () => {
       expect(msg).toContain('*Our services end when you successfully arrive at your destination*');
     });
 
-    test('formats airline block with total fare and "+ card processing fee" (e.g. Ibom Air 5pm)', () => {
+    test('formats airline block with total fare and "(Fare + Card Processing Fee)" (e.g. fly united 8:40am)', () => {
       const airline = {
-        airlineName: 'Ibom Air',
+        airlineName: 'fly united',
         fareGroups: [
           {
-            times: ['5pm'],
-            baseFare: 738400,
+            times: ['8:40am'],
+            baseFare: 116500,
             cardProcessingFee: 3000,
-            totalFlightPrice: 741400,
+            totalFlightPrice: 119500,
           },
         ],
       };
       const block = QuotationService.formatAirlineBlock(airline);
-      expect(block).toBe('*Ibom Air*\n5pm (@₦741,400 fare + card processing fee)');
+      expect(block).toBe('*Fly United*\n8:40am @ ₦119,500 (Fare + Card Processing Fee)');
     });
   });
 });
