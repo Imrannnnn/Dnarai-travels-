@@ -27,7 +27,8 @@ const DEFAULT_SETTINGS = {
   serviceChargeReturn: 10000,
   disclaimerText:
     'Please note: The airline prices are subject to changes. The earlier you book, the more likely you are to secure a seat at the price shown at this time.',
-  footerText: '-~ *D.Narai*\n*Our services end when you arrive at your destination*',
+  footerText:
+    '-~ *D.Narai*\n*Our services end when you successfully arrive at your destination*',
 }
 
 function formatMoney(amount) {
@@ -85,8 +86,11 @@ function formatAirlineBlock(airline, cardFee) {
     const hasBaseFare = fg.baseFare !== '' && fg.baseFare !== undefined && fg.baseFare !== null && Number(fg.baseFare) > 0
     const baseFare = Number(fg.baseFare) || 0
     const fee = Number(cardFee) || 0
+    const totalFare = baseFare + fee
     const fareStr = hasBaseFare
-      ? `(@₦${formatMoney(baseFare)} fare + ₦${formatMoney(fee)} card processing fee)`
+      ? fee > 0
+        ? `(@₦${formatMoney(totalFare)} fare + card processing fee)`
+        : `(@₦${formatMoney(totalFare)} fare)`
       : ''
 
     if (timesStr && fareStr) {
@@ -128,7 +132,7 @@ function generateWhatsAppMessage(data, settings) {
 
   // 1. Header & Outbound
   if (isReturn) {
-    sections.push('*Flight Option Return Ticket:*')
+    sections.push('*Flight Option Inbound Ticket:*')
   } else {
     sections.push('*Flight Option One Way Ticket:*')
   }
@@ -167,7 +171,7 @@ function generateWhatsAppMessage(data, settings) {
   }
 
   // 4. Service Charge
-  const tripTypeLabel = isReturn ? 'two-way' : 'one-way'
+  const tripTypeLabel = isReturn ? 'Return' : 'One-way'
   let serviceChargeLine = `*Service Charge:* ₦${formatMoney(serviceChargePerPerson)} per person for a ${tripTypeLabel} local ticket`
   if (passengerCount > 1) {
     serviceChargeLine += ` (Total: ₦${formatMoney(totalServiceCharge)} for ${passengerCount} passengers)`
@@ -177,10 +181,11 @@ function generateWhatsAppMessage(data, settings) {
   // 5. Disclaimer & Footer
   sections.push(
     settings.disclaimerText ||
-      'Please note: The airline prices are subject to changes. The earlier you book, the more likely you are to secure a seat at the price shown at this time.'
+    'Please note: The airline prices are subject to changes. The earlier you book, the more likely you are to secure a seat at the price shown at this time.'
   )
   sections.push(
-    settings.footerText || '-~ *D.Narai*\n*Our services end when you arrive at your destination*'
+    settings.footerText ||
+    '-~ *D.Narai*\n*Our services end when you successfully arrive at your destination*'
   )
 
   return sections.join('\n\n')
@@ -205,7 +210,18 @@ export default function FlightQuotationsPage() {
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem(SETTINGS_KEY)
-      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (
+          parsed.footerText ===
+          '-~ *D.Narai*\n*Our services end when you arrive at your destination*'
+        ) {
+          parsed.footerText =
+            '-~ *D.Narai*\n*Our services end when you successfully arrive at your destination*'
+        }
+        return { ...DEFAULT_SETTINGS, ...parsed }
+      }
+      return DEFAULT_SETTINGS
     } catch {
       return DEFAULT_SETTINGS
     }
@@ -633,7 +649,7 @@ export default function FlightQuotationsPage() {
                 Frictionless Quotation Workflow
               </h4>
               <p className="text-xs text-slate-300">
-                Card Processing Fee: <span className="font-bold text-ocean-300">₦{formatMoney(settings.cardProcessingFee)}</span> auto-calculated | Service Charge: <span className="font-bold text-amber-300">₦{formatMoney(settings.serviceChargeOneWay)}</span> (One-way) / <span className="font-bold text-amber-300">₦{formatMoney(settings.serviceChargeReturn)}</span> (Return) per passenger. No database clutter.
+                Card Processing Fee: <span className="font-bold text-ocean-300">₦{formatMoney(settings.cardProcessingFee)}</span> auto-calculated | Service Charge: <span className="font-bold text-amber-300">₦{formatMoney(settings.serviceChargeOneWay)}</span> (One-way) / <span className="font-bold text-amber-300">₦{formatMoney(settings.serviceChargeReturn)}</span> (Inbound) per passenger. No database clutter.
               </p>
             </div>
           </div>
@@ -714,7 +730,7 @@ export default function FlightQuotationsPage() {
                         </span>
                       )}
                       <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400">
-                        {q.tripType === 'return' ? 'Return Ticket' : 'One Way'}
+                        {q.tripType === 'return' ? 'Inbound Ticket' : 'One Way'}
                       </span>
                     </div>
 
@@ -727,7 +743,7 @@ export default function FlightQuotationsPage() {
                       {q.tripType === 'return' && q.returnDate && (
                         <>
                           <span className="text-slate-400">|</span>
-                          <span>Return: {formatFlightDate(q.returnDate)}</span>
+                          <span>Inbound: {formatFlightDate(q.returnDate)}</span>
                         </>
                       )}
                     </div>
@@ -924,7 +940,7 @@ export default function FlightQuotationsPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  Return
+                  Inbound
                 </button>
               </div>
             </div>
@@ -991,7 +1007,7 @@ export default function FlightQuotationsPage() {
               {formData.tripType === 'return' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Return Date *
+                    Inbound Date *
                   </label>
                   <input
                     type="date"
@@ -1150,17 +1166,17 @@ export default function FlightQuotationsPage() {
             </div>
           </div>
 
-          {/* Section 4: Return Options (if return) */}
+          {/* Section 4: Inbound Options (if return) */}
           {formData.tripType === 'return' && (
             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-3">
                 <div>
                   <h4 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
                     <Lucide.PlaneLanding size={16} className="text-purple-600" />
-                    Return: {formData.destinationCity || 'Destination'} → {formData.originCity || 'Departure'}
+                    Inbound: {formData.destinationCity || 'Destination'} → {formData.originCity || 'Departure'}
                   </h4>
                   <p className="text-[11px] text-slate-500">
-                    Card fee (₦{formatMoney(settings.cardProcessingFee)}) auto-calculated for each return option.
+                    Card fee (₦{formatMoney(settings.cardProcessingFee)}) auto-calculated for each inbound option.
                   </p>
                 </div>
                 <button
@@ -1169,7 +1185,7 @@ export default function FlightQuotationsPage() {
                   className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 self-start shadow-sm transition-all"
                 >
                   <Lucide.Plus size={14} />
-                  <span>Add Return Airline</span>
+                  <span>Add Inbound Airline</span>
                 </button>
               </div>
 
@@ -1483,7 +1499,7 @@ export default function FlightQuotationsPage() {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Return Service Charge (₦)
+                Inbound Service Charge (₦)
               </label>
               <input
                 type="number"

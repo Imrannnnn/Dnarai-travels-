@@ -153,30 +153,46 @@ describe('QuotationService', () => {
         disclaimerText:
           'Please note: The airline prices are subject to changes. The earlier you book, the more likely you are to secure a seat at the price shown at this time.',
         footerText:
-          '-~ *D.Narai*\n*Our services end when you arrive at your destination*',
+          '-~ *D.Narai*\n*Our services end when you successfully arrive at your destination*',
       };
 
       const msg = QuotationService.formatWhatsAppMessage(quotation, settings);
 
-      expect(msg).toContain('*Flight Option Return Ticket:*');
+      expect(msg).toContain('*Flight Option Inbound Ticket:*');
       expect(msg).toContain('*Abuja → Lagos*');
       expect(msg).toContain('*Wednesday, 16th*');
       expect(msg).toContain('*Air Peace*');
       expect(msg).toContain('03:05pm, 4:40pm, 8:00pm');
-      expect(msg).toContain('(@₦105,000 fare + ₦3,000 card processing fee)');
+      expect(msg).toContain('(@₦108,000 fare + card processing fee)');
 
       expect(msg).toContain('*Arik Air*');
-      expect(msg).toContain('1:00pm (@₦131,394 fare + ₦3,000 card processing fee)');
-      expect(msg).toContain('4:00pm (@₦109,965 fare + ₦3,000 card processing fee)');
+      expect(msg).toContain('1:00pm (@₦134,394 fare + card processing fee)');
+      expect(msg).toContain('4:00pm (@₦112,965 fare + card processing fee)');
 
       expect(msg).toContain('*Saturday, 19th*');
       expect(msg).toContain('*Lagos → Abuja*');
-      expect(msg).toContain('(@₦240,100 fare + ₦3,000 card processing fee)');
+      expect(msg).toContain('(@₦243,100 fare + card processing fee)');
 
       expect(msg).toContain('*Service Charge:* ₦10,000 per person for a two-way local ticket');
       expect(msg).toContain('Please note: The airline prices are subject to changes.');
       expect(msg).toContain('-~ *D.Narai*');
-      expect(msg).toContain('*Our services end when you arrive at your destination*');
+      expect(msg).toContain('*Our services end when you successfully arrive at your destination*');
+    });
+
+    test('formats airline block with total fare and "+ card processing fee" (e.g. Ibom Air 5pm)', () => {
+      const airline = {
+        airlineName: 'Ibom Air',
+        fareGroups: [
+          {
+            times: ['5pm'],
+            baseFare: 738400,
+            cardProcessingFee: 3000,
+            totalFlightPrice: 741400,
+          },
+        ],
+      };
+      const block = QuotationService.formatAirlineBlock(airline);
+      expect(block).toBe('*Ibom Air*\n5pm (@₦741,400 fare + card processing fee)');
     });
   });
 });

@@ -142,17 +142,30 @@ export const QuotationService = {
 
     for (const fg of fareGroups) {
       const timesStr = (fg.times || []).join(', ');
-      const fareStr = `(@₦${formatCurrency(fg.baseFare)} fare + ₦${formatCurrency(fg.cardProcessingFee)} card processing fee)`;
+      const baseFare = Number(fg.baseFare) || 0;
+      const fee = Number(fg.cardProcessingFee) || 0;
+      const total =
+        fg.totalFlightPrice != null && Number(fg.totalFlightPrice) > 0
+          ? Number(fg.totalFlightPrice)
+          : baseFare + fee;
+      const hasFare = total > 0 || baseFare > 0;
+      const fareStr = hasFare
+        ? fee > 0
+          ? `(@₦${formatCurrency(total)} fare + card processing fee)`
+          : `(@₦${formatCurrency(total)} fare)`
+        : '';
 
-      if ((fg.times || []).length <= 1 && timesStr) {
-        // Single time on same line: "1:00pm (@₦131,394 fare + ₦3,000 card processing fee)"
+      if ((fg.times || []).length <= 1 && timesStr && fareStr) {
+        // Single time on same line: "5pm (@₦741,400 fare + card processing fee)"
         formattedGroups.push(`${timesStr} ${fareStr}`);
-      } else if (timesStr) {
+      } else if (timesStr && fareStr) {
         // Multiple times on line 1, breakdown on line 2:
         // "03:05pm, 4:40pm, 8:00pm"
-        // "(@₦105,000 fare + ₦3,000 card processing fee)"
+        // "(@₦108,000 fare + card processing fee)"
         formattedGroups.push(`${timesStr}\n${fareStr}`);
-      } else {
+      } else if (timesStr) {
+        formattedGroups.push(timesStr);
+      } else if (fareStr) {
         formattedGroups.push(fareStr);
       }
     }
@@ -184,7 +197,7 @@ export const QuotationService = {
 
     // 1. Header & Outbound Direction
     if (isReturn) {
-      sections.push('*Flight Option Return Ticket:*');
+      sections.push('*Flight Option Inbound Ticket:*');
     } else {
       sections.push('*Flight Option One Way Ticket:*');
     }
@@ -242,7 +255,7 @@ export const QuotationService = {
       'Please note: The airline prices are subject to changes. The earlier you book, the more likely you are to secure a seat at the price shown at this time.';
     const footer =
       settings?.footerText ||
-      '-~ *D.Narai*\n*Our services end when you arrive at your destination*';
+      '-~ *D.Narai*\n*Our services end when you successfully arrive at your destination*';
 
     sections.push(disclaimer);
     sections.push(footer);

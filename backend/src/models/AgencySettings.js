@@ -24,7 +24,8 @@ const AgencySettingsSchema = new mongoose.Schema(
     },
     footerText: {
       type: String,
-      default: '-~ *D.Narai*\n*Our services end when you arrive at your destination*',
+      default:
+        '-~ *D.Narai*\n*Our services end when you successfully arrive at your destination*',
     },
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
