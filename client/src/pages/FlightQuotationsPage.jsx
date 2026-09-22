@@ -59,15 +59,46 @@ function formatFlightDate(dateStr) {
   }
   if (isNaN(d.getTime())) return ''
 
-  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+  const months = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ]
   const weekday = weekdays[d.getDay()]
   const dayOrdinal = getOrdinalSuffix(d.getDate())
-  return `${weekday}, ${dayOrdinal}`
+  const month = months[d.getMonth()]
+  return `${weekday}, ${dayOrdinal}, ${month}`
+}
+
+function formatAirlineName(name) {
+  if (!name) return ''
+  return String(name)
+    .trim()
+    .split(/\s+/)
+    .map((word) => {
+      if (!word) return ''
+      if (word === word.toUpperCase() && word.length > 1) {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1)
+    })
+    .join(' ')
 }
 
 function formatAirlineBlock(airline, cardFee) {
   if (!airline || !airline.airlineName?.trim()) return ''
-  const lines = [`*${airline.airlineName.trim()}*`]
+  const formattedName = formatAirlineName(airline.airlineName)
+  const lines = [`*${formattedName}*`]
   const groups = airline.fareGroups || []
   const formattedGroups = []
 
@@ -89,8 +120,8 @@ function formatAirlineBlock(airline, cardFee) {
     const totalFare = baseFare + fee
     const fareStr = hasBaseFare
       ? fee > 0
-        ? `(@₦${formatMoney(totalFare)} fare + card processing fee)`
-        : `(@₦${formatMoney(totalFare)} fare)`
+        ? `@ ₦${formatMoney(totalFare)} (Fare + Card Processing Fee)`
+        : `@ ₦${formatMoney(totalFare)} (Fare)`
       : ''
 
     if (timesStr && fareStr) {
@@ -504,6 +535,12 @@ export default function FlightQuotationsPage() {
 
     const generatedText = generateWhatsAppMessage(formData, settings)
     const isEditing = editingIndex !== null && tempQuotations[editingIndex]
+    const sanitizeFlights = (flights = []) =>
+      flights.map((f) => ({
+        ...f,
+        airlineName: formatAirlineName(f.airlineName),
+      }))
+
     const quoteItem = {
       id: isEditing ? tempQuotations[editingIndex].id : `TEMP-${Date.now()}`,
       clientName: formData.clientName.trim(),
@@ -516,8 +553,8 @@ export default function FlightQuotationsPage() {
       departureDate: formData.departureDate,
       returnDate: formData.tripType === 'return' ? formData.returnDate : undefined,
       passengerCount: formData.passengerCount,
-      outboundFlights: formData.outboundFlights,
-      returnFlights: formData.tripType === 'return' ? formData.returnFlights : [],
+      outboundFlights: sanitizeFlights(formData.outboundFlights),
+      returnFlights: formData.tripType === 'return' ? sanitizeFlights(formData.returnFlights) : [],
       generatedText,
       createdAt: isEditing ? tempQuotations[editingIndex].createdAt : new Date().toISOString(),
     }
@@ -1055,6 +1092,7 @@ export default function FlightQuotationsPage() {
                         placeholder="e.g. Air Peace"
                         value={airline.airlineName}
                         onChange={(e) => updateAirlineName('outbound', aIdx, e.target.value)}
+                        onBlur={(e) => updateAirlineName('outbound', aIdx, formatAirlineName(e.target.value))}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:border-ocean-500"
                       />
                     </div>
@@ -1202,6 +1240,7 @@ export default function FlightQuotationsPage() {
                           placeholder="e.g. Air Peace"
                           value={airline.airlineName}
                           onChange={(e) => updateAirlineName('return', aIdx, e.target.value)}
+                          onBlur={(e) => updateAirlineName('return', aIdx, formatAirlineName(e.target.value))}
                           className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold focus:outline-none focus:border-ocean-500"
                         />
                       </div>
