@@ -129,6 +129,18 @@ export async function addStaff({ email, role, password, baseUrl }) {
   return request('/api/auth/add-staff', { method: 'POST', body: { email, role, password }, baseUrl })
 }
 
+export async function fetchStaffMembers({ baseUrl, signal, token } = {}) {
+  return request('/api/auth/staff', { baseUrl, signal, token })
+}
+
+export async function deleteStaffMember({ id, baseUrl, token }) {
+  return request(`/api/auth/staff/${id}`, { method: 'DELETE', baseUrl, token })
+}
+
+export async function resendStaffCredentials({ id, baseUrl, token }) {
+  return request(`/api/auth/staff/${id}/resend-credentials`, { method: 'POST', baseUrl, token })
+}
+
 export async function fetchPassenger({ baseUrl, signal } = {}) {
   // Use portal if user is a passenger, or admin/passengers/me if we add that.
   // For now, portal/me is for passengers.

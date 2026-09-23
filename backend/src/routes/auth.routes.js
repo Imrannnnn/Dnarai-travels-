@@ -46,6 +46,24 @@ router.post(
   authController.addStaff
 );
 
+router.get(
+  '/staff',
+  requireAuth,
+  authController.getStaff
+);
+
+router.delete(
+  '/staff/:id',
+  requireAuth,
+  authController.deleteStaff
+);
+
+router.post(
+  '/staff/:id/resend-credentials',
+  requireAuth,
+  authController.resendStaffCredentials
+);
+
 router.post(
   '/web-push/subscribe',
   requireAuth,

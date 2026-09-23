@@ -208,11 +208,153 @@ export const authController = {
                 mustChangePassword: true,
             });
 
+            // Send credentials email to the staff member
+            const loginUrl = `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/login`;
+            let emailSent = false;
+            let emailError = null;
+
+            try {
+                const emailResult = await EmailService.sendStaffCredentialsEmail({
+                    email: user.email,
+                    role: user.role,
+                    password: tempPassword,
+                    loginUrl,
+                });
+                emailSent = emailResult?.ok ?? false;
+                if (!emailSent) {
+                    emailError = emailResult?.error || 'Email delivery failed';
+                }
+            } catch (emailErr) {
+                console.error('Failed to send staff welcome email:', emailErr);
+                emailError = emailErr.message;
+            }
+
             res.json({
                 ok: true,
-                message: 'Staff account created successfully',
+                message: emailSent
+                    ? 'Staff account created and credentials emailed successfully'
+                    : 'Staff account created successfully (email could not be delivered)',
                 tempPassword, // Return temporary password to admin
+                emailSent,
+                emailError,
                 user: { id: user._id, email: user.email, role: user.role }
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Retrieves all staff members (staff, agent, admin)
+     */
+    getStaff: async (req, res, next) => {
+        try {
+            if (req.user.role !== 'admin') {
+                return next({ status: 403, message: 'Only admins can view staff list' });
+            }
+
+            const staff = await User.find({ role: { $in: ['staff', 'agent', 'admin'] } })
+                .select('-passwordHash -refreshTokens -pushSubscriptions')
+                .sort({ createdAt: -1 });
+
+            res.json({
+                ok: true,
+                staff,
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Deletes a staff member
+     */
+    deleteStaff: async (req, res, next) => {
+        try {
+            if (req.user.role !== 'admin') {
+                return next({ status: 403, message: 'Only admins can remove staff' });
+            }
+
+            const { id } = req.params;
+
+            // Prevent self-deletion
+            if (String(req.user.sub) === String(id)) {
+                return next({ status: 400, message: 'You cannot remove your own administrator account' });
+            }
+
+            const userToDelete = await User.findById(id);
+            if (!userToDelete) {
+                return next({ status: 404, message: 'Staff member not found' });
+            }
+
+            if (!['staff', 'agent', 'admin'].includes(userToDelete.role)) {
+                return next({ status: 400, message: 'User is not a staff member' });
+            }
+
+            await User.findByIdAndDelete(id);
+
+            res.json({
+                ok: true,
+                message: `Staff member ${userToDelete.email} removed successfully`,
+            });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Generates a new temporary password and resends credentials email to staff
+     */
+    resendStaffCredentials: async (req, res, next) => {
+        try {
+            if (req.user.role !== 'admin') {
+                return next({ status: 403, message: 'Only admins can resend credentials' });
+            }
+
+            const { id } = req.params;
+            const user = await User.findById(id);
+            if (!user) {
+                return next({ status: 404, message: 'Staff member not found' });
+            }
+
+            if (!['staff', 'agent', 'admin'].includes(user.role)) {
+                return next({ status: 400, message: 'User is not a staff member' });
+            }
+
+            // Generate new temporary password
+            const tempPassword = Math.random().toString(36).slice(-8) + 'Aa1!';
+            user.passwordHash = await User.hashPassword(tempPassword);
+            user.mustChangePassword = true;
+            await user.save();
+
+            const loginUrl = `${process.env.CORS_ORIGIN || 'http://localhost:5173'}/login`;
+            let emailSent = false;
+            let emailError = null;
+
+            try {
+                const emailResult = await EmailService.sendStaffCredentialsEmail({
+                    email: user.email,
+                    role: user.role,
+                    password: tempPassword,
+                    loginUrl,
+                });
+                emailSent = emailResult?.ok ?? false;
+                if (!emailSent) {
+                    emailError = emailResult?.error || 'Email delivery failed';
+                }
+            } catch (err) {
+                console.error('Failed to send staff credentials email:', err);
+                emailError = err.message;
+            }
+
+            res.json({
+                ok: true,
+                message: emailSent
+                    ? `New credentials emailed to ${user.email}`
+                    : `Password reset to temporary password, but email delivery failed: ${emailError}`,
+                tempPassword,
+                emailSent,
+                emailError,
             });
         } catch (err) {
             next(err);

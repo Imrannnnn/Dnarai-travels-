@@ -227,6 +227,45 @@ export const EmailService = {
     }
   },
 
+  async sendStaffCredentialsEmail({ email, fullName, role, password, loginUrl }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const roleName = role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Staff';
+    const content = `
+      <tr>
+        <td style="padding: 60px 40px; text-align: center;">
+          <h1 style="margin: 0; font-size: 28px; font-weight: 800; color: ${COLORS.NAVY};">Welcome to Dnarai Travel</h1>
+          <p style="margin: 20px 0 0 0; font-size: 16px; color: ${COLORS.SLATE}; line-height: 1.6;">Hello ${fullName || 'Team Member'}, your Dnarai Travel staff account (<strong>${roleName}</strong>) has been successfully created.</p>
+          <div style="margin: 30px 0; padding: 25px; background-color: #f1f5f9; border-radius: 20px; text-align: left;">
+            <p style="margin: 0 0 15px 0; font-size: 14px; font-weight: 800; color: ${COLORS.NAVY};">Your Login Credentials</p>
+            <p style="margin: 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Portal URL:</strong> <a href="${loginUrl}" style="color: ${COLORS.NAVY}; font-weight: bold; text-decoration: underline;">${loginUrl}</a></p>
+            <p style="margin: 10px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Email / Username:</strong> ${email}</p>
+            <p style="margin: 10px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Assigned Role:</strong> ${roleName}</p>
+            <p style="margin: 14px 0 0 0; font-size: 14px; color: ${COLORS.SLATE};"><strong>Temporary Password:</strong> <span style="display: inline-block; color: ${COLORS.GOLD}; font-family: monospace; font-size: 16px; font-weight: 800; background: #ffffff; padding: 4px 12px; border-radius: 6px; border: 1px solid #cbd5e1; margin-top: 4px;">${password}</span></p>
+          </div>
+          <p style="margin: 0 0 25px 0; font-size: 13px; color: #64748b;">Please log in using the button below and change your password upon your first access.</p>
+          <a href="${loginUrl}" style="display: inline-block; padding: 18px 40px; background-color: ${COLORS.NAVY}; color: white; text-decoration: none; border-radius: 12px; font-weight: 700;">Access Staff Portal</a>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Travel" <${process.env.EMAIL}>`,
+        to: email,
+        subject: `Welcome to Dnarai Travel - Your Staff Account Credentials (${roleName})`,
+        html: getEmailWrapper(content, 'Your staff account credentials.'),
+        attachments: getAttachments()
+      });
+      console.log(`✉️ Staff credentials email sent to ${email}`);
+      return { ok: true };
+    } catch (error) {
+      console.error('Staff credentials email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
   async sendRegistrationWelcomeEmail({ email, fullName, loginUrl }) {
     const transporter = getTransporter();
     if (!transporter) return { ok: false, error: 'Transporter not configured' };

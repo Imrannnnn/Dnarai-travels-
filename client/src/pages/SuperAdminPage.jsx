@@ -1,14 +1,13 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import * as Lucide from 'lucide-react'
-import { getApiBaseUrl } from '../data/api'
+import { getApiBaseUrl, createBlog, fetchStaffMembers, deleteStaffMember, resendStaffCredentials } from '../data/api'
 import Modal from '../components/Modal'
 import clsx from 'clsx'
 import { convertTo12Hour } from '../utils/time'
 import { useAppData } from '../data/AppDataContext'
 import ActionButton from '../components/ActionButton'
 import airportData from '../../airports.json'
-import { createBlog } from '../data/api'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -137,6 +136,13 @@ export default function SuperAdminPage() {
     const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false)
     const [addStaffForm, setAddStaffForm] = useState({ email: '', role: 'staff', password: '' })
     const [staffCreationSuccess, setStaffCreationSuccess] = useState(null)
+    const [isStaffManagerModalOpen, setIsStaffManagerModalOpen] = useState(false)
+    const [staffMembers, setStaffMembers] = useState([])
+    const [isLoadingStaff, setIsLoadingStaff] = useState(false)
+    const [staffSearchQuery, setStaffSearchQuery] = useState('')
+    const [resendingStaffId, setResendingStaffId] = useState(null)
+    const [deletingStaffId, setDeletingStaffId] = useState(null)
+    const [staffActionFeedback, setStaffActionFeedback] = useState(null)
     const [isCreateBlogModalOpen, setIsCreateBlogModalOpen] = useState(false)
     const [isBlogManagerModalOpen, setIsBlogManagerModalOpen] = useState(false)
     const [createBlogForm, setCreateBlogForm] = useState({ title: '', content: '' })
@@ -502,6 +508,84 @@ export default function SuperAdminPage() {
         })
     }
 
+    const currentAdminEmail = useMemo(() => {
+        if (!token) return ''
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]))
+            return payload.email || ''
+        } catch {
+            return ''
+        }
+    }, [token])
+
+    const loadStaffMembers = useCallback(async () => {
+        if (!token || role !== 'admin') return
+        setIsLoadingStaff(true)
+        try {
+            const data = await fetchStaffMembers({ baseUrl, token })
+            if (data?.ok && Array.isArray(data.staff)) {
+                setStaffMembers(data.staff)
+            }
+        } catch (err) {
+            console.error('Failed to load staff members:', err)
+        } finally {
+            setIsLoadingStaff(false)
+        }
+    }, [baseUrl, token, role])
+
+    useEffect(() => {
+        if (role === 'admin' && token) {
+            loadStaffMembers()
+        }
+    }, [role, token, loadStaffMembers])
+
+    const filteredStaff = useMemo(() => {
+        if (!staffSearchQuery.trim()) return staffMembers
+        const q = staffSearchQuery.toLowerCase()
+        return staffMembers.filter(s =>
+            s.email?.toLowerCase().includes(q) ||
+            s.role?.toLowerCase().includes(q)
+        )
+    }, [staffMembers, staffSearchQuery])
+
+    async function handleDeleteStaff(staffId, staffEmail) {
+        if (!window.confirm(`Are you sure you want to remove staff member "${staffEmail}"? They will lose access immediately.`)) {
+            return
+        }
+
+        setDeletingStaffId(staffId)
+        setStaffActionFeedback(null)
+        try {
+            const data = await deleteStaffMember({ id: staffId, baseUrl, token })
+            if (!data?.ok) throw new Error(data?.message || 'Failed to remove staff member')
+            setStaffMembers(prev => prev.filter(s => s._id !== staffId))
+            setStaffActionFeedback({ type: 'success', message: `Staff member ${staffEmail} removed successfully.` })
+        } catch (err) {
+            setStaffActionFeedback({ type: 'error', message: err.message || 'Error removing staff member' })
+        } finally {
+            setDeletingStaffId(null)
+        }
+    }
+
+    async function handleResendStaffCredentials(staffId, staffEmail) {
+        setResendingStaffId(staffId)
+        setStaffActionFeedback(null)
+        try {
+            const data = await resendStaffCredentials({ id: staffId, baseUrl, token })
+            if (!data?.ok) throw new Error(data?.message || 'Failed to resend credentials')
+            setStaffActionFeedback({
+                type: 'success',
+                message: data.emailSent
+                    ? `New credentials emailed to ${staffEmail}. (Temporary password: ${data.tempPassword})`
+                    : `Password reset to ${data.tempPassword}, but email delivery failed.`
+            })
+        } catch (err) {
+            setStaffActionFeedback({ type: 'error', message: err.message || 'Error resending credentials' })
+        } finally {
+            setResendingStaffId(null)
+        }
+    }
+
     async function handleAddStaff(e) {
         if (e) e.preventDefault()
 
@@ -517,6 +601,7 @@ export default function SuperAdminPage() {
             setStaffCreationSuccess(data)
             setIsAddStaffModalOpen(false)
             setAddStaffForm({ email: '', role: 'staff', password: '' })
+            loadStaffMembers()
         })
     }
 
@@ -969,14 +1054,29 @@ export default function SuperAdminPage() {
                                 </div>
 
                                 {role === 'admin' && (
-                                    <button
-                                        onClick={() => setIsAddStaffModalOpen(true)}
-                                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                                        title="Add Staff"
-                                    >
-                                        <Lucide.UserPlus size={16} />
-                                        <span>Add Staff</span>
-                                    </button>
+                                    <>
+                                        <button
+                                            onClick={() => { setIsStaffManagerModalOpen(true); loadStaffMembers(); }}
+                                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                                            title="Manage Staff Team"
+                                        >
+                                            <Lucide.Users size={16} />
+                                            <span>Staff Team</span>
+                                            {staffMembers.length > 0 && (
+                                                <span className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-200 text-slate-700 rounded-full">
+                                                    {staffMembers.length}
+                                                </span>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={() => setIsAddStaffModalOpen(true)}
+                                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
+                                            title="Add Staff"
+                                        >
+                                            <Lucide.UserPlus size={16} />
+                                            <span>Add Staff</span>
+                                        </button>
+                                    </>
                                 )}
 
                                 <button
@@ -1040,13 +1140,22 @@ export default function SuperAdminPage() {
                     {isMobileMenuOpen && (
                         <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3">
                             {role === 'admin' && (
-                                <button
-                                    onClick={() => { setIsAddStaffModalOpen(true); setIsMobileMenuOpen(false); }}
-                                    className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
-                                >
-                                    <Lucide.UserPlus size={18} />
-                                    Add Staff
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => { setIsStaffManagerModalOpen(true); setIsMobileMenuOpen(false); loadStaffMembers(); }}
+                                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                                    >
+                                        <Lucide.Users size={18} />
+                                        Staff Team {staffMembers.length > 0 && `(${staffMembers.length})`}
+                                    </button>
+                                    <button
+                                        onClick={() => { setIsAddStaffModalOpen(true); setIsMobileMenuOpen(false); }}
+                                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
+                                    >
+                                        <Lucide.UserPlus size={18} />
+                                        Add Staff
+                                    </button>
+                                </>
                             )}
                             <button
                                 onClick={() => { navigate('/super-admin/quotations'); setIsMobileMenuOpen(false); }}
@@ -1910,94 +2019,7 @@ export default function SuperAdminPage() {
                 </div>
             )}
 
-            {staffCreationSuccess && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-6">
-                    <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
-                        <div className="text-center mb-6">
-                            <div className="h-16 w-16 bg-ocean-500 rounded-full flex items-center justify-center text-white mx-auto mb-4">
-                                <Lucide.ShieldCheck size={32} />
-                            </div>
-                            <h2 className="text-2xl font-black text-slate-900 mb-2">Staff Account Created!</h2>
-                            <p className="text-sm text-slate-600">Please provide these credentials to the user securely.</p>
-                        </div>
 
-                        <div className="bg-slate-50 rounded-2xl p-6 mb-6 space-y-3">
-                            <div>
-                                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Email</div>
-                                <div className="text-sm font-medium text-slate-900">{staffCreationSuccess.email}</div>
-                            </div>
-                            <div>
-                                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Role</div>
-                                <div className="text-sm font-bold text-slate-900 uppercase">{staffCreationSuccess.role}</div>
-                            </div>
-                            <div>
-                                <div className="text-xs font-bold text-slate-500 uppercase mb-1">Temporary Password</div>
-                                <div className="text-sm font-mono font-bold text-ocean-600 bg-ocean-50 px-3 py-2 rounded-lg break-all">
-                                    {staffCreationSuccess.tempPassword}
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => setStaffCreationSuccess(null)}
-                            className="w-full bg-slate-900 text-white rounded-xl py-3 text-sm font-bold hover:bg-slate-800 transition-all"
-                        >
-                            Done
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            <Modal
-                open={isAddStaffModalOpen}
-                title="Add New Staff Member"
-                onClose={() => setIsAddStaffModalOpen(false)}
-                footer={
-                    <div className="flex flex-wrap justify-end gap-3 p-4 border-t border-slate-200">
-                        <button onClick={() => setIsAddStaffModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-                        <button onClick={handleAddStaff} className="px-6 py-2 bg-slate-900 text-white rounded-lg text-sm font-bold hover:bg-slate-800">Create Account</button>
-                    </div>
-                }
-            >
-                <form onSubmit={handleAddStaff} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-                        <input
-                            type="email"
-                            required
-                            value={addStaffForm.email}
-                            onChange={e => setAddStaffForm({ ...addStaffForm, email: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500"
-                            placeholder="staff@agency.com"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Role</label>
-                        <select
-                            value={addStaffForm.role}
-                            onChange={e => setAddStaffForm({ ...addStaffForm, role: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500"
-                        >
-                            <option value="staff">Staff</option>
-                            <option value="agent">Agent</option>
-                            <option value="admin">Admin</option>
-                        </select>
-                        <p className="text-xs text-slate-500 mt-2">
-                            <strong>Staff:</strong> Basic access. <strong>Agent/Admin:</strong> Full access.
-                        </p>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">Password (Optional)</label>
-                        <input
-                            type="password"
-                            value={addStaffForm.password}
-                            onChange={e => setAddStaffForm({ ...addStaffForm, password: e.target.value })}
-                            className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:border-ocean-500"
-                            placeholder="Leave blank to auto-generate"
-                        />
-                    </div>
-                </form>
-            </Modal>
 
             <Modal
                 open={isCreatePassengerModalOpen}
@@ -3061,6 +3083,173 @@ export default function SuperAdminPage() {
                 </div>
             </Modal>
 
+            {/* Staff Manager Modal */}
+            <Modal
+                open={isStaffManagerModalOpen}
+                title="Agency Staff & Team Access"
+                onClose={() => { setIsStaffManagerModalOpen(false); setStaffActionFeedback(null); }}
+                maxWidth="max-w-4xl"
+            >
+                <div className="p-6 space-y-6">
+                    {/* Header Controls */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                        <div className="relative flex-1 max-w-md">
+                            <Lucide.Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by email or role..."
+                                value={staffSearchQuery}
+                                onChange={(e) => setStaffSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-ocean-500"
+                            />
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={loadStaffMembers}
+                                disabled={isLoadingStaff}
+                                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-all"
+                                title="Refresh List"
+                            >
+                                <Lucide.RefreshCw size={16} className={clsx(isLoadingStaff && "animate-spin")} />
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setIsStaffManagerModalOpen(false)
+                                    setIsAddStaffModalOpen(true)
+                                }}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-xs font-bold hover:bg-ocean-700 shadow-md transition-all whitespace-nowrap"
+                            >
+                                <Lucide.UserPlus size={16} />
+                                <span>Add New Staff</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Action Feedback Banner */}
+                    {staffActionFeedback && (
+                        <div
+                            className={clsx(
+                                "p-4 rounded-xl text-xs font-bold flex items-center justify-between gap-3 animate-in fade-in",
+                                staffActionFeedback.type === 'success'
+                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                    : "bg-rose-50 text-rose-800 border border-rose-200"
+                            )}
+                        >
+                            <div className="flex items-center gap-2">
+                                {staffActionFeedback.type === 'success' ? (
+                                    <Lucide.CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                                ) : (
+                                    <Lucide.AlertCircle size={16} className="text-rose-600 shrink-0" />
+                                )}
+                                <span>{staffActionFeedback.message}</span>
+                            </div>
+                            <button onClick={() => setStaffActionFeedback(null)} className="text-slate-400 hover:text-slate-600">
+                                <Lucide.X size={14} />
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Staff List Table */}
+                    <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+                        {isLoadingStaff && staffMembers.length === 0 ? (
+                            <div className="p-12 text-center text-slate-400">
+                                <Lucide.Loader2 size={32} className="animate-spin mx-auto mb-2 text-ocean-600" />
+                                <p className="text-xs font-bold">Loading staff members...</p>
+                            </div>
+                        ) : filteredStaff.length === 0 ? (
+                            <div className="p-12 text-center text-slate-400">
+                                <Lucide.Users size={32} className="mx-auto mb-2 text-slate-300" />
+                                <p className="text-sm font-bold text-slate-700">No staff members found</p>
+                                <p className="text-xs text-slate-400 mt-1">
+                                    {staffSearchQuery ? 'Try matching another search term' : 'Click "Add New Staff" to provision team accounts.'}
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-slate-100 max-h-[60vh] overflow-y-auto">
+                                {filteredStaff.map((staff) => {
+                                    const isSelf = currentAdminEmail && staff.email?.toLowerCase() === currentAdminEmail.toLowerCase()
+                                    const roleColors = {
+                                        admin: 'bg-purple-100 text-purple-700 border-purple-200',
+                                        agent: 'bg-blue-100 text-blue-700 border-blue-200',
+                                        staff: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                                    }
+                                    const initials = staff.email?.slice(0, 2).toUpperCase() || 'ST'
+
+                                    return (
+                                        <div key={staff._id} className="p-4 sm:p-5 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="h-10 w-10 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0 border border-slate-200 shadow-sm">
+                                                    {initials}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-bold text-slate-900 text-sm truncate">{staff.email}</span>
+                                                        {isSelf && (
+                                                            <span className="px-2 py-0.5 bg-slate-900 text-white rounded text-[10px] font-bold">
+                                                                You
+                                                            </span>
+                                                        )}
+                                                        <span className={clsx("px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border tracking-wider", roleColors[staff.role] || 'bg-slate-100 text-slate-700 border-slate-200')}>
+                                                            {staff.role}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-3">
+                                                        <span>Added: {staff.createdAt ? new Date(staff.createdAt).toLocaleDateString() : 'N/A'}</span>
+                                                        <span>•</span>
+                                                        <span>Last Active: {staff.lastActivity ? new Date(staff.lastActivity).toLocaleDateString() : 'Never'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                                <button
+                                                    onClick={() => handleResendStaffCredentials(staff._id, staff.email)}
+                                                    disabled={resendingStaffId === staff._id}
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                                                    title="Generate new temporary password & send via email"
+                                                >
+                                                    {resendingStaffId === staff._id ? (
+                                                        <>
+                                                            <Lucide.Loader2 size={13} className="animate-spin" />
+                                                            <span>Sending...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Lucide.Mail size={13} />
+                                                            <span>Resend Password</span>
+                                                        </>
+                                                    )}
+                                                </button>
+
+                                                {!isSelf && (
+                                                    <button
+                                                        onClick={() => handleDeleteStaff(staff._id, staff.email)}
+                                                        disabled={deletingStaffId === staff._id}
+                                                        className="flex items-center gap-1 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                                                        title="Remove staff member"
+                                                    >
+                                                        {deletingStaffId === staff._id ? (
+                                                            <Lucide.Loader2 size={13} className="animate-spin" />
+                                                        ) : (
+                                                            <>
+                                                                <Lucide.Trash2 size={13} />
+                                                                <span>Remove</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </Modal>
+
             {staffCreationSuccess && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="w-full max-w-md bg-white rounded-[2rem] shadow-2xl p-8 text-center animate-in zoom-in-95 duration-300">
@@ -3068,18 +3257,29 @@ export default function SuperAdminPage() {
                             <Lucide.CheckCircle2 size={40} />
                         </div>
                         <h2 className="text-2xl font-black text-slate-900 mb-2">Staff Registered!</h2>
-                        <p className="text-slate-500 mb-8">Account created successfully for <span className="font-bold text-slate-900">{staffCreationSuccess.user.email}</span></p>
+                        <p className="text-slate-500 mb-4">Account created successfully for <span className="font-bold text-slate-900">{staffCreationSuccess.user.email}</span></p>
+
+                        {staffCreationSuccess.emailSent ? (
+                            <div className="mb-6 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-bold flex items-center justify-center gap-2">
+                                <Lucide.MailCheck size={16} className="text-emerald-600 shrink-0" />
+                                <span>Credentials successfully emailed to staff member!</span>
+                            </div>
+                        ) : (
+                            <div className="mb-6 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-medium flex items-center justify-center gap-2">
+                                <Lucide.MailWarning size={16} className="text-amber-600 shrink-0" />
+                                <span>Email delivery failed ({staffCreationSuccess.emailError || 'check mail server'}). Please provide password directly:</span>
+                            </div>
+                        )}
 
                         <div className="bg-slate-50 rounded-2xl p-6 border-2 border-dashed border-slate-200 mb-8 space-y-4">
                             <div>
                                 <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Temporary Password</div>
-                                <div className="text-3xl font-black text-ocean-600 font-mono tracking-wider">
+                                <div className="text-3xl font-black text-ocean-600 font-mono tracking-wider select-all">
                                     {staffCreationSuccess.tempPassword}
                                 </div>
                             </div>
                             <div className="text-xs font-bold text-slate-400">
-                                Please copy this password and provide it to the new staff member.
-                                They will be asked to change it upon first login.
+                                Staff can log in with their email and this password. They will be asked to change it upon first login.
                             </div>
                         </div>
 
@@ -3087,7 +3287,7 @@ export default function SuperAdminPage() {
                             onClick={() => setStaffCreationSuccess(null)}
                             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-xl active:scale-95"
                         >
-                            Done, I Copied It
+                            Done, Got It
                         </button>
                     </div>
                 </div>
