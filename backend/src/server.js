@@ -18,6 +18,8 @@ import timeRoutes from './routes/time.routes.js';
 import invoiceRoutes from './routes/invoices.routes.js';
 import quotationRoutes from './routes/quotation.routes.js';
 import seoRoutes from './routes/seo.routes.js';
+import scheduleRoutes from './routes/schedules.routes.js';
+import dutyRoutes from './routes/duties.routes.js';
 
 
 import { startSchedulers } from './jobs/scheduler.js';
@@ -73,6 +75,8 @@ app.use('/api/blogs', blogRoutes);
 app.use('/api/time', timeRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/quotations', quotationRoutes);
+app.use('/api/schedules', scheduleRoutes);
+app.use('/api/duties', dutyRoutes);
 app.use('/', seoRoutes);
 
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { createInvoice, getInvoices, getInvoiceById, deleteInvoice, sendInvoice, deleteAllInvoices } from '../controllers/invoiceController.js';
+import { createInvoice, getInvoices, getInvoiceById, updateInvoice, deleteInvoice, sendInvoice, deleteAllInvoices } from '../controllers/invoiceController.js';
 import { requireAuth, requireAgency } from '../middleware/authJwt.js';
 
 const router = express.Router();
@@ -10,6 +10,8 @@ router.post('/', requireAgency, createInvoice);
 router.post('/:id/send', requireAgency, sendInvoice);
 router.get('/', requireAgency, getInvoices);
 router.get('/:id', getInvoiceById);
+router.patch('/:id', requireAgency, updateInvoice);
+router.put('/:id', requireAgency, updateInvoice);
 router.delete('/all', requireAgency, deleteAllInvoices);
 router.delete('/:id', requireAgency, deleteInvoice);
 

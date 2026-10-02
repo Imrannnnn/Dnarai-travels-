@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { validate } from '../middleware/validate.js';
-import { requireAuth } from '../middleware/authJwt.js';
+import { requireAuth, requireRole } from '../middleware/authJwt.js';
 import { authController } from '../controllers/auth.controller.js';
 import {
   registerSchema,
@@ -42,6 +42,7 @@ router.post(
 router.post(
   '/add-staff',
   requireAuth,
+  requireRole(['admin']),
   validate(addStaffSchema),
   authController.addStaff
 );
@@ -49,18 +50,21 @@ router.post(
 router.get(
   '/staff',
   requireAuth,
+  requireRole(['admin']),
   authController.getStaff
 );
 
 router.delete(
   '/staff/:id',
   requireAuth,
+  requireRole(['admin']),
   authController.deleteStaff
 );
 
 router.post(
   '/staff/:id/resend-credentials',
   requireAuth,
+  requireRole(['admin']),
   authController.resendStaffCredentials
 );
 
@@ -69,6 +73,18 @@ router.post(
   requireAuth,
   validate(pushSubscriptionSchema),
   authController.subscribePush
+);
+
+router.post(
+  '/web-push/test',
+  requireAuth,
+  authController.testPush
+);
+
+router.get(
+  '/web-push/status',
+  requireAuth,
+  authController.getPushStatus
 );
 
 export default router;

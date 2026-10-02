@@ -31,7 +31,8 @@ function withTimeout(signal, ms) {
 }
 
 async function request(path, { method = 'GET', body, baseUrl, signal, token } = {}) {
-  const url = `${baseUrl?.replace(/\/$/, '') || ''}${path}`
+  const resolvedBaseUrl = (baseUrl || getApiBaseUrl()).replace(/\/$/, '')
+  const url = path.startsWith('http') ? path : `${resolvedBaseUrl}${path}`
   console.log(`[API] ${method} ${url}`, { body });
   const authToken = token || localStorage.getItem('admin_token') || localStorage.getItem('token')
 
@@ -67,7 +68,7 @@ async function request(path, { method = 'GET', body, baseUrl, signal, token } = 
       if (refreshToken && !isRefreshEndpoint) {
         console.log('[API] Attempting auto-refresh...')
         try {
-          const refreshRes = await fetch(`${baseUrl?.replace(/\/$/, '') || ''}/api/auth/refresh`, {
+          const refreshRes = await fetch(`${resolvedBaseUrl}/api/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken })
@@ -76,24 +77,55 @@ async function request(path, { method = 'GET', body, baseUrl, signal, token } = 
           if (refreshRes.ok) {
             const refreshData = await refreshRes.json()
             localStorage.setItem('token', refreshData.accessToken)
+            if (localStorage.getItem('admin_token')) {
+              localStorage.setItem('admin_token', refreshData.accessToken)
+            }
             
             // Retry the original request with new token
             headers['Authorization'] = `Bearer ${refreshData.accessToken}`
             const retryRes = await fetch(url, { ...options, headers })
-            return await retryRes.json()
+            const retryData = await retryRes.json().catch(() => null)
+            if (!retryRes.ok) {
+              throw {
+                status: retryRes.status,
+                message: retryData?.message || `Request failed: ${retryRes.status} ${retryRes.statusText}`,
+                code: retryData?.code
+              }
+            }
+            return retryData
           }
         } catch (e) {
           console.error('[API] Auto-refresh failed:', e)
         }
       }
 
-      // If refresh failed or no token, logout
+      // If refresh failed or no refresh token, session is expired
+      const data = await res.json().catch(() => null)
       localStorage.removeItem('token')
       localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
+      localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_role')
       localStorage.removeItem('lastActivityTime')
-      if (window.location.pathname !== '/login' && window.location.pathname !== '/') {
-        window.location.href = '/login'
+
+      const expireMsg = data?.message || 'Your session has expired. Please sign in again to continue.'
+      sessionStorage.setItem('session_expired_notice', expireMsg)
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('dnarai:session-expired', {
+            detail: {
+              code: data?.code || 'SESSION_EXPIRED',
+              message: expireMsg,
+              url: window.location.pathname,
+            },
+          })
+        )
+      }
+
+      throw {
+        status: 401,
+        code: data?.code || 'SESSION_EXPIRED',
+        message: expireMsg,
       }
     }
 
@@ -260,6 +292,123 @@ export async function updateQuotationSettings({ data, baseUrl, token } = {}) {
 
 export async function previewQuotationMessage({ data, baseUrl, token } = {}) {
   return request('/api/quotations/preview', { method: 'POST', body: data, baseUrl, token })
+}
+
+// -------------------------------------------------------------
+// STAFF SCHEDULES & DUTY ASSIGNMENTS API
+// -------------------------------------------------------------
+
+export async function fetchSchedules({ staffId, scheduleType, isActive, baseUrl, token } = {}) {
+  let path = '/api/schedules?'
+  if (staffId) path += `staffId=${encodeURIComponent(staffId)}&`
+  if (scheduleType) path += `scheduleType=${encodeURIComponent(scheduleType)}&`
+  if (isActive !== undefined) path += `isActive=${isActive}&`
+  return request(path.replace(/[&?]$/, ''), { baseUrl, token })
+}
+
+export async function fetchOnDutyStaff({ date, baseUrl, token } = {}) {
+  let path = '/api/schedules/on-duty'
+  if (date) path += `?date=${encodeURIComponent(date)}`
+  return request(path, { baseUrl, token })
+}
+
+export async function createSchedule({ scheduleData, baseUrl, token } = {}) {
+  return request('/api/schedules', { method: 'POST', body: scheduleData, baseUrl, token })
+}
+
+export async function updateSchedule({ id, scheduleData, baseUrl, token } = {}) {
+  return request(`/api/schedules/${id}`, { method: 'PATCH', body: scheduleData, baseUrl, token })
+}
+
+export async function deleteSchedule({ id, baseUrl, token } = {}) {
+  return request(`/api/schedules/${id}`, { method: 'DELETE', baseUrl, token })
+}
+
+export async function updateStaffColor({ staffId, color, name, baseUrl, token } = {}) {
+  return request(`/api/schedules/staff-color/${staffId}`, {
+    method: 'PATCH',
+    body: { color, name },
+    baseUrl,
+    token,
+  })
+}
+
+export async function fetchMySchedule({ baseUrl, token } = {}) {
+  return request('/api/schedules/my-schedule', { baseUrl, token })
+}
+
+export async function fetchDuties({ status, staffId, priority, date, baseUrl, token } = {}) {
+  let path = '/api/duties?'
+  if (status && status !== 'all') path += `status=${encodeURIComponent(status)}&`
+  if (staffId) path += `staffId=${encodeURIComponent(staffId)}&`
+  if (priority) path += `priority=${encodeURIComponent(priority)}&`
+  if (date) path += `date=${encodeURIComponent(date)}&`
+  return request(path.replace(/[&?]$/, ''), { baseUrl, token })
+}
+
+export async function createDuty({ dutyData, baseUrl, token } = {}) {
+  return request('/api/duties', { method: 'POST', body: dutyData, baseUrl, token })
+}
+
+export async function deleteDuty({ id, baseUrl, token } = {}) {
+  return request(`/api/duties/${id}`, { method: 'DELETE', baseUrl, token })
+}
+
+export async function fetchMyDuties({ baseUrl, token } = {}) {
+  return request('/api/duties/my-duties', { baseUrl, token })
+}
+
+export async function completeDutyAssignment({ assignmentId, notes, baseUrl, token } = {}) {
+  return request(`/api/duties/assignments/${assignmentId}/complete`, {
+    method: 'PATCH',
+    body: { notes },
+    baseUrl,
+    token,
+  })
+}
+
+export async function updateDutyAssignmentNotes({ assignmentId, notes, baseUrl, token } = {}) {
+  return request(`/api/duties/assignments/${assignmentId}/notes`, {
+    method: 'PATCH',
+    body: { notes },
+    baseUrl,
+    token,
+  })
+}
+
+export async function triggerDailyBriefing({ slot, baseUrl, token } = {}) {
+  return request('/api/duties/send-daily-briefing', {
+    method: 'POST',
+    body: { slot },
+    baseUrl,
+    token,
+  })
+}
+
+export async function subscribeWebPush({ subscription, baseUrl, token } = {}) {
+  return request('/api/auth/web-push/subscribe', {
+    method: 'POST',
+    body: { subscription },
+    baseUrl,
+    token,
+  })
+}
+
+export async function testWebPush({ subscription, baseUrl, token } = {}) {
+  return request('/api/auth/web-push/test', {
+    method: 'POST',
+    body: subscription ? { subscription } : undefined,
+    baseUrl,
+    token,
+  })
+}
+
+export async function getWebPushStatus({ baseUrl, token } = {}) {
+  return request('/api/auth/web-push/status', {
+    method: 'GET',
+    baseUrl,
+    token,
+  })
 }
 
 export function getApiBaseUrl() {

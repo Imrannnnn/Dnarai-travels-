@@ -10,6 +10,10 @@ import ActionButton from '../components/ActionButton'
 import airportData from '../../airports.json'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import SpreadsheetScheduleView from '../components/schedule/SpreadsheetScheduleView'
+import DutyManagementView from '../components/schedule/DutyManagementView'
+import TravelCardManager from '../components/travelCard/TravelCardManager'
+import PushNotificationToggle from '../components/PushNotificationToggle'
 
 function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIata }) {
     const [query, setQuery] = useState('')
@@ -101,10 +105,61 @@ function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIa
     )
 }
 
-export default function SuperAdminPage() {
+function isTokenExpired(t) {
+    if (!t) return true
+    try {
+        const parts = t.split('.')
+        if (parts.length !== 3) return true
+        const payload = JSON.parse(atob(parts[1]))
+        if (payload.exp && Date.now() >= payload.exp * 1000) {
+            return true
+        }
+        return false
+    } catch {
+        return true
+    }
+}
+
+export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     const navigate = useNavigate()
-    const [token, setToken] = useState(localStorage.getItem('admin_token') || null)
-    const [role, setRole] = useState(localStorage.getItem('admin_role') || null)
+    const [authInit] = useState(() => {
+        // If user explicitly navigated to a login path, show login form
+        if (typeof window !== 'undefined' && window.location.pathname.endsWith('/login')) {
+            return { token: null, role: null }
+        }
+
+        const adminToken = localStorage.getItem('admin_token')
+        const adminRole = localStorage.getItem('admin_role')
+        if (adminToken && adminRole) {
+            if (!isTokenExpired(adminToken)) {
+                return { token: adminToken, role: adminRole }
+            }
+            localStorage.removeItem('admin_token')
+            localStorage.removeItem('admin_role')
+        }
+
+        const genToken = localStorage.getItem('token')
+        const userSaved = localStorage.getItem('user')
+        if (genToken && userSaved) {
+            try {
+                const parsed = JSON.parse(userSaved)
+                if (['admin', 'staff', 'agent'].includes(parsed.role)) {
+                    if (!isTokenExpired(genToken)) {
+                        localStorage.setItem('admin_token', genToken)
+                        localStorage.setItem('admin_role', parsed.role)
+                        return { token: genToken, role: parsed.role }
+                    }
+                    localStorage.removeItem('token')
+                    localStorage.removeItem('user')
+                }
+            } catch {
+                // ignore
+            }
+        }
+        return { token: null, role: null }
+    })
+    const [token, setToken] = useState(authInit.token)
+    const [role, setRole] = useState(authInit.role)
     const [activeView, setActiveView] = useState('all') // 'all' or 'today'
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
     const { triggerOverlay } = useAppData()
@@ -120,6 +175,27 @@ export default function SuperAdminPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [loginError, setLoginError] = useState('')
+    const [sessionExpiredNotice, setSessionExpiredNotice] = useState(() => {
+        const stored = sessionStorage.getItem('session_expired_notice')
+        if (stored) {
+            sessionStorage.removeItem('session_expired_notice')
+            return stored
+        }
+        return ''
+    })
+
+    useEffect(() => {
+        const handleSessionRestored = (e) => {
+            const { token: newToken, role: newRole } = e.detail || {}
+            if (newToken && ['admin', 'staff', 'agent'].includes(newRole)) {
+                setToken(newToken)
+                setRole(newRole)
+                setSessionExpiredNotice('')
+            }
+        }
+        window.addEventListener('dnarai:session-restored', handleSessionRestored)
+        return () => window.removeEventListener('dnarai:session-restored', handleSessionRestored)
+    }, [])
 
     // UI State
     const [searchQuery, setSearchQuery] = useState('')
@@ -150,8 +226,28 @@ export default function SuperAdminPage() {
     const [editingBlog, setEditingBlog] = useState(null)
     const [invoices, setInvoices] = useState([])
     const [isCreateInvoiceModalOpen, setIsCreateInvoiceModalOpen] = useState(false)
+    const [isEditInvoiceModalOpen, setIsEditInvoiceModalOpen] = useState(false)
     const [isShareInvoiceModalOpen, setIsShareInvoiceModalOpen] = useState(false)
     const [selectedInvoiceForShare, setSelectedInvoiceForShare] = useState(null)
+    const [editingInvoiceId, setEditingInvoiceId] = useState(null)
+    const [editInvoiceForm, setEditInvoiceForm] = useState({
+        passengerId: '',
+        passengerName: '',
+        passengerEmail: '',
+        passengerPhone: '',
+        date: '',
+        invoiceNumber: '',
+        items: [{ description: '', rate: 0, qty: 1, amount: 0, subText: '' }],
+        serviceCharge: 0,
+        subTotal: 0,
+        discount: 0,
+        total: 0,
+        paymentType: 'bank_transfer',
+        currency: '₦',
+        balanceDue: 0,
+        isPaid: false,
+        notes: ''
+    })
     const [invoiceForm, setInvoiceForm] = useState({
         passengerId: '',
         passengerName: '',
@@ -168,10 +264,23 @@ export default function SuperAdminPage() {
         isPaid: false
     })
 
-    // New Modals State
+    // Navigation & Layout State
+    const [activeTab, setActiveTab] = useState(initialTab || 'overview') // 'overview', 'passengers', 'bookings', 'invoices', 'insights', 'staff', 'schedules', 'duties', 'travel-card', 'alerts'
+    const [travelCardPassengerId, setTravelCardPassengerId] = useState(null)
+
+    useEffect(() => {
+        if (initialTab) {
+            setActiveTab(initialTab)
+        }
+    }, [initialTab])
+
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+    const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false)
+
+    // Modals State
     const [isTravelingTodayModalOpen, setIsTravelingTodayModalOpen] = useState(false)
     const [isActiveBookingsModalOpen, setIsActiveBookingsModalOpen] = useState(false)
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
     const [editForm, setEditForm] = useState({})
     const [createPassengerForm, setCreatePassengerForm] = useState({ fullName: '', email: '', phone: '' })
@@ -191,14 +300,27 @@ export default function SuperAdminPage() {
     const [viewingBooking, setViewingBooking] = useState(null)
 
     // Refs for scrolling
-    const passengerListRef = useRef(null)
-    const bookingsListRef = useRef(null)
+    const quickActionsRef = useRef(null)
+
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (quickActionsRef.current && !quickActionsRef.current.contains(event.target)) {
+                setIsQuickActionsOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     const baseUrl = getApiBaseUrl()
 
-    const handleLogout = useCallback(() => {
+    const handleLogout = useCallback((expiredMessage = null) => {
         localStorage.removeItem('admin_token')
         localStorage.removeItem('admin_role')
+        if (expiredMessage) {
+            sessionStorage.setItem('session_expired_notice', expiredMessage)
+            setSessionExpiredNotice(expiredMessage)
+        }
         setToken(null)
         setRole(null)
     }, [])
@@ -217,7 +339,18 @@ export default function SuperAdminPage() {
                 ])
 
                 if (passengersRes.status === 401 || bookingsRes.status === 401 || notifsRes.status === 401 || blogsRes.status === 401 || invoicesRes.status === 401) {
-                    handleLogout()
+                    const notice = 'Your admin session has expired. Please sign in again.'
+                    handleLogout(notice)
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(
+                            new CustomEvent('dnarai:session-expired', {
+                                detail: {
+                                    message: notice,
+                                    url: window.location.pathname,
+                                },
+                            })
+                        )
+                    }
                     return
                 }
 
@@ -248,6 +381,7 @@ export default function SuperAdminPage() {
     async function handleLogin(e) {
         e.preventDefault()
         setLoginError('')
+        setSessionExpiredNotice('')
         setLoading(true)
         try {
             const res = await fetch(`${baseUrl}/api/auth/login`, {
@@ -260,6 +394,12 @@ export default function SuperAdminPage() {
             if (!['admin', 'agent', 'staff'].includes(data.role)) throw new Error('Admin access only')
             localStorage.setItem('admin_token', data.accessToken)
             localStorage.setItem('admin_role', data.role)
+            localStorage.setItem('token', data.accessToken)
+            if (data.refreshToken) {
+                localStorage.setItem('refreshToken', data.refreshToken)
+            }
+            localStorage.setItem('user', JSON.stringify({ role: data.role, email }))
+            localStorage.setItem('lastActivityTime', Date.now().toString())
             setToken(data.accessToken)
             setRole(data.role)
         } catch (err) {
@@ -685,6 +825,135 @@ export default function SuperAdminPage() {
         });
     };
 
+    const openEditInvoiceModal = (inv) => {
+        setEditingInvoiceId(inv._id || inv.id);
+        const subTotal = inv.subTotal !== undefined
+            ? Number(inv.subTotal)
+            : (inv.items || []).reduce((s, it) => s + (Number(it.amount) || 0), 0);
+        const serviceCharge = Number(inv.serviceCharge) || 0;
+        const discount = Number(inv.discount) || 0;
+        const total = inv.total !== undefined
+            ? Number(inv.total)
+            : (subTotal + serviceCharge - discount);
+        const isPaid = Boolean(inv.isPaid || inv.status === 'paid' || (inv.balanceDue === 0 && total > 0));
+
+        setEditInvoiceForm({
+            passengerId: inv.passengerId?._id || inv.passengerId || '',
+            passengerName: inv.passengerName || '',
+            passengerEmail: inv.passengerEmail || '',
+            passengerPhone: inv.passengerPhone || '',
+            date: inv.date ? new Date(inv.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+            invoiceNumber: inv.invoiceNumber || '',
+            items: inv.items && inv.items.length > 0
+                ? inv.items.map(it => ({
+                    description: it.description || '',
+                    rate: Number(it.rate) || 0,
+                    qty: Number(it.qty) || 1,
+                    amount: Number(it.amount) || (Number(it.rate) * Number(it.qty)) || 0,
+                    subText: it.subText || ''
+                }))
+                : [{ description: '', rate: 0, qty: 1, amount: 0, subText: '' }],
+            serviceCharge,
+            subTotal,
+            discount,
+            total,
+            paymentType: inv.paymentType || 'bank_transfer',
+            currency: inv.currency || '₦',
+            balanceDue: isPaid ? 0 : (inv.balanceDue !== undefined ? Number(inv.balanceDue) : total),
+            isPaid,
+            notes: inv.notes || "Our Service End when you successfully arrive your destination."
+        });
+        setIsEditInvoiceModalOpen(true);
+    };
+
+    const handleUpdateInvoice = async (e) => {
+        if (e) e.preventDefault();
+        if (!editingInvoiceId) return;
+
+        triggerOverlay('Updating Invoice...', async () => {
+            const res = await fetch(`${baseUrl}/api/invoices/${editingInvoiceId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(editInvoiceForm)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to update invoice');
+
+            setInvoices(invoices.map(i => ((i._id || i.id) === (data._id || data.id)) ? data : i));
+            setIsEditInvoiceModalOpen(false);
+            setEditingInvoiceId(null);
+        });
+    };
+
+    const handleToggleInvoicePaid = async (inv) => {
+        const currentPaid = Boolean(inv.isPaid || inv.status === 'paid' || (inv.balanceDue === 0 && Number(inv.total) > 0));
+        const newIsPaid = !currentPaid;
+        const newBalanceDue = newIsPaid ? 0 : (Number(inv.total) || 0);
+
+        triggerOverlay(newIsPaid ? 'Marking Invoice as Paid...' : 'Marking Invoice as Unpaid...', async () => {
+            const res = await fetch(`${baseUrl}/api/invoices/${inv._id || inv.id}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    isPaid: newIsPaid,
+                    status: newIsPaid ? 'paid' : 'unpaid',
+                    balanceDue: newBalanceDue
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Failed to update payment status');
+
+            setInvoices(invoices.map(i => ((i._id || i.id) === (data._id || data.id)) ? data : i));
+        });
+    };
+
+    const addEditInvoiceItem = () => {
+        setEditInvoiceForm(prev => ({
+            ...prev,
+            items: [...prev.items, { description: '', rate: 0, qty: 1, amount: 0, subText: '' }]
+        }));
+    };
+
+    const removeEditInvoiceItem = (index) => {
+        if (editInvoiceForm.items.length <= 1) return;
+        const newItems = [...editInvoiceForm.items];
+        newItems.splice(index, 1);
+        const subTotal = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const total = subTotal + Number(editInvoiceForm.serviceCharge || 0) - Number(editInvoiceForm.discount || 0);
+        setEditInvoiceForm({
+            ...editInvoiceForm,
+            items: newItems,
+            subTotal,
+            total,
+            balanceDue: editInvoiceForm.isPaid ? 0 : total
+        });
+    };
+
+    const handleEditInvoiceItemChange = (index, field, value) => {
+        const newItems = [...editInvoiceForm.items];
+        newItems[index][field] = value;
+        if (field === 'rate' || field === 'qty') {
+            newItems[index].amount = Number(newItems[index].rate || 0) * Number(newItems[index].qty || 0);
+        }
+
+        const subTotal = newItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+        const total = subTotal + Number(editInvoiceForm.serviceCharge || 0) - Number(editInvoiceForm.discount || 0);
+
+        setEditInvoiceForm({
+            ...editInvoiceForm,
+            items: newItems,
+            subTotal,
+            total,
+            balanceDue: editInvoiceForm.isPaid ? 0 : total
+        });
+    };
+
     const handleDeleteAllInvoices = async () => {
         if (!window.confirm('Are you sure you want to delete ALL invoices? This action cannot be undone and they will be removed from the database.')) return;
 
@@ -953,9 +1222,26 @@ export default function SuperAdminPage() {
         travelingToday: travelingPassengers.length
     }), [passengers, bookings, notifications, travelingPassengers])
 
-    function scrollToPassengerList() {
-        passengerListRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
+    // Total Billed Revenue WITHOUT service charge (net travel bookings)
+    const totalBilledRevenue = useMemo(() => {
+        return invoices.reduce((sum, inv) => {
+            const service = Number(inv.serviceCharge) || 0;
+            const tot = Number(inv.total) || 0;
+            const sub = inv.subTotal !== undefined && inv.subTotal !== null
+                ? Number(inv.subTotal)
+                : Math.max(0, tot - service + (Number(inv.discount) || 0));
+            return sum + sub;
+        }, 0);
+    }, [invoices]);
+
+    // Total Profit / Service Charge (Agency Margin)
+    const totalServiceChargeProfit = useMemo(() => {
+        return invoices.reduce((sum, inv) => sum + (Number(inv.serviceCharge) || 0), 0);
+    }, [invoices]);
+
+    const paidInvoicesCount = useMemo(() => {
+        return invoices.filter(inv => inv.isPaid || inv.status === 'paid' || (inv.balanceDue === 0 && Number(inv.total) > 0)).length;
+    }, [invoices]);
 
 
 
@@ -978,6 +1264,16 @@ export default function SuperAdminPage() {
 
                     <div className="bg-white rounded-3xl p-8 shadow-2xl">
                         <form className="space-y-6" onSubmit={handleLogin}>
+                            {sessionExpiredNotice && !loginError && (
+                                <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-xs font-bold flex items-start gap-2.5 animate-in fade-in">
+                                    <Lucide.ShieldAlert size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="font-black uppercase tracking-wider text-[10px] text-amber-700">Session Expired</p>
+                                        <p className="mt-0.5">{sessionExpiredNotice}</p>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Email Address</label>
@@ -1015,6 +1311,17 @@ export default function SuperAdminPage() {
                                     </div>
                                 ) : 'Sign In'}
                             </button>
+
+                            <div className="pt-2 text-center">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/login')}
+                                    className="text-xs font-bold text-slate-500 hover:text-ocean-600 transition-colors inline-flex items-center gap-1.5"
+                                >
+                                    <Lucide.ArrowLeft size={14} />
+                                    <span>Back to Traveler Sign In</span>
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -1025,642 +1332,1341 @@ export default function SuperAdminPage() {
     // MAIN DASHBOARD
     return (
         <>
-            <div className="min-h-screen bg-slate-50">
-                {/* Top Navigation Bar */}
-                <nav className="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-                    <div className="max-w-7xl mx-auto px-4 md:px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 md:gap-4">
-                                <div className="flex items-center gap-2 md:gap-3">
-                                    <div className="h-8 w-8 md:h-10 md:w-10 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md flex-shrink-0">
-                                        <Lucide.ShieldCheck className="w-4 h-4 md:w-5 md:h-5" />
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h1 className="text-sm md:text-lg font-black text-slate-900 uppercase tracking-tight truncate">Dnarai Enterprise</h1>
-                                        <p className="text-[10px] md:text-xs text-slate-500 font-medium truncate">Agency Dashboard</p>
+            <div className="h-screen h-[100dvh] bg-slate-50 flex flex-col md:flex-row text-slate-900 font-sans w-full max-w-full overflow-hidden">
+                {/* Desktop Collapsible Sidebar */}
+                <aside className={clsx(
+                    "hidden md:flex flex-col shrink-0 bg-slate-900 border-r border-slate-800 text-slate-300 transition-all duration-300 h-full z-30 select-none",
+                    isSidebarCollapsed ? "w-20" : "w-64 lg:w-72"
+                )}>
+                    {/* Sidebar Brand Header */}
+                    <div className="p-4 border-b border-slate-800/80 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="h-10 w-10 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-ocean-600/30 shrink-0">
+                                <Lucide.ShieldCheck size={22} />
+                            </div>
+                            {!isSidebarCollapsed && (
+                                <div className="min-w-0">
+                                    <div className="text-sm font-black text-white uppercase tracking-tight truncate font-display">Dnarai Enterprise</div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Agency Control</span>
                                     </div>
                                 </div>
-                            </div>
+                            )}
+                        </div>
+                        {!isSidebarCollapsed && (
+                            <button
+                                onClick={() => setIsSidebarCollapsed(true)}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+                                title="Collapse sidebar"
+                            >
+                                <Lucide.PanelLeftClose size={18} />
+                            </button>
+                        )}
+                    </div>
 
-                            {/* Desktop Actions */}
-                            <div className="hidden md:flex items-center gap-6">
-                                <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
-                                    <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
-                                    {stats.pendingNotifications > 0 && (
-                                        <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 rounded-full text-white text-[10px] font-bold flex items-center justify-center cursor-pointer ring-2 ring-white">
-                                            {stats.pendingNotifications}
+                    {/* Navigation Menu */}
+                    <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+                        <div>
+                            {!isSidebarCollapsed && (
+                                <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Workspace</div>
+                            )}
+                            <div className="space-y-1">
+                                {[
+                                    { id: 'overview', label: 'Command Center', short: 'Overview', icon: Lucide.LayoutDashboard, badge: null },
+                                    { id: 'passengers', label: 'Passenger Registry', short: 'Passengers', icon: Lucide.Users, badge: passengers.length },
+                                    { id: 'bookings', label: 'Flight Bookings', short: 'Bookings', icon: Lucide.PlaneTakeoff, badge: bookings.length },
+                                    { id: 'invoices', label: 'Invoices & Billing', short: 'Invoices', icon: Lucide.Receipt, badge: invoices.length },
+                                ].map(item => {
+                                    const isActive = activeTab === item.id
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => { setActiveTab(item.id); if (item.id === 'passengers') setActiveView('all'); }}
+                                            title={item.label}
+                                            className={clsx(
+                                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                                isActive
+                                                    ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
+                                        >
+                                            <item.icon size={18} className={clsx(isActive ? "text-white" : "text-slate-400 group-hover:text-ocean-400 transition-colors shrink-0")} />
+                                            {!isSidebarCollapsed && (
+                                                <span className="flex-1 text-left truncate">{item.short}</span>
+                                            )}
+                                            {!isSidebarCollapsed && item.badge !== null && (
+                                                <span className={clsx(
+                                                    "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                                                    isActive ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+                                                )}>
+                                                    {item.badge}
+                                                </span>
+                                            )}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </div>
+
+                        <div>
+                            {!isSidebarCollapsed && (
+                                <div className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Operations & Tools</div>
+                            )}
+                            <div className="space-y-1">
+                                <button
+                                    onClick={() => navigate('/super-admin/quotations')}
+                                    title="Flight Quotations Comparison Tool"
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all group"
+                                >
+                                    <Lucide.Sparkles size={18} className="text-amber-400 shrink-0" />
+                                    {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Flight Quotations</span>}
+                                    {!isSidebarCollapsed && <Lucide.ExternalLink size={12} className="text-slate-500 opacity-60" />}
+                                </button>
+
+                                <button
+                                    onClick={() => setActiveTab('travel-card')}
+                                    title="Generate Passenger Travel Card & Visual Itinerary Overview"
+                                    className={clsx(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                        activeTab === 'travel-card'
+                                            ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                            : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                    )}
+                                >
+                                    <Lucide.CreditCard size={18} className={clsx(activeTab === 'travel-card' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                    {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Travel Card</span>}
+                                    {!isSidebarCollapsed && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                            WAT
                                         </span>
                                     )}
-                                </div>
+                                </button>
+
+                                <button
+                                    onClick={() => setActiveTab('insights')}
+                                    title="Travel Insights & Blog Management"
+                                    className={clsx(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                        activeTab === 'insights'
+                                            ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                            : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                    )}
+                                >
+                                    <Lucide.BookOpen size={18} className={clsx(activeTab === 'insights' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                    {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Insights & Blog</span>}
+                                    {!isSidebarCollapsed && blogs.length > 0 && (
+                                        <span className={clsx(
+                                            "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                                            activeTab === 'insights' ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+                                        )}>
+                                            {blogs.length}
+                                        </span>
+                                    )}
+                                </button>
 
                                 {role === 'admin' && (
                                     <>
                                         <button
-                                            onClick={() => { setIsStaffManagerModalOpen(true); loadStaffMembers(); }}
-                                            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                                            title="Manage Staff Team"
+                                            onClick={() => { setActiveTab('staff'); loadStaffMembers(); }}
+                                            title="Staff Management"
+                                            className={clsx(
+                                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                                activeTab === 'staff'
+                                                    ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
                                         >
-                                            <Lucide.Users size={16} />
-                                            <span>Staff Team</span>
-                                            {staffMembers.length > 0 && (
-                                                <span className="px-1.5 py-0.5 text-[10px] font-bold bg-slate-200 text-slate-700 rounded-full">
+                                            <Lucide.Shield size={18} className={clsx(activeTab === 'staff' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                            {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Staff Team</span>}
+                                            {!isSidebarCollapsed && staffMembers.length > 0 && (
+                                                <span className={clsx(
+                                                    "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                                                    activeTab === 'staff' ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+                                                )}>
                                                     {staffMembers.length}
                                                 </span>
                                             )}
                                         </button>
+
                                         <button
-                                            onClick={() => setIsAddStaffModalOpen(true)}
-                                            className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
-                                            title="Add Staff"
+                                            onClick={() => { setActiveTab('schedules'); loadStaffMembers(); }}
+                                            title="Excel-style Staff Duty Schedules"
+                                            className={clsx(
+                                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                                activeTab === 'schedules'
+                                                    ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
                                         >
-                                            <Lucide.UserPlus size={16} />
-                                            <span>Add Staff</span>
+                                            <Lucide.CalendarClock size={18} className={clsx(activeTab === 'schedules' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                            {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Staff Schedules</span>}
+                                        </button>
+
+                                        <button
+                                            onClick={() => { setActiveTab('duties'); loadStaffMembers(); }}
+                                            title="Duty Assignment & Management"
+                                            className={clsx(
+                                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                                activeTab === 'duties'
+                                                    ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
+                                        >
+                                            <Lucide.ClipboardList size={18} className={clsx(activeTab === 'duties' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                            {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Duty Tasks</span>}
                                         </button>
                                     </>
                                 )}
 
                                 <button
-                                    onClick={() => navigate('/super-admin/quotations')}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
-                                    title="Flight Quotations & Comparisons"
+                                    onClick={() => setActiveTab('alerts')}
+                                    title="System Notifications & Alerts"
+                                    className={clsx(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                        activeTab === 'alerts'
+                                            ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                            : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                    )}
                                 >
-                                    <Lucide.PlaneTakeoff size={16} />
-                                    <span>Flight Quotations</span>
+                                    <Lucide.Bell size={18} className={clsx(activeTab === 'alerts' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                    {!isSidebarCollapsed && <span className="flex-1 text-left truncate">System Alerts</span>}
+                                    {stats.pendingNotifications > 0 && (
+                                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500 text-white shrink-0">
+                                            {stats.pendingNotifications}
+                                        </span>
+                                    )}
                                 </button>
+                            </div>
+                        </div>
+                    </div>
 
+                    {/* Sidebar Footer */}
+                    <div className="p-3 border-t border-slate-800/80 bg-slate-950/40 space-y-2 shrink-0">
+                        <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-800/50">
+                            <div className="h-8 w-8 rounded-lg bg-ocean-500 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                {currentAdminEmail ? currentAdminEmail[0].toUpperCase() : 'A'}
+                            </div>
+                            {!isSidebarCollapsed && (
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-xs font-bold text-white truncate">{currentAdminEmail || 'Admin User'}</div>
+                                    <div className="text-[10px] font-black text-ocean-400 uppercase tracking-wider">{role === 'admin' ? 'Super Admin' : 'Staff Member'}</div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={handleLogout}
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
+                                title="Sign Out"
+                            >
+                                <Lucide.LogOut size={16} />
+                                {!isSidebarCollapsed && <span>Sign Out</span>}
+                            </button>
+                            {isSidebarCollapsed && (
                                 <button
-                                    onClick={() => setIsBlogManagerModalOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                                    title="Manage Insights"
+                                    onClick={() => setIsSidebarCollapsed(false)}
+                                    className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+                                    title="Expand sidebar"
                                 >
-                                    <Lucide.BookOpen size={16} />
-                                    <span>Manage Insights</span>
+                                    <Lucide.PanelLeftOpen size={16} />
                                 </button>
+                            )}
+                        </div>
+                    </div>
+                </aside>
 
-                                <button
-                                    onClick={() => setIsCreateBlogModalOpen(true)}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all border border-ocean-100"
-                                    title="New Insight"
-                                >
-                                    <Lucide.PlusCircle size={16} />
-                                    <span>New Insight</span>
+                {/* Mobile Drawer */}
+                {isMobileSidebarOpen && (
+                    <div className="fixed inset-0 z-50 md:hidden flex">
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMobileSidebarOpen(false)} />
+                        <div className="relative w-72 max-w-[85vw] bg-slate-900 h-full p-4 flex flex-col text-slate-300 shadow-2xl z-10 animate-in slide-in-from-left duration-200">
+                            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-9 w-9 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
+                                        <Lucide.ShieldCheck size={20} />
+                                    </div>
+                                    <div>
+                                        <div className="text-sm font-black text-white uppercase tracking-tight">Dnarai Enterprise</div>
+                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Agency Control</div>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIsMobileSidebarOpen(false)} className="p-2 text-slate-400 hover:text-white rounded-lg">
+                                    <Lucide.X size={20} />
                                 </button>
+                            </div>
 
+                            <div className="flex-1 overflow-y-auto py-4 space-y-4">
+                                <div className="space-y-1">
+                                    {[
+                                        { id: 'overview', label: 'Command Center', icon: Lucide.LayoutDashboard, badge: null },
+                                        { id: 'passengers', label: 'Passenger Registry', icon: Lucide.Users, badge: passengers.length },
+                                        { id: 'bookings', label: 'Flight Bookings', icon: Lucide.PlaneTakeoff, badge: bookings.length },
+                                        { id: 'travel-card', label: 'Travel Card Generator', icon: Lucide.CreditCard, badge: null },
+                                        { id: 'invoices', label: 'Invoices & Billing', icon: Lucide.Receipt, badge: invoices.length },
+                                    ].map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => { setActiveTab(item.id); setIsMobileSidebarOpen(false); if (item.id === 'passengers') setActiveView('all'); }}
+                                            className={clsx(
+                                                "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                activeTab === item.id ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <item.icon size={18} />
+                                                <span>{item.label}</span>
+                                            </div>
+                                            {item.badge !== null && (
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-300">
+                                                    {item.badge}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-800 space-y-1">
+                                    <button
+                                        onClick={() => { navigate('/super-admin/quotations'); setIsMobileSidebarOpen(false); }}
+                                        className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800/60 transition-all"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Lucide.Sparkles size={18} className="text-amber-400" />
+                                            <span>Flight Quotations</span>
+                                        </div>
+                                        <Lucide.ExternalLink size={14} className="text-slate-500" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => { setActiveTab('insights'); setIsMobileSidebarOpen(false); }}
+                                        className={clsx(
+                                            "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                            activeTab === 'insights' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Lucide.BookOpen size={18} />
+                                            <span>Insights & Blog</span>
+                                        </div>
+                                        {blogs.length > 0 && (
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-300">
+                                                {blogs.length}
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    {role === 'admin' && (
+                                        <>
+                                            <button
+                                                onClick={() => { setActiveTab('staff'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
+                                                className={clsx(
+                                                    "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                    activeTab === 'staff' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Lucide.Shield size={18} />
+                                                    <span>Staff Team</span>
+                                                </div>
+                                                {staffMembers.length > 0 && (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-300">
+                                                        {staffMembers.length}
+                                                    </span>
+                                                )}
+                                            </button>
+
+                                            <button
+                                                onClick={() => { setActiveTab('schedules'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
+                                                className={clsx(
+                                                    "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                    activeTab === 'schedules' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Lucide.CalendarClock size={18} />
+                                                    <span>Staff Schedules</span>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                onClick={() => { setActiveTab('duties'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
+                                                className={clsx(
+                                                    "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                    activeTab === 'duties' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Lucide.ClipboardList size={18} />
+                                                    <span>Duty Tasks</span>
+                                                </div>
+                                            </button>
+                                        </>
+                                    )}
+
+                                    <button
+                                        onClick={() => { setActiveTab('alerts'); setIsMobileSidebarOpen(false); }}
+                                        className={clsx(
+                                            "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                            activeTab === 'alerts' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <Lucide.Bell size={18} />
+                                            <span>System Alerts</span>
+                                        </div>
+                                        {stats.pendingNotifications > 0 && (
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white">
+                                                {stats.pendingNotifications}
+                                            </span>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-slate-800 space-y-3">
+                                <div className="flex items-center gap-3 p-2 rounded-xl bg-slate-800/50">
+                                    <div className="h-8 w-8 rounded-lg bg-ocean-500 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                        {currentAdminEmail ? currentAdminEmail[0].toUpperCase() : 'A'}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-xs font-bold text-white truncate">{currentAdminEmail || 'Admin User'}</div>
+                                        <div className="text-[10px] font-black text-ocean-400 uppercase tracking-wider">{role === 'admin' ? 'Super Admin' : 'Staff'}</div>
+                                    </div>
+                                </div>
                                 <button
-                                    onClick={handleLogout}
-                                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                                    title="Sign Out"
+                                    onClick={() => { handleLogout(); setIsMobileSidebarOpen(false); }}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 transition-all"
                                 >
                                     <Lucide.LogOut size={16} />
                                     <span>Sign Out</span>
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                )}
 
-                            {/* Mobile Actions */}
-                            <div className="flex md:hidden items-center gap-3">
-                                <div className="relative" onClick={() => setIsAllNotificationsModalOpen(true)}>
-                                    <Lucide.Bell className="text-slate-400 cursor-pointer hover:text-slate-600 transition-colors" size={20} />
-                                    {stats.pendingNotifications > 0 && (
-                                        <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-white text-[8px] font-bold flex items-center justify-center cursor-pointer ring-2 ring-white">
-                                            {stats.pendingNotifications}
+                {/* Main Content Area */}
+                <main className="flex-1 flex flex-col min-w-0 h-full w-full max-w-full overflow-y-auto overflow-x-hidden">
+                    {/* Top Navigation Bar */}
+                    <header className="sticky top-0 z-20 shrink-0 bg-white border-b border-slate-200 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 flex items-center justify-between shadow-xs w-full max-w-full">
+                        {/* Left: Mobile Toggle & Breadcrumbs */}
+                        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1 mr-2">
+                            <button
+                                onClick={() => setIsMobileSidebarOpen(true)}
+                                className="md:hidden p-1.5 sm:p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors shrink-0"
+                                title="Open navigation menu"
+                            >
+                                <Lucide.Menu size={20} />
+                            </button>
+                            <button
+                                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                className="hidden md:flex p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors shrink-0"
+                                title={isSidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                            >
+                                {isSidebarCollapsed ? <Lucide.PanelLeftOpen size={19} /> : <Lucide.PanelLeftClose size={19} />}
+                            </button>
+
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400 hidden sm:inline shrink-0">Dnarai</span>
+                                    <span className="text-xs text-slate-300 hidden sm:inline shrink-0">/</span>
+                                    <span className="text-xs sm:text-sm md:text-base font-bold text-slate-900 tracking-tight truncate">
+                                        {activeTab === 'overview' && 'Command Center'}
+                                        {activeTab === 'passengers' && 'Passenger Registry'}
+                                        {activeTab === 'bookings' && 'Flight Bookings'}
+                                        {activeTab === 'invoices' && 'Invoices & Billing'}
+                                        {activeTab === 'insights' && 'Travel Insights'}
+                                        {activeTab === 'staff' && 'Staff Management'}
+                                        {activeTab === 'schedules' && 'Staff Duty Schedules'}
+                                        {activeTab === 'duties' && 'Operational Duty Tasks'}
+                                        {activeTab === 'alerts' && 'System Alerts'}
+                                    </span>
+                                    {activeTab === 'passengers' && (
+                                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 bg-ocean-50 text-ocean-700 rounded-md border border-ocean-100 hidden xs:inline-flex shrink-0">
+                                            {filteredPassengers.length} Total
+                                        </span>
+                                    )}
+                                    {activeTab === 'bookings' && (
+                                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-100 hidden xs:inline-flex shrink-0">
+                                            {bookings.length} Flights
+                                        </span>
+                                    )}
+                                    {activeTab === 'invoices' && (
+                                        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md border border-purple-100 hidden xs:inline-flex shrink-0">
+                                            {invoices.length} Invoices
                                         </span>
                                     )}
                                 </div>
+                            </div>
+                        </div>
+
+                        {/* Center: Clean Section Tabs */}
+                        <div className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+                            {[
+                                { id: 'overview', label: 'Command Center', icon: Lucide.LayoutDashboard },
+                                { id: 'passengers', label: 'Passengers', icon: Lucide.Users },
+                                { id: 'bookings', label: 'Bookings', icon: Lucide.PlaneTakeoff },
+                                { id: 'invoices', label: 'Invoices', icon: Lucide.Receipt },
+                                { id: 'alerts', label: 'Alerts', icon: Lucide.Bell, badge: stats.pendingNotifications },
+                            ].map(tab => (
                                 <button
-                                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                                    className="p-1 rounded-lg hover:bg-slate-100 transition-colors"
-                                >
-                                    {isMobileMenuOpen ? <Lucide.X size={20} className="text-slate-600" /> : <Lucide.Menu size={20} className="text-slate-600" />}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Mobile Menu Dropdown */}
-                    {isMobileMenuOpen && (
-                        <div className="md:hidden border-t border-slate-200 bg-white px-4 py-4 space-y-3">
-                            {role === 'admin' && (
-                                <>
-                                    <button
-                                        onClick={() => { setIsStaffManagerModalOpen(true); setIsMobileMenuOpen(false); loadStaffMembers(); }}
-                                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
-                                    >
-                                        <Lucide.Users size={18} />
-                                        Staff Team {staffMembers.length > 0 && `(${staffMembers.length})`}
-                                    </button>
-                                    <button
-                                        onClick={() => { setIsAddStaffModalOpen(true); setIsMobileMenuOpen(false); }}
-                                        className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
-                                    >
-                                        <Lucide.UserPlus size={18} />
-                                        Add Staff
-                                    </button>
-                                </>
-                            )}
-                            <button
-                                onClick={() => { navigate('/super-admin/quotations'); setIsMobileMenuOpen(false); }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-ocean-700 bg-ocean-50 hover:bg-ocean-100 rounded-xl transition-all border border-ocean-100"
-                            >
-                                <Lucide.PlaneTakeoff size={18} />
-                                Flight Quotations
-                            </button>
-                            <button
-                                onClick={() => { setIsBlogManagerModalOpen(true); setIsMobileMenuOpen(false); }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all"
-                            >
-                                <Lucide.BookOpen size={18} />
-                                Manage Insights
-                            </button>
-                            <button
-                                onClick={() => { setIsCreateBlogModalOpen(true); setIsMobileMenuOpen(false); }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-bold text-ocean-700 bg-ocean-50 hover:bg-ocean-100 rounded-xl transition-all border border-ocean-100"
-                            >
-                                <Lucide.PlusCircle size={18} />
-                                New Insight
-                            </button>
-                            <button
-                                onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}
-                                className="flex w-full items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-all"
-                            >
-                                <Lucide.LogOut size={18} />
-                                Sign Out
-                            </button>
-                        </div>
-                    )}
-                </nav>
-
-                {/* Main Content */}
-                <div className="max-w-7xl mx-auto px-6 py-8">
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8 mt-4 md:mt-0">
-                        {[
-                            { label: 'Passengers', labelFull: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'bg-ocean-500', bgLight: 'bg-ocean-50', onClick: () => { setActiveView('all'); scrollToPassengerList(); } },
-                            { label: 'Bookings', labelFull: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'bg-green-500', bgLight: 'bg-green-50', onClick: () => setIsActiveBookingsModalOpen(true) },
-                            { label: 'Today', labelFull: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'bg-purple-500', bgLight: 'bg-purple-50', onClick: () => setIsTravelingTodayModalOpen(true) },
-                            { label: 'Alerts', labelFull: 'Notifications', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'bg-amber-500', bgLight: 'bg-amber-50', onClick: () => setIsAllNotificationsModalOpen(true) },
-                        ].map(stat => (
-                            <div
-                                key={stat.labelFull}
-                                onClick={stat.onClick}
-                                className={clsx(
-                                    "bg-white rounded-[1.5rem] md:rounded-2xl p-4 md:p-6 border border-slate-200 hover:shadow-lg transition-all active:scale-95 group",
-                                    stat.onClick && "cursor-pointer"
-                                )}
-                            >
-                                <div className="flex items-center justify-between mb-2 md:mb-4">
-                                    <div className={`${stat.bgLight} p-2 md:p-3 rounded-xl transition-colors group-hover:scale-110 duration-300`}>
-                                        <stat.icon className={`${stat.color.replace('bg-', 'text-')}`} size={20} />
-                                    </div>
-                                    {stat.value > 0 && stat.label === 'Alerts' && (
-                                        <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    key={tab.id}
+                                    onClick={() => { setActiveTab(tab.id); if (tab.id === 'passengers') setActiveView('all'); }}
+                                    className={clsx(
+                                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all",
+                                        activeTab === tab.id
+                                            ? "bg-white text-ocean-700 shadow-xs font-semibold"
+                                            : "text-slate-500 hover:text-slate-900 font-medium"
                                     )}
+                                >
+                                    <tab.icon size={13} />
+                                    <span>{tab.label}</span>
+                                    {tab.badge > 0 && (
+                                        <span className="h-4 w-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
+                                            {tab.badge}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Right: Actions Menu, Notifications & Sign Out */}
+                        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
+                            {/* Push Notification Onboarding & Status Toggle */}
+                            <PushNotificationToggle compact />
+
+                            {/* Quick Action Dropdown */}
+                            <div className="relative" ref={quickActionsRef}>
+                                <button
+                                    onClick={() => setIsQuickActionsOpen(!isQuickActionsOpen)}
+                                    className="flex items-center gap-1 sm:gap-2 p-2 sm:px-3.5 sm:py-2 bg-[#00456E] text-white rounded-xl text-xs font-semibold hover:bg-[#0c598a] transition-all shadow-xs active:scale-95"
+                                    title="Create New Action"
+                                >
+                                    <Lucide.Plus size={16} />
+                                    <span className="hidden sm:inline">New Action</span>
+                                    <Lucide.ChevronDown size={14} className={clsx("transition-transform duration-200 hidden xs:inline", isQuickActionsOpen && "rotate-180")} />
+                                </button>
+
+                                {isQuickActionsOpen && (
+                                    <div className="absolute right-0 mt-2 w-60 bg-white border border-slate-200 rounded-2xl shadow-2xl p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                                        <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">Launch Workflow</div>
+                                        <button
+                                            onClick={() => { setIsCreatePassengerModalOpen(true); setIsQuickActionsOpen(false); }}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-ocean-700 hover:bg-ocean-50 rounded-xl transition-all text-left"
+                                        >
+                                            <Lucide.UserPlus size={16} className="text-ocean-600" />
+                                            <span>New Passenger</span>
+                                        </button>
+                                        <button
+                                            onClick={() => { setIsCreateReminderModalOpen(true); setIsQuickActionsOpen(false); }}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-all text-left"
+                                        >
+                                            <Lucide.BellPlus size={16} className="text-amber-600" />
+                                            <span>Set Journey Reminder</span>
+                                        </button>
+                                        <button
+                                            onClick={() => { setIsCreateInvoiceModalOpen(true); setIsQuickActionsOpen(false); }}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-purple-700 hover:bg-purple-50 rounded-xl transition-all text-left"
+                                        >
+                                            <Lucide.FileText size={16} className="text-purple-600" />
+                                            <span>Generate Invoice</span>
+                                        </button>
+                                        <button
+                                            onClick={() => { navigate('/super-admin/quotations'); setIsQuickActionsOpen(false); }}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all text-left"
+                                        >
+                                            <Lucide.Sparkles size={16} className="text-emerald-600" />
+                                            <span>Flight Quotations Tool</span>
+                                        </button>
+                                        <button
+                                            onClick={() => { setIsCreateBlogModalOpen(true); setIsQuickActionsOpen(false); }}
+                                            className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-ocean-700 hover:bg-ocean-50 rounded-xl transition-all text-left"
+                                        >
+                                            <Lucide.BookOpen size={16} className="text-ocean-600" />
+                                            <span>Publish Insight</span>
+                                        </button>
+                                        {role === 'admin' && (
+                                            <button
+                                                onClick={() => { setIsAddStaffModalOpen(true); setIsQuickActionsOpen(false); }}
+                                                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all text-left border-t border-slate-100 mt-1 pt-2"
+                                            >
+                                                <Lucide.Shield size={16} className="text-slate-600" />
+                                                <span>Add Staff Member</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Notifications Icon Button */}
+                            <button
+                                onClick={() => setActiveTab('alerts')}
+                                className={clsx(
+                                    "relative p-2 sm:p-2.5 rounded-xl border transition-all shrink-0",
+                                    activeTab === 'alerts'
+                                        ? "bg-ocean-50 border-ocean-200 text-ocean-600"
+                                        : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                                )}
+                                title="System Alerts"
+                            >
+                                <Lucide.Bell size={17} />
+                                {stats.pendingNotifications > 0 && (
+                                    <span className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 bg-rose-500 rounded-full text-white text-[9px] sm:text-[10px] font-black flex items-center justify-center ring-2 ring-white">
+                                        {stats.pendingNotifications}
+                                    </span>
+                                )}
+                            </button>
+
+                            {/* Flight Quotations Shortcut (Desktop) */}
+                            <button
+                                onClick={() => navigate('/super-admin/quotations')}
+                                className="hidden sm:flex items-center gap-1.5 px-3 py-2 border border-slate-200 hover:border-ocean-300 text-slate-700 hover:text-ocean-700 rounded-xl text-xs font-semibold hover:bg-ocean-50/50 transition-all shrink-0"
+                                title="Flight Quotation Comparisons"
+                            >
+                                <Lucide.PlaneTakeoff size={15} className="text-ocean-600" />
+                                <span>Quotations</span>
+                            </button>
+
+                            {/* Sign Out */}
+                            <button
+                                onClick={handleLogout}
+                                className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                                title="Sign Out"
+                            >
+                                <Lucide.LogOut size={17} />
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Section Content Body */}
+                    <div className="p-4 sm:p-6 lg:p-7 max-w-6xl w-full mx-auto space-y-6 flex-1">
+
+                        {/* SECTION 1: OVERVIEW / COMMAND CENTER */}
+                        {activeTab === 'overview' && (
+                            <div className="space-y-5">
+                                {/* Sleek Executive Command Bar */}
+                                <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="space-y-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                            <span className="text-[11px] font-bold uppercase tracking-wider text-ocean-700">Live Control Center</span>
+                                            <span className="text-slate-300">•</span>
+                                            <span className="text-[11px] font-medium text-slate-500">Dnarai Agency Operations</span>
+                                        </div>
+                                        <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 tracking-tight">
+                                            Operational Overview
+                                        </h2>
+                                        <p className="text-xs text-slate-500 max-w-xl">
+                                            Real-time passenger journey oversight, flight bookings, and billing manifests.
+                                        </p>
+                                    </div>
+
+                                    {/* Primary Fast Actions */}
+                                    <div className="grid grid-cols-2 gap-2 w-full sm:flex sm:flex-wrap sm:w-auto">
+                                        <button
+                                            onClick={() => setIsCreatePassengerModalOpen(true)}
+                                            className="w-full sm:w-auto px-3.5 py-2.5 bg-[#00456E] hover:bg-[#0c598a] text-white rounded-xl text-xs font-semibold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-1.5"
+                                        >
+                                            <Lucide.Plus size={15} />
+                                            <span>New Passenger</span>
+                                        </button>
+                                        <button
+                                            onClick={() => { setActiveTab('bookings'); setIsCreateBookingModalOpen(true); }}
+                                            className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                        >
+                                            <Lucide.PlaneTakeoff size={15} className="text-emerald-600" />
+                                            <span>New Booking</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setIsCreateInvoiceModalOpen(true)}
+                                            className="w-full sm:w-auto px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                        >
+                                            <Lucide.FileText size={15} className="text-purple-600" />
+                                            <span>Invoice</span>
+                                        </button>
+                                        <button
+                                            onClick={() => navigate('/super-admin/quotations')}
+                                            className="w-full sm:w-auto px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100/80 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                                        >
+                                            <Lucide.Sparkles size={15} className="text-amber-600" />
+                                            <span>Quotes</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="text-xl md:text-3xl font-black text-slate-900 mb-0.5 md:mb-1">{stat.value}</div>
-                                <div className="text-[10px] md:text-sm font-bold text-slate-500 uppercase tracking-tight md:normal-case md:tracking-normal">
-                                    <span className="hidden md:inline">{stat.labelFull}</span>
-                                    <span className="md:hidden">{stat.label}</span>
+
+                                {/* KPI Metrics Cards */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                                    {[
+                                        { label: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'text-ocean-600', bg: 'bg-ocean-50', subtext: 'Registered clients', onClick: () => { setActiveTab('passengers'); setActiveView('all'); } },
+                                        { label: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'text-emerald-600', bg: 'bg-emerald-50', subtext: 'Upcoming flights', onClick: () => setActiveTab('bookings') },
+                                        { label: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'text-purple-600', bg: 'bg-purple-50', subtext: 'Current departures', onClick: () => { setActiveTab('passengers'); setActiveView('today'); } },
+                                        { label: 'System Alerts', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'text-amber-600', bg: 'bg-amber-50', subtext: 'Pending actions', onClick: () => setActiveTab('alerts') },
+                                    ].map(stat => (
+                                        <div
+                                            key={stat.label}
+                                            onClick={stat.onClick}
+                                            className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-slate-200/80 hover:border-slate-300 hover:shadow-xs transition-all cursor-pointer group active:scale-98"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <div className={clsx("p-1.5 sm:p-2 rounded-xl transition-transform group-hover:scale-105", stat.bg, stat.color)}>
+                                                    <stat.icon size={17} />
+                                                </div>
+                                                <Lucide.ChevronRight size={14} className="text-slate-300 group-hover:text-slate-500 transition-colors" />
+                                            </div>
+                                            <div className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-0.5">{stat.value}</div>
+                                            <div className="text-[11px] sm:text-xs font-semibold text-slate-700 truncate">{stat.label}</div>
+                                            <div className="text-[10px] sm:text-[11px] text-slate-400 font-normal mt-0.5 truncate">{stat.subtext}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Operational Split: Active Flights (7 cols) + Invoices & Alerts (5 cols) */}
+                                <div className="grid lg:grid-cols-12 gap-5">
+                                    {/* Left Column: Recent Flight Schedules (7 cols) */}
+                                    <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-100">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="h-8 w-8 rounded-xl bg-ocean-50 text-ocean-600 flex items-center justify-center shrink-0">
+                                                        <Lucide.PlaneTakeoff size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">Active Flight Schedules</h3>
+                                                        <p className="text-[11px] text-slate-500 font-medium">Recent passenger flight bookings & itineraries</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => { setActiveTab('bookings'); setIsCreateBookingModalOpen(true); }}
+                                                        className="hidden sm:flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-colors"
+                                                    >
+                                                        <Lucide.Plus size={13} />
+                                                        <span>Add Flight</span>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setActiveTab('bookings')}
+                                                        className="text-xs font-bold text-slate-500 hover:text-ocean-600 flex items-center gap-0.5"
+                                                    >
+                                                        <span>All</span>
+                                                        <Lucide.ChevronRight size={13} />
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2.5">
+                                                {bookings.slice(0, 4).map(b => (
+                                                    <div
+                                                        key={b._id}
+                                                        onClick={() => handleViewBookingDetails(b)}
+                                                        className="p-3 rounded-xl border border-slate-100 hover:border-ocean-200 hover:bg-slate-50/70 transition-all cursor-pointer flex items-center justify-between"
+                                                    >
+                                                        <div className="flex items-center gap-3 min-w-0">
+                                                            <div className="h-9 w-9 rounded-xl bg-ocean-700 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                                                {b.airlineName?.slice(0, 2) || 'FL'}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="text-xs font-bold text-slate-900 truncate">
+                                                                    {b.airlineName} • <span className="font-mono text-slate-600">{b.flightNumber}</span>
+                                                                </div>
+                                                                <div className="text-xs font-semibold text-ocean-600 flex items-center gap-1 mt-0.5">
+                                                                    <span>{b.origin?.iata || '---'}</span>
+                                                                    <Lucide.ArrowRight size={11} className="text-slate-400" />
+                                                                    <span>{b.destination?.iata || '---'}</span>
+                                                                    {b.seatNumber && (
+                                                                        <span className="text-[10px] text-slate-400 font-medium ml-1">Seat {b.seatNumber}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right shrink-0">
+                                                            <span className={clsx(
+                                                                "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
+                                                                b.status === 'confirmed' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-amber-50 text-amber-700 border border-amber-100"
+                                                            )}>
+                                                                {b.status}
+                                                            </span>
+                                                            <div className="text-[10px] text-slate-400 font-medium mt-1">
+                                                                {b.departureDateTimeUtc ? new Date(b.departureDateTimeUtc).toLocaleDateString() : 'Date TBD'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+
+                                                {bookings.length === 0 && (
+                                                    <div className="py-8 text-center">
+                                                        <Lucide.PlaneTakeoff size={24} className="mx-auto text-slate-300 mb-2" />
+                                                        <p className="text-xs text-slate-500 font-medium">No flight bookings recorded yet</p>
+                                                        <button
+                                                            onClick={() => { setActiveTab('bookings'); setIsCreateBookingModalOpen(true); }}
+                                                            className="mt-2 text-xs font-bold text-ocean-600 hover:underline"
+                                                        >
+                                                            + Add First Flight
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setActiveTab('bookings')}
+                                            className="w-full mt-3.5 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-600 transition-all text-center border border-slate-100"
+                                        >
+                                            View All Flight Schedules ({bookings.length})
+                                        </button>
+                                    </div>
+
+                                    {/* Right Column: Invoices & Alerts (5 cols) */}
+                                    <div className="lg:col-span-5 space-y-5">
+                                        {/* Invoices Snapshot */}
+                                        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs">
+                                            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-8 w-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                                                        <Lucide.Receipt size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">Recent Invoices</h3>
+                                                        <p className="text-[11px] text-slate-500 font-medium">Billing summary & statements</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setActiveTab('invoices')}
+                                                    className="text-xs font-bold text-ocean-600 hover:text-ocean-800 flex items-center gap-0.5"
+                                                >
+                                                    <span>All</span>
+                                                    <Lucide.ChevronRight size={13} />
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                {invoices.slice(0, 3).map(inv => (
+                                                    <div
+                                                        key={inv._id}
+                                                        onClick={() => setActiveTab('invoices')}
+                                                        className="p-2.5 rounded-xl border border-slate-100 flex items-center justify-between hover:bg-slate-50/70 transition-colors cursor-pointer"
+                                                    >
+                                                        <div className="min-w-0">
+                                                            <div className="text-xs font-bold text-slate-900 truncate">#{inv.invoiceNumber}</div>
+                                                            <div className="text-[11px] text-slate-500 truncate max-w-[140px]">{inv.passengerName || 'Client'}</div>
+                                                        </div>
+                                                        <div className="text-right shrink-0">
+                                                            <div className="text-xs font-bold text-ocean-700">{inv.currency || '₦'}{inv.total?.toLocaleString()}</div>
+                                                            <span className={clsx(
+                                                                "text-[9px] font-bold uppercase px-1.5 py-0.5 rounded",
+                                                                inv.isPaid ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                                            )}>
+                                                                {inv.isPaid ? 'Paid' : 'Unpaid'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+
+                                                {invoices.length === 0 && (
+                                                    <p className="text-center py-4 text-xs text-slate-400 italic">No invoices issued yet</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* System Alerts Feed */}
+                                        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs">
+                                            <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-8 w-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                                                        <Lucide.Bell size={16} />
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">System Alerts</h3>
+                                                        <p className="text-[11px] text-slate-500 font-medium">{stats.pendingNotifications} pending items</p>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => setActiveTab('alerts')}
+                                                    className="text-xs font-bold text-ocean-600 hover:text-ocean-800 flex items-center gap-0.5"
+                                                >
+                                                    <span>View Feed</span>
+                                                    <Lucide.ChevronRight size={13} />
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                {notifications.slice(0, 2).map(n => (
+                                                    <div
+                                                        key={n.id || n._id}
+                                                        className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs flex items-start gap-2.5"
+                                                    >
+                                                        <Lucide.Bell size={13} className="text-amber-500 mt-0.5 shrink-0" />
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="font-bold text-slate-800 truncate">{n.type?.replace('_', ' ')}</div>
+                                                            <div className="text-slate-500 text-[11px] line-clamp-1">{n.message}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {notifications.length === 0 && (
+                                                    <p className="text-center py-3 text-xs text-slate-400 italic">All caught up! No active alerts.</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        )}
 
-                    {/* Main Grid Layout */}
-                    <div className="grid lg:grid-cols-3 gap-8">
-                        {/* Left Column - Passengers List */}
-                        <div className="lg:col-span-2 space-y-6">
-                            {/* Passengers Section */}
-                            <div ref={passengerListRef} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                                <div className="p-6 border-b border-slate-200 bg-slate-50">
-                                    <div className="flex flex-col gap-4">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div>
-                                                <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">
-                                                    {activeView === 'today' ? 'Traveling Today' : 'Passenger Registry'}
-                                                </h2>
-                                                <p className="text-sm text-slate-500 mt-1">
-                                                    {activeView === 'today'
-                                                        ? `${filteredPassengers.length} passengers traveling on ${new Date(selectedDate).toLocaleDateString()}`
-                                                        : 'Manage all registered passengers'
-                                                    }
-                                                </p>
-                                            </div>
+                        {/* SECTION 2: PASSENGERS REGISTRY */}
+                        {activeTab === 'passengers' && (
+                            <div className="space-y-6">
+                                {/* Passengers Control Header */}
+                                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-xs space-y-4">
+                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                                                {activeView === 'today' ? 'Traveling Today' : 'Passenger Registry'}
+                                            </h2>
+                                            <p className="text-xs text-slate-500 mt-0.5">
+                                                {activeView === 'today'
+                                                    ? `${filteredPassengers.length} passengers traveling on ${new Date(selectedDate).toLocaleDateString()}`
+                                                    : `Manage and track ${passengers.length} registered agency travelers`
+                                                }
+                                            </p>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 xs:grid-cols-3 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 w-full lg:w-auto">
                                             <button
                                                 onClick={() => setIsCreatePassengerModalOpen(true)}
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all shadow-md whitespace-nowrap"
+                                                className="px-3.5 py-2.5 bg-[#00456E] hover:bg-[#0c598a] text-white rounded-xl text-xs font-semibold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-2"
                                             >
-                                                <Lucide.Plus size={18} />
-                                                New Passenger
+                                                <Lucide.Plus size={16} />
+                                                <span>New Passenger</span>
                                             </button>
                                             <button
                                                 onClick={() => setIsCreateReminderModalOpen(true)}
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-amber-600 text-white rounded-xl text-sm font-bold hover:bg-amber-700 transition-all shadow-md whitespace-nowrap"
+                                                className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100/80 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-2"
                                             >
-                                                <Lucide.BellPlus size={18} />
-                                                Set Reminder
-                                            </button>
-                                            <button
-                                                onClick={() => setIsCreateInvoiceModalOpen(true)}
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 text-white rounded-xl text-sm font-bold hover:bg-slate-900 transition-all shadow-md whitespace-nowrap"
-                                            >
-                                                <Lucide.FileText size={18} />
-                                                New Invoice
+                                                <Lucide.BellPlus size={16} />
+                                                <span>Set Reminder</span>
                                             </button>
                                             <button
                                                 onClick={() => navigate('/super-admin/quotations')}
-                                                className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all shadow-md whitespace-nowrap"
+                                                className="px-3.5 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-2"
                                             >
-                                                <Lucide.PlaneTakeoff size={18} />
-                                                Flight Quotations
+                                                <Lucide.Sparkles size={16} className="text-amber-500" />
+                                                <span>Flight Quotes</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Filters & Search Toolbar */}
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                                        {/* Sub-view switcher tabs */}
+                                        <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 border border-slate-200/50 w-full sm:w-auto">
+                                            <button
+                                                onClick={() => setActiveView('all')}
+                                                className={clsx(
+                                                    "flex-1 sm:flex-none text-center px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                                    activeView === 'all'
+                                                        ? "bg-white text-ocean-700 shadow-2xs font-bold"
+                                                        : "text-slate-500 hover:text-slate-900"
+                                                )}
+                                            >
+                                                All Registry ({passengers.length})
+                                            </button>
+                                            <button
+                                                onClick={() => setActiveView('today')}
+                                                className={clsx(
+                                                    "flex-1 sm:flex-none text-center px-3 sm:px-4 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                                    activeView === 'today'
+                                                        ? "bg-white text-ocean-700 shadow-2xs font-bold"
+                                                        : "text-slate-500 hover:text-slate-900"
+                                                )}
+                                            >
+                                                Traveling Today ({travelingPassengers.length})
                                             </button>
                                         </div>
 
-                                        <div className="flex flex-col sm:flex-row gap-4">
-                                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl">
-                                                <button
-                                                    onClick={() => setActiveView('all')}
-                                                    className={clsx(
-                                                        "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-                                                        activeView === 'all'
-                                                            ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                            : "text-slate-500 hover:text-slate-900"
-                                                    )}
-                                                >
-                                                    Registry
-                                                </button>
-                                                <button
-                                                    onClick={() => setActiveView('today')}
-                                                    className={clsx(
-                                                        "px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all duration-300",
-                                                        activeView === 'today'
-                                                            ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                            : "text-slate-500 hover:text-slate-900"
-                                                    )}
-                                                >
-                                                    Traveling Today
-                                                </button>
+                                        {activeView === 'today' && (
+                                            <div className="flex items-center justify-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shrink-0">
+                                                <Lucide.Calendar size={16} className="text-slate-400" />
+                                                <input
+                                                    type="date"
+                                                    value={selectedDate}
+                                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                                    className="text-xs font-bold text-slate-700 focus:outline-none"
+                                                />
                                             </div>
+                                        )}
 
-                                            {activeView === 'today' && (
-                                                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
-                                                    <Lucide.Calendar size={16} className="text-slate-400" />
-                                                    <input
-                                                        type="date"
-                                                        value={selectedDate}
-                                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                                        className="text-sm font-medium focus:outline-none"
-                                                    />
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Search */}
-                                        <div className="relative">
-                                            <Lucide.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        {/* Search Input */}
+                                        <div className="relative flex-1 w-full max-w-full sm:max-w-md">
+                                            <Lucide.Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
                                             <input
                                                 type="text"
-                                                placeholder="Search passengers..."
+                                                placeholder="Search by name, email, or passenger ID..."
                                                 value={searchQuery}
                                                 onChange={e => setSearchQuery(e.target.value)}
-                                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-ocean-500 transition-all"
+                                                className="w-full pl-10 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:border-ocean-500 transition-all"
                                             />
+                                            {searchQuery && (
+                                                <button
+                                                    onClick={() => setSearchQuery('')}
+                                                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                                                >
+                                                    <Lucide.X size={14} />
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
 
-
-
-                                <div className="block md:hidden">
-                                    {paginatedPassengers.map(p => (
-                                        <div
-                                            key={p.id || p._id}
-                                            onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
-                                            className={clsx(
-                                                "p-5 border-b border-slate-100 flex items-center justify-between transition-all duration-200 cursor-pointer border-l-4",
-                                                (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id)
-                                                    ? "bg-ocean-50/90 border-ocean-600 font-bold shadow-sm animate-in fade-in duration-300"
-                                                    : "bg-white hover:bg-ocean-50/40 hover:border-ocean-300 border-transparent"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-black text-lg shadow-sm border border-white">
-                                                    {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                {/* Passengers Table / Mobile Cards */}
+                                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                                    {/* Mobile Cards */}
+                                    <div className="block md:hidden divide-y divide-slate-100">
+                                        {paginatedPassengers.map(p => (
+                                            <div
+                                                key={p.id || p._id}
+                                                onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
+                                                className="p-4 flex items-center justify-between hover:bg-slate-50/70 transition-colors cursor-pointer"
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="h-11 w-11 rounded-2xl bg-ocean-100 text-ocean-700 font-black text-sm flex items-center justify-center shrink-0 border border-ocean-200">
+                                                        {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <div className="font-black text-slate-900 text-sm truncate">{p.fullName}</div>
+                                                        <div className="text-xs text-slate-500 truncate">{p.email}</div>
+                                                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <div className="font-black text-slate-900 text-base leading-tight">{p.fullName}</div>
-                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setTravelCardPassengerId(p.id || p._id);
+                                                            setActiveTab('travel-card');
+                                                        }}
+                                                        className="p-2 text-ocean-600 hover:bg-ocean-50 rounded-xl transition-all"
+                                                        title="Generate Travel Card"
+                                                    >
+                                                        <Lucide.CreditCard size={18} />
+                                                    </button>
+                                                    <Lucide.ChevronRight size={18} className="text-slate-300" />
                                                 </div>
                                             </div>
-                                            <Lucide.ChevronRight size={20} className="text-slate-300" />
-                                        </div>
-                                    ))}
-                                    {filteredPassengers.length === 0 && (
-                                        <div className="p-10 text-center text-slate-400 italic">No passengers found</div>
-                                    )}
-                                </div>
+                                        ))}
+                                        {filteredPassengers.length === 0 && (
+                                            <div className="p-12 text-center text-slate-400 italic text-xs">No passengers match your search criteria.</div>
+                                        )}
+                                    </div>
 
-                                <div className="hidden md:block overflow-x-auto">
-                                    <table className="w-full">
-                                        <thead className="bg-slate-50 border-b border-slate-200">
-                                            <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Passenger</th>
-                                                <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Contact</th>
-                                                {activeView === 'today' && (
-                                                    <th className="px-6 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Flight</th>
-                                                )}
-                                                <th className="px-6 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {paginatedPassengers.map(p => (
-                                                <tr
-                                                    key={p.id || p._id}
-                                                    onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
-                                                    className={clsx(
-                                                        "group cursor-pointer transition-all duration-200",
-                                                        (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id)
-                                                            ? "bg-ocean-50/90 font-bold text-ocean-950 shadow-sm"
-                                                            : "bg-white hover:bg-ocean-50/40 hover:text-ocean-900"
-                                                    )}
-                                                >
-                                                    <td className={clsx(
-                                                        "px-6 py-4 border-l-4 transition-all duration-200",
-                                                        (selectedPassenger?.id === p.id || selectedPassenger?._id === p._id)
-                                                            ? "border-ocean-600"
-                                                            : "border-transparent group-hover:border-ocean-300"
-                                                    )}>
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="h-10 w-10 rounded-full bg-ocean-100 flex items-center justify-center text-ocean-700 font-bold text-sm">
-                                                                {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                                            </div>
-                                                            <div>
-                                                                <div className="font-bold text-slate-900">{p.fullName}</div>
-                                                                <div className="text-xs text-slate-500">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="text-sm text-slate-900">{p.email}</div>
-                                                        <div className="text-xs text-slate-500">{p.phone || 'No phone'}</div>
-                                                    </td>
+                                    {/* Desktop Table View */}
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-slate-50/70 border-b border-slate-100">
+                                                <tr>
+                                                    <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Traveler</th>
+                                                    <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Contact Info</th>
                                                     {activeView === 'today' && (
-                                                        <td className="px-6 py-4">
-                                                            {p.bookings && p.bookings.length > 0 ? (
-                                                                <div
-                                                                    onClick={(e) => { e.stopPropagation(); handleViewBookingDetails(p.bookings[0]); }}
-                                                                    className="text-sm hover:bg-ocean-100 p-2 rounded-lg transition-all border border-transparent hover:border-ocean-200"
-                                                                >
-                                                                    <div className="font-bold text-slate-900 flex items-center gap-1">
-                                                                        {p.bookings[0].flightNumber}
-                                                                        <Lucide.ExternalLink size={12} className="text-slate-400" />
-                                                                    </div>
-                                                                    <div className="text-xs text-slate-500">
-                                                                        {p.bookings[0].origin?.iata} → {p.bookings[0].destination?.iata}
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-xs text-slate-400">No flight</span>
-                                                            )}
-                                                        </td>
+                                                        <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today&apos;s Flight</th>
                                                     )}
-                                                    <td className="px-6 py-4 text-right">
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setEditForm(p); setIsEditModalOpen(true); }}
-                                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
-                                                            >
-                                                                <Lucide.Edit size={14} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); setDeleteConfirmation({ passenger: p }); }}
-                                                                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                            >
-                                                                <Lucide.Trash2 size={14} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
+                                                    <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {totalPages > 1 && (
-                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 pb-6 pt-4 border-t border-slate-100">
-                                        <div className="text-xs font-semibold text-slate-500">
-                                            Showing <span className="font-bold text-slate-900">{startIndex + 1}</span> to{' '}
-                                            <span className="font-bold text-slate-900">
-                                                {Math.min(endIndex, filteredPassengers.length)}
-                                            </span>{' '}
-                                            of <span className="font-bold text-slate-900">{filteredPassengers.length}</span> passengers
-                                        </div>
-                                        <div className="flex items-center gap-1.5">
-                                            <button
-                                                disabled={passengerPage === 1}
-                                                onClick={() => setPassengerPage(prev => Math.max(prev - 1, 1))}
-                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
-                                            >
-                                                <Lucide.ChevronLeft size={16} />
-                                            </button>
-                                            
-                                            {(() => {
-                                                if (totalPages <= 7) {
-                                                    return Array.from({ length: totalPages }, (_, i) => i + 1);
-                                                }
-                                                const pages = [];
-                                                for (let i = 1; i <= totalPages; i++) {
-                                                    if (
-                                                        i === 1 ||
-                                                        i === totalPages ||
-                                                        (i >= passengerPage - 1 && i <= passengerPage + 1)
-                                                    ) {
-                                                        pages.push(i);
-                                                    } else if (
-                                                        pages[pages.length - 1] !== '...'
-                                                    ) {
-                                                        pages.push('...');
-                                                    }
-                                                }
-                                                return pages;
-                                            })().map((pageNum, idx) => {
-                                                if (pageNum === '...') {
-                                                    return (
-                                                        <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs font-bold">
-                                                            ...
-                                                        </span>
-                                                    );
-                                                }
-                                                return (
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {paginatedPassengers.map(p => (
+                                                    <tr
+                                                        key={p.id || p._id}
+                                                        onClick={() => { setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
+                                                        className="group cursor-pointer hover:bg-ocean-50/40 transition-colors"
+                                                    >
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-10 w-10 rounded-xl bg-ocean-100 text-ocean-700 font-black text-xs flex items-center justify-center border border-ocean-200 shadow-xs shrink-0">
+                                                                    {p.fullName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-slate-900 text-sm group-hover:text-ocean-700 transition-colors">{p.fullName}</div>
+                                                                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">ID: {(p.id || p._id)?.slice(-8).toUpperCase()}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="text-xs font-semibold text-slate-800">{p.email}</div>
+                                                            <div className="text-[11px] text-slate-400 mt-0.5">{p.phone || 'No phone recorded'}</div>
+                                                        </td>
+                                                        {activeView === 'today' && (
+                                                            <td className="px-6 py-4">
+                                                                {p.bookings && p.bookings.length > 0 ? (
+                                                                    <div
+                                                                        onClick={(e) => { e.stopPropagation(); handleViewBookingDetails(p.bookings[0]); }}
+                                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-ocean-50 text-ocean-700 border border-ocean-200/60 hover:bg-ocean-100 transition-all"
+                                                                    >
+                                                                        <span className="font-bold text-xs">{p.bookings[0].flightNumber}</span>
+                                                                        <span className="text-[10px] font-medium text-ocean-600">({p.bookings[0].origin?.iata} → {p.bookings[0].destination?.iata})</span>
+                                                                        <Lucide.ExternalLink size={12} className="text-ocean-400" />
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-xs text-slate-400 italic">No flight scheduled</span>
+                                                                )}
+                                                            </td>
+                                                        )}
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center justify-end gap-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setTravelCardPassengerId(p.id || p._id);
+                                                                        setActiveTab('travel-card');
+                                                                    }}
+                                                                    className="p-2 text-slate-500 hover:text-ocean-600 hover:bg-ocean-50 rounded-xl transition-all"
+                                                                    title="Generate Travel Card"
+                                                                >
+                                                                    <Lucide.CreditCard size={15} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
+                                                                    className="p-2 text-slate-500 hover:text-ocean-600 hover:bg-ocean-50 rounded-xl transition-all"
+                                                                    title="View Traveler Details"
+                                                                >
+                                                                    <Lucide.Eye size={15} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setEditForm(p); setIsEditModalOpen(true); }}
+                                                                    className="p-2 text-slate-500 hover:text-ocean-600 hover:bg-ocean-50 rounded-xl transition-all"
+                                                                    title="Edit Passenger Profile"
+                                                                >
+                                                                    <Lucide.Edit size={15} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); setDeleteConfirmation({ passenger: p }); }}
+                                                                    className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                                                    title="Delete Passenger Record"
+                                                                >
+                                                                    <Lucide.Trash2 size={15} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {filteredPassengers.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={activeView === 'today' ? 4 : 3} className="px-6 py-16 text-center text-slate-400 italic text-xs">
+                                                            No passenger accounts match your search.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Pagination */}
+                                    {totalPages > 1 && (
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-slate-50/40">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                                Showing <span className="font-bold text-slate-900">{startIndex + 1}</span> to{' '}
+                                                <span className="font-bold text-slate-900">{Math.min(endIndex, filteredPassengers.length)}</span> of{' '}
+                                                <span className="font-bold text-slate-900">{filteredPassengers.length}</span> passengers
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    disabled={passengerPage === 1}
+                                                    onClick={() => setPassengerPage(prev => Math.max(prev - 1, 1))}
+                                                    className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-white disabled:opacity-40 transition-all"
+                                                >
+                                                    <Lucide.ChevronLeft size={16} />
+                                                </button>
+                                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(num => (
                                                     <button
-                                                        key={pageNum}
-                                                        onClick={() => setPassengerPage(pageNum)}
+                                                        key={num}
+                                                        onClick={() => setPassengerPage(num)}
                                                         className={clsx(
-                                                            "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
-                                                            passengerPage === pageNum
-                                                                ? "bg-ocean-600 border-ocean-600 text-white shadow-sm shadow-ocean-600/20"
-                                                                : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                            "h-8 w-8 rounded-lg text-xs font-bold transition-all",
+                                                            passengerPage === num
+                                                                ? "bg-ocean-600 text-white shadow-xs"
+                                                                : "border border-slate-200 text-slate-600 hover:bg-white"
                                                         )}
                                                     >
-                                                        {pageNum}
+                                                        {num}
                                                     </button>
-                                                );
-                                            })}
-                                            
+                                                ))}
+                                                <button
+                                                    disabled={passengerPage === totalPages}
+                                                    onClick={() => setPassengerPage(prev => Math.min(prev + 1, totalPages))}
+                                                    className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-white disabled:opacity-40 transition-all"
+                                                >
+                                                    <Lucide.ChevronRight size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SECTION 3: FLIGHT BOOKINGS */}
+                        {activeTab === 'bookings' && (
+                            <div className="space-y-6">
+                                {/* Bookings Control Header */}
+                                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-900 tracking-tight">Flight Bookings</h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">Manage confirmed flights, itineraries, PNR references, and tickets</p>
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+                                        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50 w-full sm:w-auto">
                                             <button
-                                                disabled={passengerPage === totalPages}
-                                                onClick={() => setPassengerPage(prev => Math.min(prev + 1, totalPages))}
-                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                                onClick={() => setBookingFilter('recent')}
+                                                className={clsx(
+                                                    "flex-1 sm:flex-none text-center px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                                    bookingFilter === 'recent' ? "bg-white text-ocean-700 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                                                )}
                                             >
-                                                <Lucide.ChevronRight size={16} />
+                                                Recent Flights
+                                            </button>
+                                            <button
+                                                onClick={() => setBookingFilter('all')}
+                                                className={clsx(
+                                                    "flex-1 sm:flex-none text-center px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                                    bookingFilter === 'all' ? "bg-white text-ocean-700 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                                                )}
+                                            >
+                                                All History ({bookings.length})
                                             </button>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
 
-                            {/* Recent Bookings */}
-                            <div ref={bookingsListRef} className="bg-white rounded-2xl border border-slate-200 p-6">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-                                        {bookingFilter === 'recent' ? 'Recent Bookings' : 'All Bookings'}
-                                    </h3>
-                                    <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                                         <button
-                                            onClick={() => setBookingFilter('recent')}
-                                            className={clsx(
-                                                "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                                                bookingFilter === 'recent'
-                                                    ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                    : "text-slate-500 hover:text-slate-700"
-                                            )}
+                                            onClick={() => navigate('/super-admin/quotations')}
+                                            className="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-2"
                                         >
-                                            Recent
-                                        </button>
-                                        <button
-                                            onClick={() => setBookingFilter('all')}
-                                            className={clsx(
-                                                "px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                                                bookingFilter === 'all'
-                                                    ? "bg-white dark:bg-slate-900 text-ocean-600 shadow-sm"
-                                                    : "text-slate-500 hover:text-slate-700"
-                                            )}
-                                        >
-                                            History
+                                            <Lucide.Sparkles size={16} className="text-amber-500" />
+                                            <span>Flight Quotes</span>
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Bookings List Grid */}
                                 <div className="grid gap-4">
                                     {paginatedBookings.map(b => (
                                         <div
                                             key={b._id}
                                             onClick={() => handleViewBookingDetails(b)}
-                                            className="border border-slate-200 rounded-xl p-4 hover:border-ocean-300 hover:shadow-md transition-all cursor-pointer group"
+                                            className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 hover:border-ocean-300 hover:shadow-lg transition-all cursor-pointer group"
                                         >
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="h-10 w-10 rounded-lg bg-slate-900 text-white flex items-center justify-center text-xs font-bold">
-                                                        {b.airlineName?.slice(0, 2).toUpperCase()}
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-3 sm:mb-4">
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div className="h-11 w-11 sm:h-12 sm:w-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-xs sm:text-sm font-black tracking-wider uppercase shadow-md shrink-0">
+                                                        {b.airlineName?.slice(0, 2).toUpperCase() || 'FL'}
                                                     </div>
-                                                    <div>
-                                                        <div className="font-bold text-slate-900">{b.airlineName}</div>
-                                                        <div className="text-xs text-ocean-600 font-medium">{b.flightNumber}</div>
+                                                    <div className="min-w-0">
+                                                        <div className="font-black text-slate-900 text-sm sm:text-base truncate">{b.airlineName}</div>
+                                                        <div className="text-xs font-bold text-ocean-600 font-mono tracking-wide">{b.flightNumber}</div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+
+                                                <div className="flex items-center justify-between sm:justify-end gap-2.5">
                                                     <span className={clsx(
-                                                        "px-3 py-1 rounded-full text-xs font-bold",
-                                                        b.status === 'confirmed' ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"
+                                                        "px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider",
+                                                        b.status === 'confirmed' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-amber-50 text-amber-700 border border-amber-200"
                                                     )}>
                                                         {b.status}
                                                     </span>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            openEditBookingModal(b);
-                                                        }}
-                                                        className="p-1.5 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-lg transition-all"
-                                                    >
-                                                        <Lucide.Edit size={14} />
-                                                    </button>
-                                                    <Lucide.ArrowRight size={16} className="text-slate-400 group-hover:text-ocean-600 transition-colors" />
+                                                    <div className="flex items-center gap-1">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); openEditBookingModal(b); }}
+                                                            className="p-2 text-slate-400 hover:text-ocean-600 hover:bg-ocean-50 rounded-xl transition-all"
+                                                            title="Edit Itinerary"
+                                                        >
+                                                            <Lucide.Edit size={16} />
+                                                        </button>
+                                                        <div className="p-2 text-slate-400 group-hover:text-ocean-600 transition-colors">
+                                                            <Lucide.ArrowRight size={18} />
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center justify-between text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-bold text-slate-900">{b.origin?.iata}</span>
-                                                    <Lucide.ArrowRight size={16} className="text-slate-400" />
-                                                    <span className="font-bold text-slate-900">{b.destination?.iata}</span>
+
+                                            {/* Route & Flight Visual Strip */}
+                                            <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                                                <div className="flex items-center justify-between sm:justify-start gap-3 sm:gap-4">
+                                                    <div>
+                                                        <div className="text-lg sm:text-xl font-black text-slate-900 font-mono">{b.origin?.iata || '---'}</div>
+                                                        <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate max-w-[100px] sm:max-w-none">{b.origin?.city || 'Origin'}</div>
+                                                    </div>
+                                                    <div className="flex flex-col items-center px-2 sm:px-4">
+                                                        <Lucide.Plane size={18} className="text-ocean-500" />
+                                                        <div className="w-12 sm:w-16 h-0.5 bg-ocean-200 mt-1 hidden sm:block"></div>
+                                                    </div>
+                                                    <div className="text-right sm:text-left">
+                                                        <div className="text-lg sm:text-xl font-black text-slate-900 font-mono">{b.destination?.iata || '---'}</div>
+                                                        <div className="text-[11px] sm:text-xs text-slate-500 font-medium truncate max-w-[100px] sm:max-w-none">{b.destination?.city || 'Destination'}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-slate-500">
-                                                    {new Date(b.departureDateTimeUtc).toLocaleDateString()}
+
+                                                <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 text-xs font-semibold text-slate-600 border-t sm:border-t-0 pt-2.5 sm:pt-0 border-slate-200">
+                                                    <div>
+                                                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400 block">Departure</span>
+                                                        <span className="text-xs">{new Date(b.departureDateTimeUtc).toLocaleDateString()} {b.departureTime24 ? `at ${b.departureTime24}` : ''}</span>
+                                                    </div>
+                                                    {b.bookingReference && (
+                                                        <div>
+                                                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400 block">PNR</span>
+                                                            <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-800 text-xs">{b.bookingReference}</span>
+                                                        </div>
+                                                    )}
+                                                    {b.ticketNumber && (
+                                                        <div>
+                                                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-400 block">Ticket</span>
+                                                            <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-slate-800 text-xs">{b.ticketNumber}</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     ))}
+                                    {displayedBookings.length === 0 && (
+                                        <div className="bg-white rounded-3xl p-16 border border-slate-200 text-center">
+                                            <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
+                                                <Lucide.PlaneTakeoff size={32} />
+                                            </div>
+                                            <h3 className="font-bold text-slate-800 mb-1">No bookings found</h3>
+                                            <p className="text-xs text-slate-400">Flight bookings added to passengers will appear here.</p>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* Pagination */}
                                 {totalBookingPages > 1 && (
-                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 mt-4 border-t border-slate-100">
+                                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-slate-200">
                                         <div className="text-xs font-semibold text-slate-500">
                                             Showing <span className="font-bold text-slate-900">{(bookingPage - 1) * BOOKINGS_PER_PAGE + 1}</span> to{' '}
-                                            <span className="font-bold text-slate-900">
-                                                {Math.min(bookingPage * BOOKINGS_PER_PAGE, displayedBookings.length)}
-                                            </span>{' '}
-                                            of <span className="font-bold text-slate-900">{displayedBookings.length}</span> bookings
+                                            <span className="font-bold text-slate-900">{Math.min(bookingPage * BOOKINGS_PER_PAGE, displayedBookings.length)}</span> of{' '}
+                                            <span className="font-bold text-slate-900">{displayedBookings.length}</span> bookings
                                         </div>
                                         <div className="flex items-center gap-1.5">
                                             <button
                                                 disabled={bookingPage === 1}
                                                 onClick={() => setBookingPage(prev => Math.max(prev - 1, 1))}
-                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                                             >
                                                 <Lucide.ChevronLeft size={16} />
                                             </button>
-                                            
-                                            {(() => {
-                                                if (totalBookingPages <= 7) {
-                                                    return Array.from({ length: totalBookingPages }, (_, i) => i + 1);
-                                                }
-                                                const pages = [];
-                                                for (let i = 1; i <= totalBookingPages; i++) {
-                                                    if (
-                                                        i === 1 ||
-                                                        i === totalBookingPages ||
-                                                        (i >= bookingPage - 1 && i <= bookingPage + 1)
-                                                    ) {
-                                                        pages.push(i);
-                                                    } else if (
-                                                        pages[pages.length - 1] !== '...'
-                                                    ) {
-                                                        pages.push('...');
-                                                    }
-                                                }
-                                                return pages;
-                                            })().map((pageNum, idx) => {
-                                                if (pageNum === '...') {
-                                                    return (
-                                                        <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs font-bold">
-                                                            ...
-                                                        </span>
-                                                    );
-                                                }
-                                                return (
-                                                    <button
-                                                        key={pageNum}
-                                                        onClick={() => setBookingPage(pageNum)}
-                                                        className={clsx(
-                                                            "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
-                                                            bookingPage === pageNum
-                                                                ? "bg-ocean-600 border-ocean-600 text-white shadow-sm shadow-ocean-600/20"
-                                                                : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                                                        )}
-                                                    >
-                                                        {pageNum}
-                                                    </button>
-                                                );
-                                            })}
-                                            
+                                            {Array.from({ length: totalBookingPages }, (_, i) => i + 1).map(num => (
+                                                <button
+                                                    key={num}
+                                                    onClick={() => setBookingPage(num)}
+                                                    className={clsx(
+                                                        "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
+                                                        bookingPage === num ? "bg-ocean-600 border-ocean-600 text-white" : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                    )}
+                                                >
+                                                    {num}
+                                                </button>
+                                            ))}
                                             <button
                                                 disabled={bookingPage === totalBookingPages}
                                                 onClick={() => setBookingPage(prev => Math.min(prev + 1, totalBookingPages))}
-                                                className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
                                             >
                                                 <Lucide.ChevronRight size={16} />
                                             </button>
@@ -1668,164 +2674,192 @@ export default function SuperAdminPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        )}
 
-                        {/* Invoices Section - Modernized */}
-                        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
-                            <div className="p-5 md:p-6 border-b border-slate-100 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-12 w-12 bg-ocean-50 text-ocean-600 rounded-2xl flex items-center justify-center shadow-inner">
-                                        <Lucide.Receipt size={24} />
+                        {/* SECTION 4: INVOICES & BILLING */}
+                        {activeTab === 'invoices' && (
+                            <div className="space-y-6">
+                                {/* Invoices Metric Strip */}
+                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                                    <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+                                        <div>
+                                            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">Total Invoices</div>
+                                            <div className="text-xl sm:text-2xl font-black text-slate-900">{invoices.length}</div>
+                                        </div>
+                                        <div className="text-[10px] sm:text-[11px] text-slate-500 mt-2 truncate">Issued travel documents</div>
                                     </div>
-                                    <div>
-                                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Invoice History</h2>
-                                        <p className="text-xs text-slate-500 font-medium">Manage and distribute travel billing</p>
+                                    <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+                                        <div>
+                                            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">Billed Revenue</div>
+                                            <div className="text-xl sm:text-2xl font-black text-ocean-600 truncate">
+                                                {invoices[0]?.currency || '₦'}{totalBilledRevenue.toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] sm:text-[11px] text-slate-500 mt-2 truncate">Net bookings (excl. fee)</div>
+                                    </div>
+                                    <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+                                        <div>
+                                            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">Profit / Fee</div>
+                                            <div className="text-xl sm:text-2xl font-black text-amber-600 truncate">
+                                                {invoices[0]?.currency || '₦'}{totalServiceChargeProfit.toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] sm:text-[11px] text-slate-500 mt-2 truncate">Agency earned fee &amp; profit</div>
+                                    </div>
+                                    <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-xs flex flex-col justify-between">
+                                        <div>
+                                            <div className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 truncate">Payment Status</div>
+                                            <div className="text-xl sm:text-2xl font-black text-emerald-600">
+                                                {paidInvoicesCount} <span className="text-xs sm:text-sm font-bold text-emerald-700">Paid</span>
+                                            </div>
+                                        </div>
+                                        <div className="text-[10px] sm:text-[11px] text-slate-500 mt-2 truncate">
+                                            {invoices.length - paidInvoicesCount} Pending / Unpaid
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    {invoices.length > 0 && (
-                                        <button
-                                            onClick={handleDeleteAllInvoices}
-                                            className="p-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-black hover:bg-rose-100 transition-all border border-rose-100/50"
-                                            title="Purge All Invoices"
-                                        >
-                                            <Lucide.Trash2 size={18} />
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => setIsCreateInvoiceModalOpen(true)}
-                                        className="flex-1 sm:flex-none px-5 py-3 bg-ocean-600 text-white rounded-2xl text-xs font-black hover:bg-ocean-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-ocean-600/20 active:scale-95"
-                                    >
-                                        <Lucide.Plus size={18} />
-                                        <span>New Invoice</span>
-                                    </button>
-                                </div>
-                            </div>
 
-                            <div className="bg-white">
-                                {invoices.length === 0 ? (
-                                    <div className="px-6 py-20 text-center">
-                                        <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100/50">
-                                            <Lucide.FileText className="text-slate-200" size={40} />
+                                {/* Invoices Table Card */}
+                                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                                    <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 sm:h-12 sm:w-12 bg-ocean-50 text-ocean-600 rounded-2xl flex items-center justify-center shadow-inner shrink-0">
+                                                <Lucide.Receipt size={22} />
+                                            </div>
+                                            <div>
+                                                <h2 className="text-lg sm:text-xl font-black text-slate-900 uppercase tracking-tight font-display">Invoice History</h2>
+                                                <p className="text-xs text-slate-500 font-medium">Issue, download, share, edit status, and track passenger billing</p>
+                                            </div>
                                         </div>
-                                        <h3 className="text-slate-900 font-bold mb-1">No invoices found</h3>
-                                        <p className="text-sm font-medium text-slate-400 max-w-xs mx-auto">Create and manage your professional invoices for passengers here.</p>
-                                        <button
-                                            onClick={() => setIsCreateInvoiceModalOpen(true)}
-                                            className="mt-6 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all"
-                                        >
-                                            Create First Invoice
-                                        </button>
+                                        <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto justify-end">
+                                            {invoices.length > 0 && (
+                                                <button
+                                                    onClick={handleDeleteAllInvoices}
+                                                    className="p-2.5 sm:px-3.5 sm:py-2.5 bg-rose-50 text-rose-600 rounded-xl text-xs font-black uppercase tracking-wider hover:bg-rose-100 transition-all border border-rose-100"
+                                                    title="Purge All Invoices"
+                                                >
+                                                    <Lucide.Trash2 size={16} />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => setIsCreateInvoiceModalOpen(true)}
+                                                className="flex-1 sm:flex-none justify-center px-4 sm:px-5 py-2.5 bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-md shadow-ocean-600/20 active:scale-95"
+                                            >
+                                                <Lucide.Plus size={16} />
+                                                <span>New Invoice</span>
+                                            </button>
+                                        </div>
                                     </div>
-                                ) : (
-                                    <>
-                                        {/* Mobile Card List - Neat and Professional */}
-                                        <div className="md:hidden divide-y divide-slate-50">
-                                            {paginatedInvoices.map(inv => (
-                                                <div key={inv._id} className="p-5 hover:bg-slate-50/50 transition-colors">
-                                                    <div className="flex items-start gap-4 mb-4">
-                                                        <div className="h-10 w-10 bg-slate-900 text-white rounded-xl flex items-center justify-center shrink-0 shadow-lg">
-                                                            <Lucide.FileText size={18} />
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center justify-between gap-2">
-                                                                <span className="text-sm font-black text-slate-900 truncate">#{inv.invoiceNumber}</span>
-                                                                <span className="text-sm font-black text-ocean-600 shrink-0">{inv.currency}{inv.total?.toLocaleString()}</span>
-                                                            </div>
-                                                            <div className="text-xs text-slate-600 font-bold mt-0.5 truncate">{inv.passengerName}</div>
-                                                            <div className="flex items-center gap-2 mt-1.5">
-                                                                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">{new Date(inv.date).toLocaleDateString()}</span>
-                                                                <span className="text-[10px] text-slate-400 font-black uppercase tracking-tight italic">{inv.paymentType.replace('_', ' ')}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
 
-                                                    <div className="grid grid-cols-3 gap-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedInvoiceForShare(inv);
-                                                                setIsShareInvoiceModalOpen(true);
-                                                            }}
-                                                            className="flex items-center justify-center gap-2 py-3 bg-ocean-600 text-white rounded-xl text-xs font-black shadow-md shadow-ocean-600/10 active:scale-95 transition-all"
-                                                        >
-                                                            <Lucide.Share2 size={14} />
-                                                            <span>Share</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDownloadInvoice(inv)}
-                                                            className="flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-700 rounded-xl text-xs font-black active:scale-95 transition-all border border-slate-200/50"
-                                                        >
-                                                            <Lucide.Download size={14} />
-                                                            <span>PDF</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteInvoice(inv._id)}
-                                                            className="flex items-center justify-center py-3 bg-rose-50 text-rose-600 rounded-xl text-xs font-black active:scale-95 transition-all border border-rose-100/50"
-                                                        >
-                                                            <Lucide.Trash2 size={16} />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        {/* Desktop Table View - Polished and Modern */}
-                                        <div className="hidden md:block overflow-x-auto">
-                                            <table className="w-full">
-                                                <thead className="bg-slate-50/50 border-b border-slate-100">
-                                                    <tr>
-                                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Document</th>
-                                                        <th className="px-6 py-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest">Recipient</th>
-                                                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Amount & Method</th>
-                                                        <th className="px-6 py-4 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-slate-50">
-                                                    {paginatedInvoices.map(inv => (
+                                    {/* Desktop Table View */}
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-slate-50/70 border-b border-slate-100">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Document &amp; Status</th>
+                                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Recipient</th>
+                                                    <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Amount &amp; Breakdown</th>
+                                                    <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {paginatedInvoices.map(inv => {
+                                                    const isPaid = Boolean(inv.isPaid || inv.status === 'paid' || (inv.balanceDue === 0 && Number(inv.total) > 0));
+                                                    const netBilled = inv.subTotal !== undefined ? inv.subTotal : Math.max(0, (inv.total || 0) - (inv.serviceCharge || 0));
+                                                    return (
                                                         <tr key={inv._id} className="hover:bg-slate-50/80 transition-colors group">
                                                             <td className="px-6 py-4">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-slate-900 group-hover:text-white transition-all duration-300">
+                                                                    <div className="h-10 w-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-slate-900 group-hover:text-white transition-all">
                                                                         <Lucide.FileText size={18} />
                                                                     </div>
                                                                     <div>
-                                                                        <div className="font-black text-slate-900">#{inv.invoiceNumber}</div>
-                                                                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{new Date(inv.date).toLocaleDateString()}</div>
+                                                                        <div className="font-black text-slate-900 text-sm">#{inv.invoiceNumber}</div>
+                                                                        <div className="flex items-center gap-2 mt-1">
+                                                                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{new Date(inv.date).toLocaleDateString()}</span>
+                                                                            {isPaid ? (
+                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                                    <Lucide.CheckCircle2 size={11} className="text-emerald-600" /> Paid
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                                                                                    <Lucide.Clock size={11} className="text-amber-600" /> Unpaid
+                                                                                </span>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4">
                                                                 <div className="text-sm font-bold text-slate-800">{inv.passengerName}</div>
-                                                                <div className="text-[10px] text-slate-400 font-medium truncate max-w-[180px]">{inv.passengerEmail}</div>
+                                                                <div className="text-[11px] text-slate-400 font-medium truncate max-w-[200px]">{inv.passengerEmail}</div>
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
                                                                 <div className="text-sm font-black text-ocean-600">{inv.currency}{inv.total?.toLocaleString()}</div>
-                                                                <div className="text-[10px] text-slate-400 uppercase font-black tracking-tight opacity-70">
-                                                                    {inv.paymentType.replace('_', ' ')}
+                                                                <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                                                                    <span>Net: {inv.currency}{netBilled.toLocaleString()}</span>
+                                                                    {Number(inv.serviceCharge) > 0 && (
+                                                                        <span className="text-amber-600 font-bold ml-1.5">+ {inv.currency}{Number(inv.serviceCharge).toLocaleString()} fee</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-400 uppercase font-black tracking-tight opacity-75 mt-0.5">
+                                                                    {inv.paymentType?.replace('_', ' ')}
                                                                 </div>
                                                             </td>
                                                             <td className="px-6 py-4 text-right">
-                                                                <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                                                <div className="flex justify-end items-center gap-1.5 opacity-85 group-hover:opacity-100 transition-all">
+                                                                    {/* Quick Status Toggle Button */}
+                                                                    {isPaid ? (
+                                                                        <button
+                                                                            onClick={() => handleToggleInvoicePaid(inv)}
+                                                                            className="px-2.5 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded-xl transition-all border border-amber-200 text-xs font-bold flex items-center gap-1"
+                                                                            title="Change status to Unpaid"
+                                                                        >
+                                                                            <Lucide.RotateCcw size={13} />
+                                                                            <span>Set Unpaid</span>
+                                                                        </button>
+                                                                    ) : (
+                                                                        <button
+                                                                            onClick={() => handleToggleInvoicePaid(inv)}
+                                                                            className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all text-xs font-bold flex items-center gap-1 shadow-xs"
+                                                                            title="Change status to Paid"
+                                                                        >
+                                                                            <Lucide.CheckCircle2 size={13} />
+                                                                            <span>Mark Paid</span>
+                                                                        </button>
+                                                                    )}
+
+                                                                    {/* Edit Invoice Button */}
                                                                     <button
-                                                                        onClick={() => {
-                                                                            setSelectedInvoiceForShare(inv);
-                                                                            setIsShareInvoiceModalOpen(true);
-                                                                        }}
-                                                                        className="p-2.5 bg-ocean-50 text-ocean-600 rounded-xl hover:bg-ocean-100 transition-all"
-                                                                        title="Share with Passenger"
+                                                                        onClick={() => openEditInvoiceModal(inv)}
+                                                                        className="p-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl transition-all"
+                                                                        title="Edit Invoice Details &amp; Payment Status"
+                                                                    >
+                                                                        <Lucide.Edit size={16} />
+                                                                    </button>
+
+                                                                    {/* Share Invoice */}
+                                                                    <button
+                                                                        onClick={() => { setSelectedInvoiceForShare(inv); setIsShareInvoiceModalOpen(true); }}
+                                                                        className="p-2 bg-ocean-50 text-ocean-600 rounded-xl hover:bg-ocean-100 transition-all"
+                                                                        title="Share via WhatsApp or Email"
                                                                     >
                                                                         <Lucide.Share2 size={16} />
                                                                     </button>
+
+                                                                    {/* Download PDF */}
                                                                     <button
                                                                         onClick={() => handleDownloadInvoice(inv)}
-                                                                        className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
-                                                                        title="Download PDF"
+                                                                        className="p-2 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all"
+                                                                        title="Download PDF Document"
                                                                     >
                                                                         <Lucide.Download size={16} />
                                                                     </button>
+
+                                                                    {/* Delete Invoice */}
                                                                     <button
                                                                         onClick={() => handleDeleteInvoice(inv._id)}
-                                                                        className="p-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
+                                                                        className="p-2 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-100 transition-all"
                                                                         title="Delete Permanently"
                                                                     >
                                                                         <Lucide.Trash2 size={16} />
@@ -1833,151 +2867,452 @@ export default function SuperAdminPage() {
                                                                 </div>
                                                             </td>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {totalInvoicePages > 1 && (
-                                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
-                                                <div className="text-xs font-semibold text-slate-500">
-                                                    Showing <span className="font-bold text-slate-900">{(invoicePage - 1) * INVOICES_PER_PAGE + 1}</span> to{' '}
-                                                    <span className="font-bold text-slate-900">
-                                                        {Math.min(invoicePage * INVOICES_PER_PAGE, invoices.length)}
-                                                    </span>{' '}
-                                                    of <span className="font-bold text-slate-900">{invoices.length}</span> invoices
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <button
-                                                        disabled={invoicePage === 1}
-                                                        onClick={() => setInvoicePage(prev => Math.max(prev - 1, 1))}
-                                                        className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
-                                                    >
-                                                        <Lucide.ChevronLeft size={16} />
-                                                    </button>
-                                                    
-                                                    {(() => {
-                                                        if (totalInvoicePages <= 7) {
-                                                            return Array.from({ length: totalInvoicePages }, (_, i) => i + 1);
-                                                        }
-                                                        const pages = [];
-                                                        for (let i = 1; i <= totalInvoicePages; i++) {
-                                                            if (
-                                                                i === 1 ||
-                                                                i === totalInvoicePages ||
-                                                                (i >= invoicePage - 1 && i <= invoicePage + 1)
-                                                            ) {
-                                                                pages.push(i);
-                                                            } else if (
-                                                                pages[pages.length - 1] !== '...'
-                                                            ) {
-                                                                pages.push('...');
-                                                            }
-                                                        }
-                                                        return pages;
-                                                    })().map((pageNum, idx) => {
-                                                        if (pageNum === '...') {
-                                                            return (
-                                                                <span key={`ellipsis-${idx}`} className="px-1 text-slate-400 text-xs font-bold">
-                                                                    ...
-                                                                </span>
-                                                            );
-                                                        }
-                                                        return (
-                                                            <button
-                                                                key={pageNum}
-                                                                onClick={() => setInvoicePage(pageNum)}
-                                                                className={clsx(
-                                                                    "h-8 min-w-[32px] px-2 rounded-lg text-xs font-bold transition-all border",
-                                                                    invoicePage === pageNum
-                                                                        ? "bg-ocean-600 border-ocean-600 text-white shadow-sm shadow-ocean-600/20"
-                                                                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                    );
+                                                })}
+                                                {invoices.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={4} className="px-6 py-16 text-center text-slate-400 italic text-xs">
+                                                            No invoices issued yet. Click &quot;New Invoice&quot; to generate one.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Mobile Cards */}
+                                    <div className="md:hidden divide-y divide-slate-100">
+                                        {paginatedInvoices.map(inv => {
+                                            const isPaid = Boolean(inv.isPaid || inv.status === 'paid' || (inv.balanceDue === 0 && Number(inv.total) > 0));
+                                            const netBilled = inv.subTotal !== undefined ? inv.subTotal : Math.max(0, (inv.total || 0) - (inv.serviceCharge || 0));
+                                            return (
+                                                <div key={inv._id} className="p-4 space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-black text-slate-900 text-sm">#{inv.invoiceNumber}</span>
+                                                                {isPaid ? (
+                                                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                        Paid
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200">
+                                                                        Unpaid
+                                                                    </span>
                                                                 )}
+                                                            </div>
+                                                            <div className="text-xs text-slate-600 font-semibold mt-0.5">{inv.passengerName}</div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="text-sm font-black text-ocean-600">{inv.currency}{inv.total?.toLocaleString()}</div>
+                                                            <div className="text-[10px] text-slate-500 font-medium">
+                                                                Net: {inv.currency}{netBilled.toLocaleString()}
+                                                                {Number(inv.serviceCharge) > 0 && <span className="text-amber-600 font-bold ml-1">+{inv.currency}{Number(inv.serviceCharge).toLocaleString()} fee</span>}
+                                                            </div>
+                                                            <div className="text-[10px] text-slate-400">{new Date(inv.date).toLocaleDateString()}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2 pt-1">
+                                                        <div className="flex items-center gap-2">
+                                                            {isPaid ? (
+                                                                <button
+                                                                    onClick={() => handleToggleInvoicePaid(inv)}
+                                                                    className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                                                                >
+                                                                    <Lucide.RotateCcw size={14} />
+                                                                    <span>Set Unpaid</span>
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={() => handleToggleInvoicePaid(inv)}
+                                                                    className="flex-1 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all"
+                                                                >
+                                                                    <Lucide.CheckCircle2 size={14} />
+                                                                    <span>Mark Paid</span>
+                                                                </button>
+                                                            )}
+                                                            <button
+                                                                onClick={() => openEditInvoiceModal(inv)}
+                                                                className="p-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl transition-all"
+                                                                title="Edit Invoice"
                                                             >
-                                                                {pageNum}
+                                                                <Lucide.Edit size={16} />
                                                             </button>
-                                                        );
-                                                    })}
-                                                    
+                                                            <button
+                                                                onClick={() => handleDeleteInvoice(inv._id)}
+                                                                className="p-2.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-all"
+                                                                title="Delete Permanently"
+                                                            >
+                                                                <Lucide.Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <button
+                                                                onClick={() => { setSelectedInvoiceForShare(inv); setIsShareInvoiceModalOpen(true); }}
+                                                                className="py-2 bg-ocean-50 hover:bg-ocean-100 text-ocean-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                                                            >
+                                                                <Lucide.Share2 size={14} />
+                                                                <span>Share</span>
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDownloadInvoice(inv)}
+                                                                className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                                                            >
+                                                                <Lucide.Download size={14} />
+                                                                <span>PDF</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Pagination */}
+                                    {totalInvoicePages > 1 && (
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-slate-50/40">
+                                            <div className="text-xs font-semibold text-slate-500">
+                                                Showing <span className="font-bold text-slate-900">{(invoicePage - 1) * INVOICES_PER_PAGE + 1}</span> to{' '}
+                                                <span className="font-bold text-slate-900">{Math.min(invoicePage * INVOICES_PER_PAGE, invoices.length)}</span> of{' '}
+                                                <span className="font-bold text-slate-900">{invoices.length}</span> invoices
+                                            </div>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    disabled={invoicePage === 1}
+                                                    onClick={() => setInvoicePage(prev => Math.max(prev - 1, 1))}
+                                                    className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-white disabled:opacity-40"
+                                                >
+                                                    <Lucide.ChevronLeft size={16} />
+                                                </button>
+                                                {Array.from({ length: totalInvoicePages }, (_, i) => i + 1).map(num => (
                                                     <button
-                                                        disabled={invoicePage === totalInvoicePages}
-                                                        onClick={() => setInvoicePage(prev => Math.min(prev + 1, totalInvoicePages))}
-                                                        className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent transition-all"
+                                                        key={num}
+                                                        onClick={() => setInvoicePage(num)}
+                                                        className={clsx(
+                                                            "h-8 w-8 rounded-lg text-xs font-bold transition-all",
+                                                            invoicePage === num ? "bg-ocean-600 text-white shadow-xs" : "border border-slate-200 text-slate-600 hover:bg-white"
+                                                        )}
                                                     >
-                                                        <Lucide.ChevronRight size={16} />
+                                                        {num}
                                                     </button>
-                                                </div>
+                                                ))}
+                                                <button
+                                                    disabled={invoicePage === totalInvoicePages}
+                                                    onClick={() => setInvoicePage(prev => Math.min(prev + 1, totalInvoicePages))}
+                                                    className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-white disabled:opacity-40"
+                                                >
+                                                    <Lucide.ChevronRight size={16} />
+                                                </button>
                                             </div>
-                                        )}
-                                    </>
-                                )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    </div>
+                        )}
 
-                    {/* Right Column - Info Card & Notifications */}
-                    <div className="space-y-6">
-                        {/* Passenger Registry Summary Card */}
-                        <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
-                                <Lucide.Users size={120} />
-                            </div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-3 font-display">Registry Control</h3>
-                            <h2 className="text-2xl font-black mb-2 uppercase tracking-tight font-display">Passenger Management</h2>
-                            <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                                Click on any passenger in the registry list to view and manage their detailed itineraries, frequent flyer numbers, passport credentials, and invoices.
-                            </p>
-                        </div>
+                        {/* SECTION 5: INSIGHTS & BLOG */}
+                        {activeTab === 'insights' && (
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight font-display">Travel Insights & Blog</h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">Publish articles, travel requirements, updates, and airport guides</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsCreateBlogModalOpen(true)}
+                                        className="px-5 py-2.5 bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-ocean-600/20 active:scale-95 flex items-center gap-2 shrink-0"
+                                    >
+                                        <Lucide.Plus size={16} />
+                                        <span>New Insight</span>
+                                    </button>
+                                </div>
 
-                        {/* Notifications */}
-                        <div className="bg-slate-900 rounded-2xl p-6 text-white">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-black uppercase tracking-tight">System Alerts</h3>
-                                {notifications.length > 0 && (
-                                    <ActionButton
-                                        onClick={handleClearAllNotifications}
-                                        variant="ghost"
-                                        className="text-[10px] !py-1 !px-2 tracking-widest text-slate-400 hover:text-red-400"
-                                        loadingMessage="..."
-                                        successMessage="Done"
-                                    >
-                                        Clear All
-                                    </ActionButton>
-                                )}
-                            </div>
-                            <div className="space-y-3">
-                                {notifications.slice(0, 8).map(note => (
-                                    <div
-                                        key={note.id || note._id}
-                                        className={clsx(
-                                            "rounded-xl p-3 border transition-all",
-                                            note.type === 'unrecognized_booking'
-                                                ? "bg-amber-500/10 border-amber-500/20 text-amber-200"
-                                                : "bg-white/5 border-white/10 text-white"
-                                        )}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div className={clsx(
-                                                "mt-1 p-1 rounded-md",
-                                                note.type === 'unrecognized_booking' ? "bg-amber-500 text-amber-950" : "bg-white/10 text-white/70"
-                                            )}>
-                                                {note.type === 'unrecognized_booking' ? <Lucide.UserPlus size={14} /> : <Lucide.Bell size={14} />}
-                                            </div>
+                                <div className="grid gap-4">
+                                    {paginatedBlogs.map(blog => (
+                                        <div key={blog._id} className="bg-white rounded-2xl border border-slate-200 p-5 hover:border-ocean-300 hover:shadow-md transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-xs font-black uppercase tracking-wider mb-0.5 opacity-70">
-                                                    {note.type.replace('_', ' ')}
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-ocean-50 text-ocean-700 border border-ocean-100">Insight</span>
+                                                    <span className="text-[10px] text-slate-400 font-semibold">{new Date(blog.createdAt || Date.now()).toLocaleDateString()}</span>
                                                 </div>
-                                                <p className="text-sm font-medium leading-relaxed">{note.message}</p>
+                                                <h3 className="font-black text-slate-900 text-base mb-1 truncate">{blog.title}</h3>
+                                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{blog.content?.replace(/<[^>]*>?/gm, '')}</p>
                                             </div>
+
+                                            <div className="flex items-center gap-2 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-slate-100">
+                                                <button
+                                                    onClick={() => setEditingBlog(blog)}
+                                                    className="px-3.5 py-2 bg-slate-100 hover:bg-ocean-50 text-slate-700 hover:text-ocean-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                                                >
+                                                    <Lucide.Edit size={14} />
+                                                    <span>Edit</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteBlog(blog._id)}
+                                                    className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all"
+                                                    title="Delete Article"
+                                                >
+                                                    <Lucide.Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {blogs.length === 0 && (
+                                        <div className="bg-white rounded-3xl p-16 border border-slate-200 text-center">
+                                            <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
+                                                <Lucide.BookOpen size={32} />
+                                            </div>
+                                            <h3 className="font-bold text-slate-800 mb-1">No articles published yet</h3>
+                                            <p className="text-xs text-slate-400 mb-4">Click &quot;New Insight&quot; to create your first article or travel advisory.</p>
+                                            <button
+                                                onClick={() => setIsCreateBlogModalOpen(true)}
+                                                className="px-5 py-2.5 bg-ocean-600 text-white rounded-xl text-xs font-black uppercase tracking-wider"
+                                            >
+                                                Publish Article
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {totalInsightPages > 1 && (
+                                    <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200">
+                                        <div className="text-xs font-semibold text-slate-500">
+                                            Page <span className="font-bold text-slate-900">{insightPage}</span> of <span className="font-bold text-slate-900">{totalInsightPages}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                disabled={insightPage === 1}
+                                                onClick={() => setInsightPage(prev => Math.max(prev - 1, 1))}
+                                                className="p-2 rounded-lg border border-slate-200 text-slate-500 disabled:opacity-40"
+                                            >
+                                                <Lucide.ChevronLeft size={16} />
+                                            </button>
+                                            <button
+                                                disabled={insightPage === totalInsightPages}
+                                                onClick={() => setInsightPage(prev => Math.min(prev + 1, totalInsightPages))}
+                                                className="p-2 rounded-lg border border-slate-200 text-slate-500 disabled:opacity-40"
+                                            >
+                                                <Lucide.ChevronRight size={16} />
+                                            </button>
                                         </div>
                                     </div>
-                                ))}
-                                {notifications.length === 0 && (
-                                    <p className="text-sm text-slate-400 text-center py-4">No notifications</p>
                                 )}
                             </div>
-                        </div>
+                        )}
+
+                        {/* SECTION 6: STAFF MANAGEMENT (Admin Only) */}
+                        {activeTab === 'staff' && role === 'admin' && (
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight font-display">Staff & Team Management</h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">Control agency administrative access, roles, and credentials</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="relative">
+                                            <Lucide.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                                            <input
+                                                type="text"
+                                                placeholder="Filter staff members..."
+                                                value={staffSearchQuery}
+                                                onChange={e => setStaffSearchQuery(e.target.value)}
+                                                className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={() => setIsAddStaffModalOpen(true)}
+                                            className="px-4 py-2 bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2 shadow-md shadow-ocean-600/20 active:scale-95 shrink-0"
+                                        >
+                                            <Lucide.UserPlus size={16} />
+                                            <span>Add Staff</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {staffActionFeedback && (
+                                    <div className={clsx(
+                                        "p-4 rounded-2xl text-xs font-bold border flex items-center justify-between",
+                                        staffActionFeedback.type === 'success' ? "bg-emerald-50 text-emerald-800 border-emerald-200" : "bg-rose-50 text-rose-800 border-rose-200"
+                                    )}>
+                                        <span>{staffActionFeedback.message}</span>
+                                        <button onClick={() => setStaffActionFeedback(null)} className="text-slate-400 hover:text-slate-600">
+                                            <Lucide.X size={14} />
+                                        </button>
+                                    </div>
+                                )}
+
+                                <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-slate-50/70 border-b border-slate-100">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Team Member</th>
+                                                    <th className="px-6 py-4 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Assigned Role</th>
+                                                    <th className="px-6 py-4 text-right text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {filteredStaff.map(member => (
+                                                    <tr key={member._id} className="hover:bg-slate-50/80 transition-colors">
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="h-10 w-10 rounded-xl bg-[#00456E] text-white font-bold text-xs flex items-center justify-center uppercase shrink-0">
+                                                                    {member.email?.[0] || 'U'}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-slate-900 text-sm">{member.email}</div>
+                                                                    <div className="text-[10px] text-slate-400 font-semibold">Added {new Date(member.createdAt || Date.now()).toLocaleDateString()}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={clsx(
+                                                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                                                                member.role === 'admin' ? "bg-ocean-100 text-ocean-800 border border-ocean-200" : "bg-slate-100 text-slate-700"
+                                                            )}>
+                                                                {member.role === 'admin' ? 'Super Admin' : 'Staff Agent'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button
+                                                                    disabled={resendingStaffId === member._id}
+                                                                    onClick={() => handleResendStaffCredentials(member._id, member.email)}
+                                                                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1"
+                                                                >
+                                                                    {resendingStaffId === member._id ? (
+                                                                        <Lucide.RefreshCw size={13} className="animate-spin" />
+                                                                    ) : (
+                                                                        <Lucide.Mail size={13} />
+                                                                    )}
+                                                                    <span>Resend Login</span>
+                                                                </button>
+                                                                <button
+                                                                    disabled={deletingStaffId === member._id || member.email === currentAdminEmail}
+                                                                    onClick={() => handleDeleteStaff(member._id, member.email)}
+                                                                    className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-all disabled:opacity-30"
+                                                                    title={member.email === currentAdminEmail ? "Cannot delete own account" : "Remove Staff Access"}
+                                                                >
+                                                                    <Lucide.Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {filteredStaff.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan={3} className="px-6 py-12 text-center text-slate-400 text-xs italic">
+                                                            No staff accounts found.
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* SECTION: STAFF SCHEDULES (Admin Only) */}
+                        {activeTab === 'schedules' && role === 'admin' && (
+                            <SpreadsheetScheduleView
+                                staffMembers={staffMembers}
+                                onReloadStaff={loadStaffMembers}
+                            />
+                        )}
+
+                        {/* SECTION: DUTY ASSIGNMENTS & LEDGER (Admin Only) */}
+                        {activeTab === 'duties' && role === 'admin' && (
+                            <DutyManagementView
+                                staffMembers={staffMembers}
+                            />
+                        )}
+
+                        {/* SECTION: TRAVEL CARD GENERATOR */}
+                        {activeTab === 'travel-card' && (
+                            <TravelCardManager
+                                passengers={passengers}
+                                bookings={bookings}
+                                initialPassengerId={travelCardPassengerId}
+                                onClose={() => setActiveTab('overview')}
+                            />
+                        )}
+
+                        {/* SECTION 7: SYSTEM ALERTS */}
+                        {activeTab === 'alerts' && (
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight font-display">System Notifications</h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">{stats.pendingNotifications} pending items requiring administrative review</p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={handleMarkAllAsRead}
+                                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase tracking-wider transition-all"
+                                        >
+                                            Mark All Read
+                                        </button>
+                                        <button
+                                            onClick={handleClearAllNotifications}
+                                            className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-black uppercase tracking-wider transition-all border border-rose-100"
+                                        >
+                                            Clear All
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {notifications.map(note => (
+                                        <div
+                                            key={note.id || note._id}
+                                            onClick={() => handleMarkAsRead(note.id || note._id)}
+                                            className={clsx(
+                                                "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-4",
+                                                note.read ? "bg-white border-slate-200 opacity-75" : "bg-white border-ocean-300 shadow-sm"
+                                            )}
+                                        >
+                                            <div className={clsx(
+                                                "p-2.5 rounded-xl shrink-0 mt-0.5",
+                                                note.type === 'unrecognized_booking' ? "bg-amber-100 text-amber-800" : "bg-ocean-100 text-ocean-800"
+                                            )}>
+                                                {note.type === 'unrecognized_booking' ? <Lucide.UserPlus size={18} /> : <Lucide.Bell size={18} />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-2 mb-1">
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-ocean-600 bg-ocean-50 px-2 py-0.5 rounded-md">
+                                                        {note.type?.replace('_', ' ')}
+                                                    </span>
+                                                    {!note.read && (
+                                                        <span className="h-2 w-2 rounded-full bg-rose-500"></span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs md:text-sm font-semibold text-slate-800 leading-relaxed">{note.message}</p>
+                                                {note.createdAt && (
+                                                    <div className="text-[10px] text-slate-400 font-medium mt-1">
+                                                        {new Date(note.createdAt).toLocaleString()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {notifications.length === 0 && (
+                                        <div className="bg-white rounded-3xl p-16 border border-slate-200 text-center">
+                                            <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
+                                                <Lucide.Bell size={32} />
+                                            </div>
+                                            <h3 className="font-bold text-slate-800 mb-1">No alerts</h3>
+                                            <p className="text-xs text-slate-400">All alerts and notifications will be listed here.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                     </div>
-                </div>
+                </main>
             </div>
 
             {/* Modals */}
@@ -2295,33 +3630,45 @@ export default function SuperAdminPage() {
                 title="Passenger Profile Details"
                 onClose={() => setIsPassengerDetailsModalOpen(false)}
                 footer={
-                    <div className="flex flex-wrap justify-between items-center p-4 border-t border-slate-200 bg-slate-50 gap-3 shrink-0 rounded-b-2xl">
-                        <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 w-full">
+                        <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 w-full sm:w-auto">
+                            <button
+                                onClick={() => {
+                                    setIsPassengerDetailsModalOpen(false);
+                                    setTravelCardPassengerId(selectedPassenger.id || selectedPassenger._id);
+                                    setActiveTab('travel-card');
+                                }}
+                                className="py-2.5 px-2 sm:px-4 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:from-amber-600 hover:to-amber-700 transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                                title="Open visual travel itinerary card"
+                            >
+                                <Lucide.CreditCard size={15} />
+                                <span className="truncate">Card</span>
+                            </button>
                             <button
                                 onClick={() => {
                                     setIsPassengerDetailsModalOpen(false);
                                     setIsCreateBookingModalOpen(true);
                                 }}
-                                className="px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-sm font-bold hover:bg-ocean-700 transition-all flex items-center gap-1.5 shadow-sm"
+                                className="py-2.5 px-2 sm:px-4 bg-ocean-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-ocean-700 transition-all flex items-center justify-center gap-1.5 shadow-xs"
                             >
-                                <Lucide.Plus size={16} />
-                                Add Flight
+                                <Lucide.Plus size={15} />
+                                <span className="truncate">Flight</span>
                             </button>
                             <button
                                 onClick={() => {
                                     setEditForm(selectedPassenger);
                                     setIsEditModalOpen(true);
                                 }}
-                                className="px-4 py-2.5 bg-white text-slate-800 border border-slate-200 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all shadow-sm"
+                                className="py-2.5 px-2 sm:px-4 bg-white text-slate-800 border border-slate-200 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 transition-all shadow-xs text-center"
                             >
-                                Edit Profile
+                                <span className="truncate">Edit</span>
                             </button>
                         </div>
                         <button
                             onClick={() => {
                                 setDeleteConfirmation({ passenger: selectedPassenger });
                             }}
-                            className="px-4 py-2.5 bg-rose-50 text-rose-600 rounded-xl text-sm font-bold hover:bg-rose-100 transition-all border border-rose-100/50"
+                            className="w-full sm:w-auto py-2.5 px-4 bg-rose-50 text-rose-600 rounded-xl text-xs sm:text-sm font-bold hover:bg-rose-100 transition-all border border-rose-100/50 text-center"
                         >
                             Delete Passenger
                         </button>
@@ -3665,16 +5012,16 @@ export default function SuperAdminPage() {
                                             className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all resize-y leading-relaxed"
                                         />
                                     </div>
-                                    <div className="grid grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
                                         <div>
                                             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Rate</label>
                                             <div className="relative">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{invoiceForm.currency}</span>
+                                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{invoiceForm.currency}</span>
                                                 <input
                                                     type="number"
                                                     value={item.rate}
                                                     onChange={e => handleInvoiceItemChange(idx, 'rate', Number(e.target.value))}
-                                                    className="w-full pl-8 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all"
+                                                    className="w-full pl-7 pr-2.5 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold focus:border-ocean-500 outline-none transition-all"
                                                 />
                                             </div>
                                         </div>
@@ -3684,13 +5031,14 @@ export default function SuperAdminPage() {
                                                 type="number"
                                                 value={item.qty}
                                                 onChange={e => handleInvoiceItemChange(idx, 'qty', Number(e.target.value))}
-                                                className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none transition-all"
+                                                className="w-full px-3 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold focus:border-ocean-500 outline-none transition-all text-center"
                                             />
                                         </div>
-                                        <div>
+                                        <div className="col-span-2 sm:col-span-1">
                                             <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Amount</label>
-                                            <div className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-sm font-black text-slate-900">
-                                                {invoiceForm.currency}{item.amount?.toLocaleString()}
+                                            <div className="w-full px-3 py-2 sm:py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs sm:text-sm font-black text-slate-900 flex items-center justify-between sm:justify-start">
+                                                <span className="text-[10px] text-slate-400 font-semibold sm:hidden">Item Subtotal:</span>
+                                                <span>{invoiceForm.currency}{item.amount?.toLocaleString()}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -3792,6 +5140,297 @@ export default function SuperAdminPage() {
                                 </div>
                                 <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-right italic">
                                     Final Amount Payable
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Edit Invoice Modal */}
+            <Modal
+                open={isEditInvoiceModalOpen}
+                title={`Edit Invoice #${editInvoiceForm.invoiceNumber}`}
+                onClose={() => setIsEditInvoiceModalOpen(false)}
+                footer={
+                    <div className="flex justify-end gap-3 p-4 border-t border-slate-200">
+                        <button onClick={() => setIsEditInvoiceModalOpen(false)} className="px-4 py-2 text-sm font-medium text-slate-600">Cancel</button>
+                        <ActionButton onClick={handleUpdateInvoice} successMessage="Invoice Updated">Save Changes</ActionButton>
+                    </div>
+                }
+            >
+                <div className="p-6 space-y-6">
+                    {/* Status & Payment Quick Controls */}
+                    <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Status</div>
+                            <div className="text-sm font-bold text-slate-900 mt-0.5">
+                                Current: {editInvoiceForm.isPaid ? (
+                                    <span className="text-emerald-600 font-black">PAID IN FULL</span>
+                                ) : (
+                                    <span className="text-amber-600 font-black">UNPAID / OUTSTANDING</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex bg-slate-200/80 p-1 rounded-xl">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const total = (editInvoiceForm.subTotal || 0) + (editInvoiceForm.serviceCharge || 0) - (editInvoiceForm.discount || 0);
+                                    setEditInvoiceForm({ ...editInvoiceForm, isPaid: false, balanceDue: total });
+                                }}
+                                className={clsx(
+                                    "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+                                    !editInvoiceForm.isPaid ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                Unpaid
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setEditInvoiceForm({ ...editInvoiceForm, isPaid: true, balanceDue: 0 })}
+                                className={clsx(
+                                    "px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all",
+                                    editInvoiceForm.isPaid ? "bg-emerald-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                Paid
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Invoice Number</label>
+                            <input
+                                type="text"
+                                value={editInvoiceForm.invoiceNumber}
+                                onChange={e => setEditInvoiceForm({ ...editInvoiceForm, invoiceNumber: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Date</label>
+                            <input
+                                type="date"
+                                value={editInvoiceForm.date}
+                                onChange={e => setEditInvoiceForm({ ...editInvoiceForm, date: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Bill To (Name)</label>
+                            <input
+                                type="text"
+                                placeholder="Full Name"
+                                value={editInvoiceForm.passengerName}
+                                onChange={e => setEditInvoiceForm({ ...editInvoiceForm, passengerName: e.target.value })}
+                                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl font-bold"
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
+                                <input
+                                    type="email"
+                                    placeholder="email@example.com"
+                                    value={editInvoiceForm.passengerEmail}
+                                    onChange={e => setEditInvoiceForm({ ...editInvoiceForm, passengerEmail: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1">Phone Number</label>
+                                <input
+                                    type="text"
+                                    placeholder="+234..."
+                                    value={editInvoiceForm.passengerPhone}
+                                    onChange={e => setEditInvoiceForm({ ...editInvoiceForm, passengerPhone: e.target.value })}
+                                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Line Items &amp; Services</h3>
+                            <button onClick={addEditInvoiceItem} className="px-3 py-1 bg-ocean-50 text-ocean-600 rounded-lg text-xs font-bold hover:bg-ocean-100 flex items-center gap-1 transition-all">
+                                <Lucide.Plus size={14} /> Add Service
+                            </button>
+                        </div>
+                        {editInvoiceForm.items.map((item, idx) => (
+                            <div key={idx} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-4 relative group">
+                                <div className="flex justify-between items-center">
+                                    <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[10px] font-black uppercase">Item {idx + 1}</span>
+                                    {editInvoiceForm.items.length > 1 && (
+                                        <button
+                                            onClick={() => removeEditInvoiceItem(idx)}
+                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                            title="Remove Item"
+                                        >
+                                            <Lucide.Trash2 size={16} />
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Service Description</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. Flight Ticketing, Visa Processing..."
+                                            value={item.description}
+                                            onChange={e => handleEditInvoiceItemChange(idx, 'description', e.target.value)}
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider">Detailed Information (Optional)</label>
+                                            <span className="text-[10px] text-slate-400 font-medium">Press Enter for new line</span>
+                                        </div>
+                                        <textarea
+                                            placeholder="e.g.&#10;Going: Lagos (LOS) to London (LHR) - 12th May&#10;Return: London (LHR) to Lagos (LOS) - 26th May"
+                                            value={item.subText}
+                                            rows={3}
+                                            onChange={e => handleEditInvoiceItemChange(idx, 'subText', e.target.value)}
+                                            className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:border-ocean-500 outline-none transition-all resize-y leading-relaxed"
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Rate</label>
+                                            <div className="relative">
+                                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">{editInvoiceForm.currency}</span>
+                                                <input
+                                                    type="number"
+                                                    value={item.rate}
+                                                    onChange={e => handleEditInvoiceItemChange(idx, 'rate', Number(e.target.value))}
+                                                    className="w-full pl-7 pr-2.5 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold focus:border-ocean-500 outline-none transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Qty</label>
+                                            <input
+                                                type="number"
+                                                value={item.qty}
+                                                onChange={e => handleEditInvoiceItemChange(idx, 'qty', Number(e.target.value))}
+                                                className="w-full px-3 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm font-bold focus:border-ocean-500 outline-none transition-all text-center"
+                                            />
+                                        </div>
+                                        <div className="col-span-2 sm:col-span-1">
+                                            <label className="block text-[10px] font-black text-slate-500 uppercase tracking-wider mb-1.5">Amount</label>
+                                            <div className="w-full px-3 py-2 sm:py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs sm:text-sm font-black text-slate-900 flex items-center justify-between sm:justify-start">
+                                                <span className="text-[10px] text-slate-400 font-semibold sm:hidden">Item Subtotal:</span>
+                                                <span>{editInvoiceForm.currency}{item.amount?.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100">
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Currency Settings</label>
+                                <select
+                                    value={editInvoiceForm.currency}
+                                    onChange={e => setEditInvoiceForm({ ...editInvoiceForm, currency: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none"
+                                >
+                                    <option value="₦">Naira (₦)</option>
+                                    <option value="$">US Dollar ($)</option>
+                                    <option value="£">British Pound (£)</option>
+                                    <option value="€">Euro (€)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Payment Method</label>
+                                <select
+                                    value={editInvoiceForm.paymentType}
+                                    onChange={e => setEditInvoiceForm({ ...editInvoiceForm, paymentType: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold focus:border-ocean-500 outline-none"
+                                >
+                                    <option value="bank_transfer">Bank Transfer</option>
+                                    <option value="cash">Cash Payment</option>
+                                    <option value="pos">POS Terminal</option>
+                                    <option value="online">Online Payment</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Notes</label>
+                                <textarea
+                                    rows={2}
+                                    value={editInvoiceForm.notes}
+                                    onChange={e => setEditInvoiceForm({ ...editInvoiceForm, notes: e.target.value })}
+                                    className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:border-ocean-500 outline-none resize-none"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-3 bg-slate-900 p-6 rounded-2xl text-white shadow-xl shadow-slate-900/20">
+                            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <span>Sub Total (Net Billed)</span>
+                                <span>{editInvoiceForm.currency}{editInvoiceForm.subTotal?.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <span>Service Charge (Profit)</span>
+                                <div className="flex items-center gap-1 border-b border-slate-700 pb-1">
+                                    <span className="text-slate-500">{editInvoiceForm.currency}</span>
+                                    <input
+                                        type="number"
+                                        className="w-20 text-right bg-transparent focus:outline-none text-amber-400 font-black"
+                                        value={editInvoiceForm.serviceCharge}
+                                        onChange={e => {
+                                            const val = Number(e.target.value);
+                                            const total = (editInvoiceForm.subTotal || 0) + val - (editInvoiceForm.discount || 0);
+                                            setEditInvoiceForm({
+                                                ...editInvoiceForm,
+                                                serviceCharge: val,
+                                                total,
+                                                balanceDue: editInvoiceForm.isPaid ? 0 : total
+                                            });
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+                                <span>Discount</span>
+                                <div className="flex items-center gap-1 border-b border-slate-700 pb-1">
+                                    <span className="text-slate-500">{editInvoiceForm.currency}</span>
+                                    <input
+                                        type="number"
+                                        className="w-20 text-right bg-transparent focus:outline-none text-red-400 font-black"
+                                        value={editInvoiceForm.discount}
+                                        onChange={e => {
+                                            const val = Number(e.target.value);
+                                            const total = (editInvoiceForm.subTotal || 0) + (editInvoiceForm.serviceCharge || 0) - val;
+                                            setEditInvoiceForm({
+                                                ...editInvoiceForm,
+                                                discount: val,
+                                                total,
+                                                balanceDue: editInvoiceForm.isPaid ? 0 : total
+                                            });
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest pt-2 border-t border-white/10">
+                                <span>Total Invoiced</span>
+                                <span>{editInvoiceForm.currency}{editInvoiceForm.total?.toLocaleString()}</span>
+                            </div>
+                            <div className="pt-3 mt-1 border-t border-white/10">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-[10px] font-black text-ocean-400 uppercase tracking-[0.2em]">Balance Due</span>
+                                    <span className="text-2xl font-black">{editInvoiceForm.currency}{editInvoiceForm.balanceDue?.toLocaleString()}</span>
+                                </div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-widest text-right italic">
+                                    {editInvoiceForm.isPaid ? 'Settled in Full' : 'Amount Outstanding'}
                                 </div>
                             </div>
                         </div>

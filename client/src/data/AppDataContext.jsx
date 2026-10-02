@@ -52,7 +52,7 @@ function calculateFlightMetrics(originIata, destIata, departTime24) {
 const AppDataContext = createContext(null)
 
 export function AppDataProvider({ children }) {
-  const { isAuthenticated, token } = useAuth()
+  const { isAuthenticated, token, user } = useAuth()
 
   const [passenger, setPassenger] = useState(null)
   const [flights, setFlights] = useState([])
@@ -64,7 +64,14 @@ export function AppDataProvider({ children }) {
   const abortRef = useRef(null)
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    const isAdminRoute = 
+      typeof window !== 'undefined' && (
+        window.location.pathname.startsWith('/super-admin') ||
+        window.location.pathname.startsWith('/admin') ||
+        window.location.pathname.startsWith('/superadmin')
+      )
+
+    if (!isAuthenticated || user?.role === 'admin' || isAdminRoute) {
       setPassenger(null)
       setFlights([])
       setNotifications([])
@@ -165,7 +172,7 @@ export function AppDataProvider({ children }) {
     load()
 
     return () => controller.abort()
-  }, [isAuthenticated, token])
+  }, [isAuthenticated, token, user?.role])
 
   const unreadCount = useMemo(
     () => notifications.filter((n) => n.unread).length,

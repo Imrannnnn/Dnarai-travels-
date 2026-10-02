@@ -82,7 +82,7 @@ export default function LoadingSpinner({
 
             {message && (
                 <div className="space-y-2 text-center">
-                    <p className={`${textSizeClasses[size]} font-black uppercase tracking-[0.3em] ${isDone ? 'text-emerald-500' : isError ? 'text-red-500' : 'text-slate-800 dark:text-white'} ${isProcessing ? 'animate-pulse' : ''}`}>
+                    <p className={`${textSizeClasses[size]} font-black uppercase tracking-[0.3em] ${isDone ? 'text-emerald-400' : isError ? 'text-rose-400' : 'text-white'} ${isProcessing ? 'animate-pulse' : ''}`}>
                         {isDone ? 'Action Completed' : isError ? `Error: ${message}` : message}
                     </p>
                     <div className={`h-0.5 w-12 mx-auto rounded-full overflow-hidden transition-all duration-500 ${isDone ? 'bg-emerald-500 w-24' : isError ? 'bg-red-500 w-24' : 'bg-gradient-to-r from-transparent via-ocean-500 to-transparent'}`}>

@@ -34,6 +34,10 @@ export const createInvoice = async (req, res) => {
       }
     }
 
+    const isPaidBool = req.body.isPaid === true || req.body.isPaid === 'true' || req.body.status === 'paid';
+    const finalStatus = req.body.status || (isPaidBool ? 'paid' : 'unpaid');
+    const calculatedBalanceDue = isPaidBool ? 0 : (balanceDue !== undefined ? balanceDue : total);
+
     const newInvoice = new Invoice({
       invoiceNumber: invoiceNumber || `INV-${Date.now()}`,
       date: date || new Date(),
@@ -42,17 +46,58 @@ export const createInvoice = async (req, res) => {
       passengerEmail: finalPassengerEmail,
       passengerPhone: finalPassengerPhone,
       items,
-      serviceCharge,
-      subTotal,
-      discount,
-      total,
-      balanceDue,
-      paymentType,
-      currency
+      serviceCharge: Number(serviceCharge) || 0,
+      subTotal: Number(subTotal) || 0,
+      discount: Number(discount) || 0,
+      total: Number(total) || 0,
+      balanceDue: calculatedBalanceDue,
+      isPaid: isPaidBool,
+      status: finalStatus,
+      paymentType: paymentType || 'bank_transfer',
+      currency: currency || '₦'
     });
 
     await newInvoice.save();
     res.status(201).json(newInvoice);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+
+    // Synchronize isPaid and status
+    if (updateData.isPaid !== undefined || updateData.status !== undefined) {
+      if (updateData.isPaid !== undefined) {
+        updateData.isPaid = updateData.isPaid === true || updateData.isPaid === 'true';
+        updateData.status = updateData.isPaid ? 'paid' : 'unpaid';
+      } else if (updateData.status !== undefined) {
+        updateData.isPaid = updateData.status === 'paid';
+      }
+
+      if (updateData.isPaid && updateData.balanceDue === undefined) {
+        updateData.balanceDue = 0;
+      }
+    }
+
+    if (updateData.passengerId === "") {
+      delete updateData.passengerId;
+    }
+
+    const updatedInvoice = await Invoice.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    ).populate('passengerId');
+
+    if (!updatedInvoice) {
+      return res.status(404).json({ message: 'Invoice not found' });
+    }
+
+    res.json(updatedInvoice);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

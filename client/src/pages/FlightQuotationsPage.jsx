@@ -625,56 +625,56 @@ export default function FlightQuotationsPage() {
   }, [tempQuotations, searchQuery])
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-slate-50 w-full max-w-full overflow-x-hidden">
       {/* Top Navigation */}
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-3.5 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <button
               onClick={() => navigate('/super-admin')}
-              className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition-colors"
+              className="p-1.5 sm:p-2 hover:bg-slate-100 rounded-xl text-slate-500 hover:text-slate-900 transition-colors shrink-0"
               title="Return to Admin Dashboard"
             >
-              <Lucide.ArrowLeft size={20} />
+              <Lucide.ArrowLeft size={18} />
             </button>
-            <div className="h-9 w-9 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md">
-              <Lucide.PlaneTakeoff size={18} />
+            <div className="h-8 w-8 sm:h-9 sm:w-9 bg-ocean-600 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
+              <Lucide.PlaneTakeoff size={16} />
             </div>
-            <div>
-              <h1 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-tight flex items-center gap-2">
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base md:text-lg font-black text-slate-900 uppercase tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2 truncate">
                 Flight Quotation Generator
-                <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-100">
-                  Instant & Temporary
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest px-1.5 sm:px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-100 shrink-0">
+                  Instant
                 </span>
               </h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Fast multi-airline comparisons, auto card processing fee, & WhatsApp quotes
+              <p className="text-[11px] sm:text-xs text-slate-500 font-medium truncate">
+                Fast multi-airline comparisons, auto card fee, & WhatsApp quotes
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
             <button
               onClick={() => setIsSettingsModalOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all"
               title="Configure Default Fees & Wording"
             >
-              <Lucide.Settings size={16} />
-              <span className="hidden sm:inline">Settings (Fees & Wording)</span>
+              <Lucide.Settings size={15} />
+              <span className="hidden sm:inline">Settings</span>
             </button>
             <button
               onClick={handleOpenCreateModal}
-              className="flex items-center gap-2 px-4 py-2.5 bg-ocean-600 text-white rounded-xl text-xs font-black hover:bg-ocean-700 transition-all shadow-md shadow-ocean-600/20 active:scale-95"
+              className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 bg-ocean-600 text-white rounded-xl text-xs font-black hover:bg-ocean-700 transition-all shadow-md shadow-ocean-600/20 active:scale-95"
             >
-              <Lucide.Plus size={16} />
-              <span>Create New Quotation</span>
+              <Lucide.Plus size={15} />
+              <span>New Quotation</span>
             </button>
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
+      <div className="max-w-6xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6 md:space-y-8">
         {/* Banner */}
         <div className="bg-gradient-to-r from-ocean-900 via-slate-900 to-slate-900 text-white rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
           <div className="flex items-center gap-3">
@@ -795,14 +795,14 @@ export default function FlightQuotationsPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end md:self-center">
+                  <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
                     <button
                       onClick={() => {
                         setPreviewText(q.generatedText)
                         setFormData(q)
                         setIsPreviewModalOpen(true)
                       }}
-                      className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                      className="flex-1 md:flex-none justify-center px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all"
                     >
                       <Lucide.MessageSquare size={14} />
                       <span>WhatsApp Preview</span>

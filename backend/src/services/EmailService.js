@@ -791,5 +791,620 @@ export const EmailService = {
       console.error('Email failed:', error);
       return { ok: false, error: error.message };
     }
+  },
+
+  /**
+   * Send duty assignment notification email to staff member
+   */
+  async sendDutyAssignedEmail({ email, staffName, dutyTitle, dutyDescription, dueDate, dueTime, priority, loginUrl }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const priorityColor = priority === 'urgent' ? '#EF4444' : priority === 'high' ? '#F97316' : '#2563EB';
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: #EFF6FF; color: #1D4ED8; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              Operational Duty Notice
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 24px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">New Duty Assigned</h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};">Hello <strong>${staffName || 'Team Member'}</strong>, you have been assigned an operational task.</p>
+          </div>
+
+          <div style="margin: 25px 0; padding: 24px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td style="padding-bottom: 12px; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Task Title</td>
+                <td style="padding-bottom: 12px; font-size: 15px; font-weight: 800; color: #0F172A; text-align: right;">${dutyTitle}</td>
+              </tr>
+              ${dutyDescription ? `
+              <tr>
+                <td colspan="2" style="padding-bottom: 16px; font-size: 13px; color: #475569; line-height: 1.5; border-bottom: 1px dashed #CBD5E1;">
+                  ${dutyDescription}
+                </td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td style="padding: 12px 0 6px 0; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">Due Date & Time</td>
+                <td style="padding: 12px 0 6px 0; font-size: 14px; font-weight: 800; color: #0F172A; text-align: right;">${dueDate} ${dueTime ? `at ${dueTime}` : ''}</td>
+              </tr>
+              <tr>
+                <td style="padding-top: 6px; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">Priority</td>
+                <td style="padding-top: 6px; font-size: 12px; font-weight: 800; color: ${priorityColor}; text-align: right; text-transform: uppercase;">${priority || 'MEDIUM'}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0 20px 0;">
+            <a href="${loginUrl || 'https://dnaraitravels.com/login'}" style="display: inline-block; padding: 14px 32px; background-color: ${COLORS.NAVY}; color: #ffffff; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
+              View & Complete Duty
+            </a>
+          </div>
+
+          <p style="margin: 20px 0 0 0; font-size: 12px; color: #94A3B8; text-align: center; line-height: 1.5;">
+            Please log into the portal to review the checklist and mark this duty completed when done.
+          </p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: email,
+        subject: `📋 New Duty Assigned: ${dutyTitle}`,
+        html: getEmailWrapper(content, `You have been assigned: ${dutyTitle}. Due ${dueDate}.`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Duty assigned email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
+   * Send duty completion alert email to Admin / Super Admin
+   */
+  async sendDutyCompletedAdminEmail({ adminEmail, staffName, dutyTitle, completedAt, notes, dashboardUrl }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const formattedTime = completedAt ? new Date(completedAt).toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }) : new Date().toLocaleString();
+
+    const actionUrl = dashboardUrl || `${process.env.CORS_ORIGIN || 'https://dnaraitravels.com'}/super-admin?tab=duties`;
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: #ECFDF5; color: #059669; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              ✓ Duty Completed
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 22px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">Staff Duty Completed</h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};"><strong>${staffName}</strong> has completed their assigned duty.</p>
+          </div>
+
+          <div style="margin: 25px 0; padding: 20px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px;">
+            <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Duty</p>
+            <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 800; color: #0F172A;">${dutyTitle}</p>
+            
+            <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Completed At</p>
+            <p style="margin: 0 0 ${notes ? '14px' : '0'}; font-size: 14px; font-weight: 700; color: #059669;">${formattedTime}</p>
+
+            ${notes ? `
+            <div style="margin-top: 14px; padding: 14px; background-color: #ffffff; border-left: 4px solid #0284C7; border-radius: 8px;">
+              <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 800; color: #0284C7; text-transform: uppercase;">Staff Completion / Handover Note:</p>
+              <p style="margin: 0; font-size: 14px; color: #1E293B; line-height: 1.5; font-style: italic;">“${notes}”</p>
+            </div>
+            ` : ''}
+          </div>
+
+          <div style="text-align: center; margin: 30px 0 10px 0;">
+            <a href="${actionUrl}" style="display: inline-block; padding: 14px 32px; background-color: ${COLORS.NAVY}; color: #ffffff; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
+              View Operations & Assigned Tasks
+            </a>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: adminEmail,
+        subject: `✅ Completed: ${staffName} finished "${dutyTitle}"`,
+        html: getEmailWrapper(content, `${staffName} completed ${dutyTitle}.`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Duty completed alert email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
+   * Send staff task note update alert email to Admin / Super Admin
+   */
+  async sendDutyNoteUpdatedAdminEmail({ adminEmail, staffName, dutyTitle, notes, updatedAt, dashboardUrl }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const formattedTime = updatedAt ? new Date(updatedAt).toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }) : new Date().toLocaleString();
+
+    const actionUrl = dashboardUrl || `${process.env.CORS_ORIGIN || 'https://dnaraitravels.com'}/super-admin?tab=duties`;
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: #E0F2FE; color: #0284C7; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              📝 Task Note Update
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 22px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">Staff Updated Task Note</h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};"><strong>${staffName}</strong> updated notes on their assigned duty.</p>
+          </div>
+
+          <div style="margin: 25px 0; padding: 20px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px;">
+            <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Duty</p>
+            <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 800; color: #0F172A;">${dutyTitle}</p>
+            
+            <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Updated At</p>
+            <p style="margin: 0 0 14px 0; font-size: 14px; font-weight: 700; color: #475569;">${formattedTime}</p>
+
+            <div style="padding: 14px; background-color: #ffffff; border-left: 4px solid #0284C7; border-radius: 8px;">
+              <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 800; color: #0284C7; text-transform: uppercase;">Staff Note:</p>
+              <p style="margin: 0; font-size: 14px; color: #1E293B; line-height: 1.5; font-style: italic;">“${notes || 'No note text provided'}”</p>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0 10px 0;">
+            <a href="${actionUrl}" style="display: inline-block; padding: 14px 32px; background-color: ${COLORS.NAVY}; color: #ffffff; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
+              View Operations & Assigned Tasks
+            </a>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: adminEmail,
+        subject: `📝 Staff Note Updated: ${staffName} on "${dutyTitle}"`,
+        html: getEmailWrapper(content, `${staffName} updated note on ${dutyTitle}.`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Duty note update alert email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
+   * Send daily duty briefing email to on-duty staff
+   * Includes: "You are on duty today, stay active please", shift info, travels today, assigned tasks
+   */
+  async sendDailyStaffDutyBriefingEmail({
+    email,
+    staffName,
+    shiftTitle = 'Active Duty Shift',
+    shiftHours = '08:00 - 17:00',
+    dateStr,
+    slotName = 'Daily Briefing',
+    travels = [],
+    tasks = [],
+    portalUrl
+  }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const actionUrl = portalUrl || `${process.env.CORS_ORIGIN || 'https://dnaraitravels.com'}/staff-duties`;
+
+    const travelsRows = travels.length > 0 ? travels.map((t) => `
+      <tr style="border-bottom: 1px solid #E2E8F0;">
+        <td style="padding: 10px 8px; font-size: 13px; font-weight: 800; color: #0F172A;">${t.flightNumber || 'FLT'}</td>
+        <td style="padding: 10px 8px; font-size: 13px; color: #334155;">${t.route || 'Departure'}</td>
+        <td style="padding: 10px 8px; font-size: 13px; font-weight: 700; color: #0284C7; text-align: center;">${t.departureTime || '--:--'}</td>
+        <td style="padding: 10px 8px; font-size: 13px; color: #475569;">${t.passengerName || 'Passenger'}</td>
+      </tr>
+    `).join('') : `
+      <tr>
+        <td colspan="4" style="padding: 16px 8px; text-align: center; color: #94A3B8; font-size: 13px; font-style: italic;">
+          No passenger flight departures scheduled for today.
+        </td>
+      </tr>
+    `;
+
+    const tasksRows = tasks.length > 0 ? tasks.map((task) => {
+      const isDone = task.status === 'completed';
+      const statusBadge = isDone
+        ? '<span style="display: inline-block; padding: 2px 8px; background: #ECFDF5; color: #059669; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase;">Done</span>'
+        : '<span style="display: inline-block; padding: 2px 8px; background: #FEF3C7; color: #D97706; border-radius: 9999px; font-size: 10px; font-weight: 800; text-transform: uppercase;">Pending</span>';
+      return `
+        <div style="margin-bottom: 10px; padding: 12px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 10px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <strong style="font-size: 14px; color: #0F172A;">${task.title}</strong>
+            <span style="font-size: 11px; font-weight: 700; color: #64748B;">Due: ${task.dueTime || '17:00'}</span>
+          </div>
+          <div style="font-size: 12px; color: #64748B; margin-top: 4px;">
+            Priority: <strong style="text-transform: uppercase; color: ${task.priority === 'urgent' ? '#DC2626' : '#0284C7'};">${task.priority || 'Medium'}</strong> &nbsp;|&nbsp; Status: ${statusBadge}
+          </div>
+          ${task.notes ? `<div style="margin-top: 6px; font-size: 12px; color: #475569; font-style: italic;">Note: ${task.notes}</div>` : ''}
+        </div>
+      `;
+    }).join('') : `
+      <p style="margin: 0; padding: 12px; text-align: center; color: #94A3B8; font-size: 13px; font-style: italic;">
+        No specific tasks assigned yet for today. Stay ready for incoming instructions.
+      </p>
+    `;
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: #ECFDF5; color: #059669; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              🟢 On-Duty Briefing • ${slotName}
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 24px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">
+              You are on duty today, stay active please
+            </h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};">
+              Hello <strong>${staffName}</strong>, you are scheduled on duty today (${dateStr}).
+            </p>
+          </div>
+
+          <!-- Shift Window Card -->
+          <div style="margin: 20px 0; padding: 18px 24px; background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); border-radius: 14px; color: #FFFFFF;">
+            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #F59E0B; margin-bottom: 4px;">
+              Shift Schedule
+            </div>
+            <div style="font-size: 20px; font-weight: 900; color: #FFFFFF;">
+              ${shiftHours}
+            </div>
+            <div style="font-size: 12px; opacity: 0.8; margin-top: 4px;">
+              ${shiftTitle} • Keep your web push notifications & portal session active.
+            </div>
+          </div>
+
+          <!-- Travels Today Section -->
+          <div style="margin: 25px 0;">
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 800; color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: 0.5px;">
+              ✈️ Today's Travels & Departures (${travels.length})
+            </h3>
+            <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <thead>
+                  <tr style="background-color: #F1F5F9; border-bottom: 1px solid #E2E8F0;">
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: left; text-transform: uppercase;">Flight</th>
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: left; text-transform: uppercase;">Route</th>
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: center; text-transform: uppercase;">Time</th>
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: left; text-transform: uppercase;">Passenger</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${travelsRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tasks Assigned Section -->
+          <div style="margin: 25px 0;">
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 800; color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: 0.5px;">
+              📋 Your Assigned Tasks (${tasks.length})
+            </h3>
+            <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px;">
+              ${tasksRows}
+            </div>
+          </div>
+
+          <!-- Direct Action Button -->
+          <div style="text-align: center; margin: 30px 0 15px 0;">
+            <a href="${actionUrl}" style="display: inline-block; padding: 16px 36px; background-color: #0284C7; color: #ffffff; text-decoration: none; border-radius: 14px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);">
+              Open My Duties & Complete Tasks
+            </a>
+          </div>
+
+          <p style="margin: 15px 0 0 0; font-size: 12px; color: #94A3B8; text-align: center; line-height: 1.5;">
+            Click above to mark assigned tasks complete or add progress notes directly from your duty dashboard.
+          </p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: email,
+        subject: `✈️ You are on duty today, stay active please | Dnarai Briefing (${dateStr})`,
+        html: getEmailWrapper(content, `You are on duty today (${shiftHours}). ${travels.length} flight(s) today. Stay active please.`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Daily staff briefing email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
+   * Send daily operations briefing email to Admins
+   * Includes: Who is on duty today, travels summary, pending tasks, direct link to duties
+   */
+  async sendDailyAdminOperationsBriefingEmail({
+    adminEmail,
+    adminName,
+    dateStr,
+    slotName = 'Daily Briefing',
+    onDutyStaff = [],
+    travels = [],
+    pendingTasks = [],
+    dashboardUrl
+  }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const actionUrl = dashboardUrl || `${process.env.CORS_ORIGIN || 'https://dnaraitravels.com'}/super-admin?tab=duties`;
+
+    const staffRows = onDutyStaff.length > 0 ? onDutyStaff.map((s) => `
+      <tr style="border-bottom: 1px solid #E2E8F0;">
+        <td style="padding: 10px 8px; font-size: 13px; font-weight: 800; color: #0F172A;">${s.name}</td>
+        <td style="padding: 10px 8px; font-size: 12px; color: #64748B;">${s.email}</td>
+        <td style="padding: 10px 8px; font-size: 13px; font-weight: 700; color: #059669; text-align: center;">${s.hours}</td>
+        <td style="padding: 10px 8px; font-size: 12px; color: #334155; text-transform: capitalize;">${s.type}</td>
+      </tr>
+    `).join('') : `
+      <tr>
+        <td colspan="4" style="padding: 16px 8px; text-align: center; color: #EF4444; font-size: 13px; font-weight: 700;">
+          ⚠️ No staff scheduled on duty for today!
+        </td>
+      </tr>
+    `;
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: #E0F2FE; color: #0284C7; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              Admin Operations Roster • ${slotName}
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 24px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">
+              Daily Operations Briefing (${dateStr})
+            </h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};">
+              Hello <strong>${adminName || 'Admin'}</strong>, here is today's active staff duty roster and operational overview.
+            </p>
+          </div>
+
+          <!-- Staff On Duty Today -->
+          <div style="margin: 25px 0;">
+            <h3 style="margin: 0 0 12px 0; font-size: 15px; font-weight: 800; color: ${COLORS.NAVY}; text-transform: uppercase; letter-spacing: 0.5px;">
+              👥 Staff On Duty Today (${onDutyStaff.length})
+            </h3>
+            <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden;">
+              <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+                <thead>
+                  <tr style="background-color: #F1F5F9; border-bottom: 1px solid #E2E8F0;">
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: left; text-transform: uppercase;">Staff Name</th>
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: left; text-transform: uppercase;">Email</th>
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: center; text-transform: uppercase;">Duty Hours</th>
+                    <th style="padding: 10px 8px; font-size: 11px; font-weight: 800; color: #64748B; text-align: left; text-transform: uppercase;">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${staffRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Direct Action Button -->
+          <div style="text-align: center; margin: 30px 0 15px 0;">
+            <a href="${actionUrl}" style="display: inline-block; padding: 16px 36px; background-color: ${COLORS.NAVY}; color: #ffffff; text-decoration: none; border-radius: 14px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(15, 23, 42, 0.25);">
+              Manage Assigned Tasks & Operations
+            </a>
+          </div>
+
+          <p style="margin: 15px 0 0 0; font-size: 12px; color: #94A3B8; text-align: center; line-height: 1.5;">
+            You will also receive instant push and email alerts as soon as any staff completes a task or updates their notes.
+          </p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: adminEmail,
+        subject: `📋 Daily Duty Briefing: ${onDutyStaff.length} Staff on Duty | Dnarai Travel (${dateStr})`,
+        html: getEmailWrapper(content, `${onDutyStaff.length} staff on duty today. ${travels.length} flight(s) today. ${pendingTasks.length} pending task(s).`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Daily admin briefing email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
+   * Send duty schedule assignment or reassignment notification email to staff member
+   */
+  async sendScheduleAssignedEmail({
+    email,
+    staffName,
+    scheduleType,
+    daysOfWeek,
+    specificDate,
+    startDate,
+    endDate,
+    startTime = '08:00',
+    endTime = '17:00',
+    notes,
+    isReassigned = false,
+    loginUrl,
+  }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const typeTitle = scheduleType === 'recurring'
+      ? 'Recurring Weekly Shift'
+      : scheduleType === 'part_time'
+      ? 'Part-Time Shift Schedule'
+      : 'Specific Date Assignment';
+
+    const formattedDays = daysOfWeek && daysOfWeek.length > 0
+      ? daysOfWeek.map((d) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')
+      : null;
+
+    const subject = isReassigned
+      ? `🔄 Duty Schedule Reassigned: ${typeTitle} (${startTime} - ${endTime})`
+      : `📅 New Duty Schedule Assigned: ${typeTitle} (${startTime} - ${endTime})`;
+
+    const headline = isReassigned ? 'Duty Schedule Reassigned' : 'Duty Schedule Assigned';
+    const subtext = isReassigned
+      ? `Your operational shift schedule has been updated or reassigned by management.`
+      : `You have been assigned a new operational duty shift schedule.`;
+
+    const badgeColor = isReassigned ? '#D97706' : '#0284C7';
+    const badgeBg = isReassigned ? '#FEF3C7' : '#E0F2FE';
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: ${badgeBg}; color: ${badgeColor}; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              ${isReassigned ? '🔄 Schedule Update' : '📅 Duty Roster Notice'}
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 24px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">${headline}</h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};">Hello <strong>${staffName || 'Team Member'}</strong>, ${subtext}</p>
+          </div>
+
+          <div style="margin: 25px 0; padding: 24px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px;">
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%">
+              <tr>
+                <td style="padding-bottom: 12px; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Schedule Type</td>
+                <td style="padding-bottom: 12px; font-size: 15px; font-weight: 800; color: #0F172A; text-align: right;">${typeTitle}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px 0; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">Duty Hours</td>
+                <td style="padding: 10px 0; font-size: 14px; font-weight: 800; color: #0284C7; text-align: right;">${startTime} – ${endTime}</td>
+              </tr>
+              ${specificDate ? `
+              <tr>
+                <td style="padding: 10px 0; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">Assigned Date</td>
+                <td style="padding: 10px 0; font-size: 14px; font-weight: 800; color: #0F172A; text-align: right;">${specificDate}</td>
+              </tr>
+              ` : ''}
+              ${formattedDays ? `
+              <tr>
+                <td style="padding: 10px 0; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">Assigned Days</td>
+                <td style="padding: 10px 0; font-size: 14px; font-weight: 800; color: #0F172A; text-align: right;">${formattedDays}</td>
+              </tr>
+              ` : ''}
+              ${(startDate || endDate) ? `
+              <tr>
+                <td style="padding: 10px 0; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase;">Validity Period</td>
+                <td style="padding: 10px 0; font-size: 13px; font-weight: 700; color: #475569; text-align: right;">${startDate || 'Immediate'} to ${endDate || 'Ongoing'}</td>
+              </tr>
+              ` : ''}
+              ${notes ? `
+              <tr>
+                <td colspan="2" style="padding-top: 14px; font-size: 13px; color: #475569; line-height: 1.5; border-top: 1px dashed #CBD5E1;">
+                  <strong>Notes:</strong> ${notes}
+                </td>
+              </tr>
+              ` : ''}
+            </table>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0 20px 0;">
+            <a href="${loginUrl || 'https://dnaraitravels.com/login'}" style="display: inline-block; padding: 14px 32px; background-color: ${COLORS.NAVY}; color: #ffffff; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
+              View Duty Roster
+            </a>
+          </div>
+
+          <p style="margin: 20px 0 0 0; font-size: 12px; color: #94A3B8; text-align: center; line-height: 1.5;">
+            Please log into the agency portal to review your shifts. Contact Super Admin if you need adjustments or shift swapping.
+          </p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: email,
+        subject,
+        html: getEmailWrapper(content, `${headline}: ${typeTitle} (${startTime} - ${endTime}).`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Duty schedule email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
+   * Send unassigned notification email when a shift is transferred to someone else
+   */
+  async sendScheduleUnassignedEmail({ email, staffName, daysOfWeek, specificDate, startTime, endTime }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const formattedDays = daysOfWeek && daysOfWeek.length > 0
+      ? daysOfWeek.map((d) => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')
+      : specificDate || 'Upcoming shift';
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: #F1F5F9; color: #475569; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              Roster Reassignment
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 22px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">Duty Shift Reassigned</h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};">Hello <strong>${staffName || 'Team Member'}</strong>, your previously scheduled shift (${formattedDays}, ${startTime} - ${endTime}) has been reassigned to another staff member.</p>
+          </div>
+          <p style="margin: 15px 0 0 0; font-size: 13px; color: #64748B; text-align: center;">
+            No action is required from you for this shift. Please review your active duty roster in the portal.
+          </p>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: email,
+        subject: `ℹ️ Duty Shift Reassigned: ${formattedDays}`,
+        html: getEmailWrapper(content, `Duty shift reassigned: ${formattedDays}.`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Schedule unassigned email failed:', error);
+      return { ok: false, error: error.message };
+    }
   }
 };

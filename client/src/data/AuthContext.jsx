@@ -2,10 +2,10 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 
 const AuthContext = createContext(null)
 
-const IDLE_TIME = 15 * 60 * 1000 // 15 minutes
+const IDLE_TIME = 60 * 60 * 1000 // 60 minutes
 
 const getInitialAuthState = () => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('token') || localStorage.getItem('admin_token')
     const userSaved = localStorage.getItem('user')
     const lastActivity = localStorage.getItem('lastActivityTime')
 
@@ -13,12 +13,14 @@ const getInitialAuthState = () => {
         if (lastActivity) {
             const elapsed = Date.now() - parseInt(lastActivity, 10)
             if (elapsed > IDLE_TIME) {
-                // Expired, clear storage and return nulls
+                // Expired, clear storage and record notice
                 localStorage.removeItem('token')
                 localStorage.removeItem('refreshToken')
-                localStorage.removeItem('user')
+                localStorage.removeItem('admin_token')
+                localStorage.removeItem('admin_role')
                 localStorage.removeItem('lastActivityTime')
-                return { token: null, user: null }
+                sessionStorage.setItem('session_expired_notice', 'Your session has expired due to inactivity. Please sign in again.')
+                return { token: null, user: null, expiredOnStart: true }
             }
         } else {
             // If they have a token but no last activity, initialize it to now
@@ -27,7 +29,8 @@ const getInitialAuthState = () => {
     }
     return {
         token: token || null,
-        user: userSaved ? JSON.parse(userSaved) : null
+        user: userSaved ? JSON.parse(userSaved) : null,
+        expiredOnStart: false,
     }
 }
 
@@ -39,18 +42,45 @@ export function AuthProvider({ children }) {
     const login = (newToken, userData, refreshToken) => {
         localStorage.setItem('token', newToken)
         if (refreshToken) localStorage.setItem('refreshToken', refreshToken)
-        localStorage.setItem('user', JSON.stringify(userData))
+        if (userData) localStorage.setItem('user', JSON.stringify(userData))
         localStorage.setItem('lastActivityTime', Date.now().toString())
-        setAuthState({ token: newToken, user: userData })
+        sessionStorage.removeItem('session_expired_notice')
+        setAuthState({ token: newToken, user: userData, expiredOnStart: false })
     }
 
     const logout = useCallback(() => {
         localStorage.removeItem('token')
         localStorage.removeItem('refreshToken')
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_role')
         localStorage.removeItem('user')
         localStorage.removeItem('lastActivityTime')
-        setAuthState({ token: null, user: null })
+        sessionStorage.removeItem('session_expired_notice')
+        setAuthState({ token: null, user: null, expiredOnStart: false })
         window.location.href = '/'
+    }, [])
+
+    const handleSessionExpired = useCallback((reason = 'inactivity') => {
+        localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('admin_token')
+        localStorage.removeItem('admin_role')
+        localStorage.removeItem('lastActivityTime')
+        
+        const msg = 'Your session has expired due to inactivity. Please sign in again to continue.'
+        sessionStorage.setItem('session_expired_notice', msg)
+        setAuthState({ token: null, user: null, expiredOnStart: false })
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+                new CustomEvent('dnarai:session-expired', {
+                    detail: {
+                        reason,
+                        message: msg,
+                    },
+                })
+            )
+        }
     }, [])
 
     const isAuthenticated = !!token
@@ -74,23 +104,23 @@ export function AuthProvider({ children }) {
         if (lastActivity) {
             const elapsed = Date.now() - parseInt(lastActivity, 10)
             if (elapsed > IDLE_TIME) {
-                logout()
+                handleSessionExpired('idle_elapsed')
                 return true
             }
         }
         return false
-    }, [isAuthenticated, logout])
+    }, [isAuthenticated, handleSessionExpired])
 
     const resetIdleTimer = useCallback(() => {
         if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current)
         if (isAuthenticated) {
             idleTimeoutRef.current = setTimeout(() => {
                 if (!checkTimeout()) {
-                    logout()
+                    handleSessionExpired('idle_timer')
                 }
             }, IDLE_TIME)
         }
-    }, [isAuthenticated, logout, checkTimeout])
+    }, [isAuthenticated, checkTimeout, handleSessionExpired])
 
     const handleActivity = useCallback(() => {
         if (!isAuthenticated) return
@@ -103,10 +133,46 @@ export function AuthProvider({ children }) {
     }, [isAuthenticated, checkTimeout, resetIdleTimer, updateLastActivity])
 
     useEffect(() => {
-        if (!isAuthenticated) return
+        // If expired on initial start, dispatch event
+        if (authState.expiredOnStart) {
+            window.dispatchEvent(
+                new CustomEvent('dnarai:session-expired', {
+                    detail: {
+                        reason: 'initial_expired',
+                        message: 'Your previous session has expired. Please sign in to continue.',
+                    },
+                })
+            )
+        }
 
-        // Initialize/verify on mount
-        if (checkTimeout()) return
+        // Listen for session restore from SessionExpiredModal
+        const handleSessionRestored = (e) => {
+            const { token: restoredToken, role: restoredRole, email: restoredEmail } = e.detail || {}
+            if (restoredToken) {
+                setAuthState({
+                    token: restoredToken,
+                    user: { role: restoredRole, email: restoredEmail },
+                    expiredOnStart: false,
+                })
+                resetIdleTimer()
+                updateLastActivity()
+            }
+        }
+
+        window.addEventListener('dnarai:session-restored', handleSessionRestored)
+
+        if (!isAuthenticated) {
+            return () => {
+                window.removeEventListener('dnarai:session-restored', handleSessionRestored)
+            }
+        }
+
+        // Verify timeout on mount
+        if (checkTimeout()) {
+            return () => {
+                window.removeEventListener('dnarai:session-restored', handleSessionRestored)
+            }
+        }
 
         resetIdleTimer()
         updateLastActivity()
@@ -126,8 +192,9 @@ export function AuthProvider({ children }) {
             events.forEach(event => window.removeEventListener(event, handleActivity))
             window.removeEventListener('visibilitychange', checkTimeoutOnFocus)
             window.removeEventListener('focus', checkTimeoutOnFocus)
+            window.removeEventListener('dnarai:session-restored', handleSessionRestored)
         }
-    }, [isAuthenticated, resetIdleTimer, handleActivity, checkTimeout, updateLastActivity])
+    }, [isAuthenticated, resetIdleTimer, handleActivity, checkTimeout, updateLastActivity, authState.expiredOnStart])
 
     const value = {
         token,

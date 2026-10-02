@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, ArrowRight } from 'lucide-react'
+import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../data/AuthContext'
 import { login as apiLogin, getApiBaseUrl } from '../data/api'
 import { useAppData } from '../data/AppDataContext'
@@ -9,6 +9,14 @@ export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
+    const [sessionExpiredNotice] = useState(() => {
+        const stored = sessionStorage.getItem('session_expired_notice')
+        if (stored) {
+            sessionStorage.removeItem('session_expired_notice')
+            return stored
+        }
+        return ''
+    })
 
     const { login } = useAuth()
     const { triggerOverlay } = useAppData()
@@ -22,7 +30,13 @@ export default function LoginPage() {
             const baseUrl = getApiBaseUrl()
             const data = await apiLogin({ email, password, baseUrl })
             login(data.accessToken, { role: data.role, email }, data.refreshToken)
-            navigate('/dashboard')
+            if (['admin', 'staff', 'agent'].includes(data.role)) {
+                localStorage.setItem('admin_token', data.accessToken)
+                localStorage.setItem('admin_role', data.role)
+                navigate('/super-admin')
+            } else {
+                navigate('/dashboard')
+            }
         })
     }
 
@@ -54,6 +68,16 @@ export default function LoginPage() {
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-ocean-400 via-ocean-600 to-ocean-400"></div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {sessionExpiredNotice && !error && (
+                            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-start gap-2.5 animate-in fade-in">
+                                <ShieldCheck size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                                <div>
+                                    <p className="font-black uppercase tracking-wider text-[10px] text-amber-600 dark:text-amber-400">Session Expired</p>
+                                    <p className="mt-0.5">{sessionExpiredNotice}</p>
+                                </div>
+                            </div>
+                        )}
+
                         {error && (
                             <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 text-red-600 dark:text-red-400 text-sm font-bold flex items-center gap-2 animate-shake">
                                 <div className="h-1.5 w-1.5 rounded-full bg-red-500"></div>
@@ -108,10 +132,19 @@ export default function LoginPage() {
 
                     </form>
 
-                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
+                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center space-y-3">
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                             {"Don't"} have an account? <Link to="/register" className="text-ocean-600 dark:text-ocean-400 font-bold hover:underline underline-offset-4">Create One</Link>
                         </p>
+                        <div className="pt-2">
+                            <Link
+                                to="/super-admin"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-ocean-600 dark:text-slate-400 dark:hover:text-ocean-400 py-1.5 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                                <ShieldCheck size={15} className="text-ocean-500" />
+                                <span>Agency Staff & Super Admin Sign In &rarr;</span>
+                            </Link>
+                        </div>
                     </div>
                 </div>
 

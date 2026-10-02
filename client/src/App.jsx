@@ -13,9 +13,12 @@ import BlogListPage from './pages/BlogListPage'
 import BlogPostPage from './pages/BlogPostPage'
 import TimeConverterPage from './pages/TimeConverterPage'
 import FlightQuotationsPage from './pages/FlightQuotationsPage'
+import StaffDutyDashboard from './components/schedule/StaffDutyDashboard'
 import { useAuth } from './data/AuthContext'
 import { useAppData } from './data/AppDataContext'
 import LoadingOverlay from './components/LoadingOverlay'
+import SessionExpiredModal from './components/SessionExpiredModal'
+import NotificationOnboardingModal from './components/NotificationOnboardingModal'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -29,14 +32,16 @@ function ProtectedRoute({ children }) {
 }
 
 export default function App() {
-  const { loading, overlay } = useAppData()
+  const { overlay } = useAppData()
 
   return (
     <>
-      {(loading || overlay.show) && (
+      <SessionExpiredModal />
+      <NotificationOnboardingModal />
+      {overlay.show && (
         <LoadingOverlay
-          message={overlay.show ? overlay.message : "Logging in..."}
-          status={overlay.show ? overlay.status : 'loading'}
+          message={overlay.message || "Processing..."}
+          status={overlay.status || 'loading'}
         />
       )}
       <Routes>
@@ -45,11 +50,13 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
-        {/* Super Admin - Needs protection too */}
-        <Route
-          path="/super-admin"
-          element={<SuperAdminPage />}
-        />
+        {/* Super Admin & Aliases */}
+        <Route path="/super-admin" element={<SuperAdminPage />} />
+        <Route path="/super-admin/login" element={<SuperAdminPage />} />
+        <Route path="/admin" element={<SuperAdminPage />} />
+        <Route path="/admin/login" element={<SuperAdminPage />} />
+        <Route path="/superadmin" element={<SuperAdminPage />} />
+        <Route path="/superadmin/login" element={<SuperAdminPage />} />
         <Route
           path="/super-admin/quotations"
           element={<FlightQuotationsPage />}
@@ -57,6 +64,14 @@ export default function App() {
         <Route
           path="/flight-quotations"
           element={<FlightQuotationsPage />}
+        />
+        <Route
+          path="/super-admin/travel-card"
+          element={<SuperAdminPage initialTab="travel-card" />}
+        />
+        <Route
+          path="/travel-card"
+          element={<SuperAdminPage initialTab="travel-card" />}
         />
 
         {/* Main Pages */}
@@ -78,6 +93,26 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/staff-duties"
+                  element={
+                    <ProtectedRoute>
+                      <div className="container mx-auto px-4 py-8">
+                        <StaffDutyDashboard />
+                      </div>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/my-duties"
+                  element={
+                    <ProtectedRoute>
+                      <div className="container mx-auto px-4 py-8">
+                        <StaffDutyDashboard />
+                      </div>
                     </ProtectedRoute>
                   }
                 />

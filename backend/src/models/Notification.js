@@ -8,7 +8,17 @@ const NotificationSchema = new mongoose.Schema(
       required: false,
       index: true,
     },
+    recipientUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
+      index: true,
+    },
     bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking', index: true },
+    relatedDutyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Duty', index: true },
+    relatedScheduleId: { type: mongoose.Schema.Types.ObjectId, ref: 'StaffSchedule', index: true },
+
+    title: { type: String },
 
     type: {
       type: String,
@@ -21,6 +31,13 @@ const NotificationSchema = new mongoose.Schema(
         'weather',
         'unrecognized_booking',
         'booking_alert',
+        'duty_assigned',
+        'duty_completed',
+        'duty_overdue',
+        'duty_briefing',
+        'duty_note_updated',
+        'schedule_assigned',
+        'schedule_changed',
       ],
       required: true,
       index: true,

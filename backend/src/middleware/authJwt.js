@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 import { User } from '../models/User.js';
 
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const IDLE_TIMEOUT_MS = 2 * 60 * 60 * 1000; // 2 hours
 const ACTIVITY_UPDATE_INTERVAL_MS = 60 * 1000; // 1 minute to avoid DB spam
 
 export async function requireAuth(req, _res, next) {

@@ -22,6 +22,8 @@ const Home = Lucide.Home || Lucide.Plane
 const Info = Lucide.Info || Lucide.BadgeInfo || Lucide.HelpCircle || Lucide.Plane
 const BookOpen = Lucide.BookOpen
 const Globe = Lucide.Globe
+const ClipboardCheck = Lucide.ClipboardCheck || Lucide.CheckSquare
+const ShieldCheck = Lucide.ShieldCheck || Lucide.Shield
 
 function NavItem({ to, icon: Icon, label, badge, onClick }) {
   const SafeIcon = Icon || Plane
@@ -85,6 +87,12 @@ export default function Navbar() {
     { to: '/', icon: Home, label: 'Home' },
     ...(isAuthenticated ? [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+      ...(user?.role === 'staff' || user?.role === 'agent' || user?.role === 'admin' ? [
+        { to: '/staff-duties', icon: ClipboardCheck, label: 'My Duties' }
+      ] : []),
+      ...(user?.role === 'admin' ? [
+        { to: '/super-admin', icon: ShieldCheck, label: 'Super Admin' }
+      ] : []),
       { to: '/notifications', icon: Bell, label: 'Alerts', badge: unread },
       { to: '/profile', icon: UserRound, label: 'Profile' },
     ] : []),
@@ -96,10 +104,10 @@ export default function Navbar() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-sand-200/60 bg-white/95 backdrop-blur-xl dark:border-slate-800/60 dark:bg-slate-950/95 shadow-soft">
-        <div className="w-full flex items-center justify-between px-6 lg:px-8 py-4 max-w-7xl mx-auto">
+        <div className="w-full flex items-center justify-between px-3.5 sm:px-6 lg:px-8 py-3 sm:py-4 max-w-7xl mx-auto">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group cursor-pointer z-50 relative">
-            <div className="h-12 w-12 md:h-14 md:w-14 transition-transform duration-300 group-hover:scale-105 active:scale-95">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 transition-transform duration-300 group-hover:scale-105 active:scale-95">
               <img
                 src="/D-NARAI_Logo 01.svg"
                 alt="Dnarai Enterprise"
@@ -193,15 +201,15 @@ export default function Navbar() {
       {/* Mobile Menu Drawer */}
       <div
         className={clsx(
-          'fixed top-0 right-0 bottom-0 z-30 w-[85vw] max-w-sm bg-white dark:bg-slate-950 shadow-2xl transition-transform duration-500 ease-in-out md:hidden flex flex-col border-l border-slate-200 dark:border-slate-800',
+          'fixed top-0 right-0 bottom-0 z-30 w-[88vw] max-w-sm bg-white dark:bg-slate-950 shadow-2xl transition-transform duration-500 ease-in-out md:hidden flex flex-col border-l border-slate-200 dark:border-slate-800',
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}
       >
-        <div className="flex-1 flex flex-col pt-24 px-8 pb-10 overflow-y-auto pb-safe">
+        <div className="flex-1 flex flex-col pt-20 sm:pt-24 px-5 sm:px-8 pb-8 sm:pb-10 overflow-y-auto pb-safe">
           {/* Mobile Navigation List */}
           <nav className="flex flex-col gap-6">
             <div className="space-y-1">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-6 px-2">Navigation</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500 mb-4 sm:mb-6 px-2">Navigation</h3>
               <div className="grid gap-2">
                 {menuItems.map((item) => (
                   <NavItem key={item.to} {...item} onClick={() => setIsMenuOpen(false)} />
@@ -210,22 +218,22 @@ export default function Navbar() {
             </div>
 
             {!isAuthenticated ? (
-              <div className="mt-8 pt-8 border-t border-slate-200/60 dark:border-slate-800/60">
+              <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-slate-200/60 dark:border-slate-800/60">
                 <Link
                   to="/login"
                   onClick={() => setIsMenuOpen(false)}
-                  className="group flex w-full items-center justify-center gap-3 bg-ocean-600 text-white px-6 py-4 rounded-[1.25rem] font-black uppercase tracking-widest text-sm shadow-xl shadow-ocean-600/20 active:scale-95 transition-all hover:bg-ocean-700"
+                  className="group flex w-full items-center justify-center gap-3 bg-ocean-600 text-white px-5 sm:px-6 py-3.5 sm:py-4 rounded-[1.25rem] font-black uppercase tracking-widest text-xs sm:text-sm shadow-xl shadow-ocean-600/20 active:scale-95 transition-all hover:bg-ocean-700"
                 >
-                  <LogIn size={20} />
+                  <LogIn size={18} />
                   <span>Sign In</span>
                 </Link>
-                <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Access your travel portal</p>
+                <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-3 sm:mt-4">Access your travel portal</p>
               </div>
             ) : (
-              <div className="mt-8 pt-8 border-t border-slate-200/60 dark:border-slate-800/60">
-                <div className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="h-16 w-16 rounded-full bg-gradient-to-br from-ocean-500 to-indigo-600 flex items-center justify-center text-white font-black text-2xl shadow-lg ring-4 ring-white dark:ring-slate-800">
+              <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-slate-200/60 dark:border-slate-800/60">
+                <div className="p-4 sm:p-6 rounded-2xl sm:rounded-[2rem] bg-slate-50 dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/50">
+                  <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+                    <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gradient-to-br from-ocean-500 to-indigo-600 flex items-center justify-center text-white font-black text-xl sm:text-2xl shadow-lg ring-4 ring-white dark:ring-slate-800 shrink-0">
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">

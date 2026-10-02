@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { EmailService } from '../services/EmailService.js';
+import { PushService } from '../services/PushService.js';
 
 /**
  * Controller for authentication and user management
@@ -83,13 +84,13 @@ export const authController = {
             const accessToken = jwt.sign(
                 { sub: String(user._id), role: user.role, email: user.email },
                 process.env.JWT_SECRET,
-                { expiresIn: '20m' }
+                { expiresIn: process.env.JWT_EXPIRES_IN || '2h' }
             );
 
             const refreshToken = jwt.sign(
                 { sub: String(user._id) },
                 process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
-                { expiresIn: '2d' }
+                { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d' }
             );
 
             // Store refresh token
@@ -381,7 +382,7 @@ export const authController = {
                 const accessToken = jwt.sign(
                     { sub: String(user._id), role: user.role, email: user.email },
                     process.env.JWT_SECRET,
-                    { expiresIn: '20m' }
+                    { expiresIn: process.env.JWT_EXPIRES_IN || '2h' }
                 );
 
                 user.lastActivity = new Date();
@@ -427,16 +428,83 @@ export const authController = {
 
             const { subscription } = req.validated.body;
 
-            // Prevent duplicate subscriptions
-            const exists = user.pushSubscriptions.some(sub => sub.endpoint === subscription.endpoint);
-            if (!exists) {
-                user.pushSubscriptions.push(subscription);
-                await user.save();
+            if (!Array.isArray(user.pushSubscriptions)) {
+                user.pushSubscriptions = [];
             }
 
-            res.json({ ok: true, message: 'Subscribed to push notifications' });
+            // Remove existing subscription with same endpoint to refresh credentials
+            user.pushSubscriptions = user.pushSubscriptions.filter(
+                sub => sub && sub.endpoint !== subscription.endpoint
+            );
+            user.pushSubscriptions.push(subscription);
+            user.markModified('pushSubscriptions');
+            await user.save();
+
+            res.json({ ok: true, message: 'Subscribed to push notifications', count: user.pushSubscriptions.length });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Send a test push notification to verify the user's active device subscription
+     */
+    testPush: async (req, res, next) => {
+        try {
+            const user = await User.findById(req.user.sub);
+            if (!user) return next({ status: 404, message: 'User not found' });
+
+            // If the client sent along its active device subscription, ensure it is registered
+            const clientSub = req.body?.subscription;
+            if (clientSub && clientSub.endpoint && clientSub.keys?.p256dh && clientSub.keys?.auth) {
+                if (!Array.isArray(user.pushSubscriptions)) {
+                    user.pushSubscriptions = [];
+                }
+                const alreadyExists = user.pushSubscriptions.some(sub => sub && sub.endpoint === clientSub.endpoint);
+                if (!alreadyExists) {
+                    user.pushSubscriptions.push(clientSub);
+                    user.markModified('pushSubscriptions');
+                    await user.save();
+                }
+            }
+
+            if (!user.pushSubscriptions || user.pushSubscriptions.length === 0) {
+                return res.status(400).json({ ok: false, message: 'No active push subscriptions found for this account on this device' });
+            }
+
+            const payload = {
+                title: '✈️ D.Narai Staff Alerts Active',
+                body: `Hello ${user.name || user.email}, your push notification setup is verified and active!`,
+                icon: '/D-NARAI_Logo-04.png',
+                badge: '/D-NARAI_Logo-04.png',
+                url: '/admin',
+                data: { url: '/admin', timestamp: Date.now() },
+            };
+
+            await PushService.sendPushNotification(user, payload);
+            res.json({ ok: true, message: 'Test push notification sent successfully' });
+        } catch (err) {
+            next(err);
+        }
+    },
+
+    /**
+     * Check if the user has active push subscriptions
+     */
+    getPushStatus: async (req, res, next) => {
+        try {
+            const user = await User.findById(req.user.sub);
+            if (!user) return next({ status: 404, message: 'User not found' });
+
+            const hasActiveSubscriptions = Array.isArray(user.pushSubscriptions) && user.pushSubscriptions.length > 0;
+            res.json({
+                ok: true,
+                subscribed: hasActiveSubscriptions,
+                subscriptionCount: user.pushSubscriptions?.length || 0,
+            });
         } catch (err) {
             next(err);
         }
     }
 };
+

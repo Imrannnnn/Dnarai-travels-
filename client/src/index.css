@@ -37,8 +37,10 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-size: 15px;
     /* Slightly reduced from default 16px */
+    width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
+    -webkit-text-size-adjust: 100%;
   }
 
   h1,
@@ -56,8 +58,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     position: relative;
+    width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+    min-height: 100vh;
   }
 
   body::before {
@@ -84,7 +94,7 @@
 }
 
 .glass-card {
-  @apply border border-white/20 bg-white/70 backdrop-blur-2xl shadow-xl dark:border-white/10 dark:bg-slate-900/70;
+  @apply border border-slate-200/80 bg-white shadow-md dark:border-slate-800 dark:bg-slate-900;
 }
 
 .premium-shadow {

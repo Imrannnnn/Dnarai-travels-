@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
       '/sitemap.xml': 'http://localhost:5000',
       '/robots.txt': 'http://localhost:5000'
     }

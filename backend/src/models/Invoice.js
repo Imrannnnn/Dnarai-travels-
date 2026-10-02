@@ -26,10 +26,16 @@ const InvoiceSchema = new mongoose.Schema(
     discount: { type: Number, default: 0 },
     total: { type: Number, required: true },
     balanceDue: { type: Number, required: true },
+    isPaid: { type: Boolean, default: false },
+    status: {
+      type: String,
+      enum: ['paid', 'unpaid', 'pending', 'cancelled'],
+      default: 'unpaid',
+    },
     paymentType: {
       type: String,
-      enum: ['cash', 'bank_transfer'],
-      required: true,
+      enum: ['cash', 'bank_transfer', 'pos', 'online'],
+      default: 'bank_transfer',
     },
     currency: { type: String, required: true }, // e.g., '₦', '$'
     notes: { type: String, default: "Our Service End when you successfully arrive your destination." },

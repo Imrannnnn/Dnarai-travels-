@@ -40,11 +40,12 @@ export const pushSubscriptionSchema = z.object({
   body: z.object({
     subscription: z.object({
       endpoint: z.string().url(),
+      expirationTime: z.union([z.number(), z.null()]).optional(),
       keys: z.object({
         p256dh: z.string(),
         auth: z.string()
       })
-    })
+    }).passthrough()
   })
 });
 

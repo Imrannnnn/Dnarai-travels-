@@ -107,7 +107,7 @@ describe('Auth JWT Middleware', () => {
       
       const mockUser = {
         _id: 'user-id-123',
-        lastActivity: new Date(Date.now() - 40 * 60 * 1000), // 40 mins ago (exceeds 30 mins)
+        lastActivity: new Date(Date.now() - 130 * 60 * 1000), // 130 mins ago (exceeds 2 hours)
         save: jest.fn().mockResolvedValue(true),
       };
       User.findById.mockResolvedValue(mockUser);

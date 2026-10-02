@@ -57,6 +57,7 @@ export const PushService = {
         // Clean up expired or invalid subscriptions from the database
         if (subscriptionsToRemove.length > 0) {
             user.pushSubscriptions = validSubscriptions;
+            user.markModified('pushSubscriptions');
             await user.save();
         }
     }

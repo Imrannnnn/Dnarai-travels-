@@ -1,0 +1,25 @@
+{
+  "name": "D.Narai Travels - Staff Operations",
+  "short_name": "D.Narai Staff",
+  "description": "D.Narai Travel Agency staff duties, flight tracking, and operational alerts",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#00456E",
+  "theme_color": "#00456E",
+  "icons": [
+    {
+      "src": "/D-NARAI_Logo-04.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/D-NARAI_Logo-04.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

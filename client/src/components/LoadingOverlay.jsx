@@ -10,8 +10,8 @@ export default function LoadingOverlay({
     status = 'loading'
 }) {
     const containerClasses = fullScreen
-        ? "fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-300"
-        : "absolute inset-0 z-50 bg-white/60 backdrop-blur-sm flex items-center justify-center rounded-[inherit] animate-in fade-in duration-300";
+        ? "fixed inset-0 z-[9999] bg-slate-950/80 flex items-center justify-center animate-in fade-in duration-200"
+        : "absolute inset-0 z-50 bg-slate-950/80 flex items-center justify-center rounded-[inherit] animate-in fade-in duration-200";
 
     return (
         <div className={containerClasses}>
