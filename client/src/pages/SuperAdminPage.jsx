@@ -12,6 +12,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import SpreadsheetScheduleView from '../components/schedule/SpreadsheetScheduleView'
 import DutyManagementView from '../components/schedule/DutyManagementView'
+import StaffDutyDashboard from '../components/schedule/StaffDutyDashboard'
 import TravelCardManager from '../components/travelCard/TravelCardManager'
 import PushNotificationToggle from '../components/PushNotificationToggle'
 
@@ -659,7 +660,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     }, [token])
 
     const loadStaffMembers = useCallback(async () => {
-        if (!token || role !== 'admin') return
+        if (!token || !['admin', 'staff', 'agent'].includes(role)) return
         setIsLoadingStaff(true)
         try {
             const data = await fetchStaffMembers({ baseUrl, token })
@@ -674,7 +675,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     }, [baseUrl, token, role])
 
     useEffect(() => {
-        if (role === 'admin' && token) {
+        if (['admin', 'staff', 'agent'].includes(role) && token) {
             loadStaffMembers()
         }
     }, [role, token, loadStaffMembers])
@@ -1465,58 +1466,80 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                     )}
                                 </button>
 
+                                {/* Staff Team (Admin only) */}
                                 {role === 'admin' && (
-                                    <>
-                                        <button
-                                            onClick={() => { setActiveTab('staff'); loadStaffMembers(); }}
-                                            title="Staff Management"
-                                            className={clsx(
-                                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
-                                                activeTab === 'staff'
-                                                    ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
-                                                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                                            )}
-                                        >
-                                            <Lucide.Shield size={18} className={clsx(activeTab === 'staff' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
-                                            {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Staff Team</span>}
-                                            {!isSidebarCollapsed && staffMembers.length > 0 && (
-                                                <span className={clsx(
-                                                    "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                                                    activeTab === 'staff' ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
-                                                )}>
-                                                    {staffMembers.length}
-                                                </span>
-                                            )}
-                                        </button>
+                                    <button
+                                        onClick={() => { setActiveTab('staff'); loadStaffMembers(); }}
+                                        title="Staff Management"
+                                        className={clsx(
+                                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                            activeTab === 'staff'
+                                                ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                        )}
+                                    >
+                                        <Lucide.Shield size={18} className={clsx(activeTab === 'staff' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                        {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Staff Team</span>}
+                                        {!isSidebarCollapsed && staffMembers.length > 0 && (
+                                            <span className={clsx(
+                                                "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                                                activeTab === 'staff' ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
+                                            )}>
+                                                {staffMembers.length}
+                                            </span>
+                                        )}
+                                    </button>
+                                )}
 
-                                        <button
-                                            onClick={() => { setActiveTab('schedules'); loadStaffMembers(); }}
-                                            title="Excel-style Staff Duty Schedules"
-                                            className={clsx(
-                                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
-                                                activeTab === 'schedules'
-                                                    ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
-                                                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                                            )}
-                                        >
-                                            <Lucide.CalendarClock size={18} className={clsx(activeTab === 'schedules' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
-                                            {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Staff Schedules</span>}
-                                        </button>
+                                {/* Staff Schedules (Viewable by Staff and Admin) */}
+                                {['admin', 'staff', 'agent'].includes(role) && (
+                                    <button
+                                        onClick={() => { setActiveTab('schedules'); loadStaffMembers(); }}
+                                        title="Staff Duty Schedules Roster"
+                                        className={clsx(
+                                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                            activeTab === 'schedules'
+                                                ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                        )}
+                                    >
+                                        <Lucide.CalendarClock size={18} className={clsx(activeTab === 'schedules' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                        {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Staff Schedules</span>}
+                                    </button>
+                                )}
 
-                                        <button
-                                            onClick={() => { setActiveTab('duties'); loadStaffMembers(); }}
-                                            title="Duty Assignment & Management"
-                                            className={clsx(
-                                                "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
-                                                activeTab === 'duties'
-                                                    ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
-                                                    : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                                            )}
-                                        >
-                                            <Lucide.ClipboardList size={18} className={clsx(activeTab === 'duties' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
-                                            {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Duty Tasks</span>}
-                                        </button>
-                                    </>
+                                {/* Admin Duty Tasks Assignment Manager */}
+                                {role === 'admin' && (
+                                    <button
+                                        onClick={() => { setActiveTab('duties'); loadStaffMembers(); }}
+                                        title="Duty Assignment & Management"
+                                        className={clsx(
+                                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                            activeTab === 'duties'
+                                                ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                        )}
+                                    >
+                                        <Lucide.ClipboardList size={18} className={clsx(activeTab === 'duties' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                        {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Duty Assignments</span>}
+                                    </button>
+                                )}
+
+                                {/* Personal Duty Tasks (Staff & Admin) */}
+                                {['admin', 'staff', 'agent'].includes(role) && (
+                                    <button
+                                        onClick={() => setActiveTab('my-duties')}
+                                        title="Personal Duty Checklist & Task Progress"
+                                        className={clsx(
+                                            "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                            activeTab === 'my-duties'
+                                                ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                                : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                        )}
+                                    >
+                                        <Lucide.ClipboardCheck size={18} className={clsx(activeTab === 'my-duties' ? "text-white" : "text-slate-400 group-hover:text-ocean-400 shrink-0")} />
+                                        {!isSidebarCollapsed && <span className="flex-1 text-left truncate">My Duties</span>}
+                                    </button>
                                 )}
 
                                 <button
@@ -1658,51 +1681,68 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                     </button>
 
                                     {role === 'admin' && (
-                                        <>
-                                            <button
-                                                onClick={() => { setActiveTab('staff'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
-                                                className={clsx(
-                                                    "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
-                                                    activeTab === 'staff' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                                                )}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <Lucide.Shield size={18} />
-                                                    <span>Staff Team</span>
-                                                </div>
-                                                {staffMembers.length > 0 && (
-                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-300">
-                                                        {staffMembers.length}
-                                                    </span>
-                                                )}
-                                            </button>
+                                        <button
+                                            onClick={() => { setActiveTab('staff'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
+                                            className={clsx(
+                                                "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                activeTab === 'staff' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Lucide.Shield size={18} />
+                                                <span>Staff Team</span>
+                                            </div>
+                                            {staffMembers.length > 0 && (
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-800 text-slate-300">
+                                                    {staffMembers.length}
+                                                </span>
+                                            )}
+                                        </button>
+                                    )}
 
-                                            <button
-                                                onClick={() => { setActiveTab('schedules'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
-                                                className={clsx(
-                                                    "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
-                                                    activeTab === 'schedules' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                                                )}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <Lucide.CalendarClock size={18} />
-                                                    <span>Staff Schedules</span>
-                                                </div>
-                                            </button>
+                                    {['admin', 'staff', 'agent'].includes(role) && (
+                                        <button
+                                            onClick={() => { setActiveTab('schedules'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
+                                            className={clsx(
+                                                "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                activeTab === 'schedules' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Lucide.CalendarClock size={18} />
+                                                <span>Staff Schedules</span>
+                                            </div>
+                                        </button>
+                                    )}
 
-                                            <button
-                                                onClick={() => { setActiveTab('duties'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
-                                                className={clsx(
-                                                    "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
-                                                    activeTab === 'duties' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
-                                                )}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <Lucide.ClipboardList size={18} />
-                                                    <span>Duty Tasks</span>
-                                                </div>
-                                            </button>
-                                        </>
+                                    {role === 'admin' && (
+                                        <button
+                                            onClick={() => { setActiveTab('duties'); setIsMobileSidebarOpen(false); loadStaffMembers(); }}
+                                            className={clsx(
+                                                "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                activeTab === 'duties' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Lucide.ClipboardList size={18} />
+                                                <span>Duty Assignments</span>
+                                            </div>
+                                        </button>
+                                    )}
+
+                                    {['admin', 'staff', 'agent'].includes(role) && (
+                                        <button
+                                            onClick={() => { setActiveTab('my-duties'); setIsMobileSidebarOpen(false); }}
+                                            className={clsx(
+                                                "w-full flex items-center justify-between px-3 py-3 rounded-xl text-xs font-bold transition-all",
+                                                activeTab === 'my-duties' ? "bg-ocean-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <Lucide.ClipboardCheck size={18} />
+                                                <span>My Duties</span>
+                                            </div>
+                                        </button>
                                     )}
 
                                     <button
@@ -3214,19 +3254,29 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                             </div>
                         )}
 
-                        {/* SECTION: STAFF SCHEDULES (Admin Only) */}
-                        {activeTab === 'schedules' && role === 'admin' && (
+                        {/* SECTION: STAFF SCHEDULES (Admin & Staff) */}
+                        {activeTab === 'schedules' && (
                             <SpreadsheetScheduleView
                                 staffMembers={staffMembers}
                                 onReloadStaff={loadStaffMembers}
+                                readOnly={role !== 'admin'}
                             />
                         )}
 
-                        {/* SECTION: DUTY ASSIGNMENTS & LEDGER (Admin Only) */}
-                        {activeTab === 'duties' && role === 'admin' && (
-                            <DutyManagementView
-                                staffMembers={staffMembers}
-                            />
+                        {/* SECTION: DUTY ASSIGNMENTS (Admin) & MY DUTIES (Staff) */}
+                        {activeTab === 'duties' && (
+                            role === 'admin' ? (
+                                <DutyManagementView
+                                    staffMembers={staffMembers}
+                                />
+                            ) : (
+                                <StaffDutyDashboard />
+                            )
+                        )}
+
+                        {/* SECTION: MY DUTIES (Personal Checklist for Staff & Admin) */}
+                        {activeTab === 'my-duties' && (
+                            <StaffDutyDashboard />
                         )}
 
                         {/* SECTION: TRAVEL CARD GENERATOR */}

@@ -1,4 +1,5 @@
 import { StaffSchedule } from '../models/StaffSchedule.js';
+import { isSuperAdminUser } from '../utils/superAdmin.js';
 
 const DAYS_OF_WEEK = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
@@ -52,6 +53,7 @@ export const ScheduleService = {
     for (const sched of activeSchedules) {
       if (!sched.staffId) continue;
       const staffUser = sched.staffId;
+      if (isSuperAdminUser(staffUser)) continue;
       const staffIdStr = String(staffUser._id);
 
       let isOnDuty = false;

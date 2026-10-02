@@ -5,6 +5,7 @@ import { Notification } from '../models/Notification.js';
 import { PushService } from '../services/PushService.js';
 import { EmailService } from '../services/EmailService.js';
 import { ScheduleService } from '../services/ScheduleService.js';
+import { isSuperAdminUser } from '../utils/superAdmin.js';
 
 export const scheduleController = {
   /**
@@ -20,12 +21,18 @@ export const scheduleController = {
       if (isActive !== undefined) filter.isActive = isActive === 'true';
 
       const schedules = await StaffSchedule.find(filter)
-        .populate('staffId', 'email role name color')
+        .populate('staffId', 'email role name color isSuperAdmin')
         .populate('createdBy', 'email name')
         .sort({ createdAt: -1 })
         .lean();
 
-      res.json({ ok: true, schedules });
+      // Exclude schedules belonging to the Super Admin (regular admins and staff are kept)
+      const visibleSchedules = schedules.filter((s) => {
+        if (!s.staffId) return false;
+        return !isSuperAdminUser(s.staffId);
+      });
+
+      res.json({ ok: true, schedules: visibleSchedules });
     } catch (err) {
       next(err);
     }
@@ -72,6 +79,10 @@ export const scheduleController = {
       const staffUser = await User.findById(staffId);
       if (!staffUser) {
         return res.status(404).json({ ok: false, message: 'Staff member not found' });
+      }
+
+      if (isSuperAdminUser(staffUser)) {
+        return res.status(400).json({ ok: false, message: 'The Super Admin cannot be scheduled on the staff duty roster' });
       }
 
       // Check for conflicts
@@ -209,6 +220,13 @@ export const scheduleController = {
       const targetStaffId = newStaffId || schedule.staffId;
       const isStaffReassigned = newStaffId && String(newStaffId) !== String(schedule.staffId);
       const previousStaffId = schedule.staffId;
+
+      if (newStaffId) {
+        const targetUser = await User.findById(newStaffId);
+        if (targetUser && isSuperAdminUser(targetUser)) {
+          return res.status(400).json({ ok: false, message: 'Cannot assign schedule to Super Admin' });
+        }
+      }
 
       // Check conflict if staff, days, or times changed
       if (isStaffReassigned || daysOfWeek || specificDate || startTime || endTime) {

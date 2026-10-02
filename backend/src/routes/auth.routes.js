@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import { validate } from '../middleware/validate.js';
-import { requireAuth, requireRole } from '../middleware/authJwt.js';
+import { requireAuth, requireRole, requireAgency } from '../middleware/authJwt.js';
 import { authController } from '../controllers/auth.controller.js';
 import {
   registerSchema,
@@ -50,7 +50,7 @@ router.post(
 router.get(
   '/staff',
   requireAuth,
-  requireRole(['admin']),
+  requireAgency,
   authController.getStaff
 );
 

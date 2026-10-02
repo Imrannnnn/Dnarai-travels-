@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { User } from '../models/User.js';
 import { EmailService } from '../services/EmailService.js';
 import { PushService } from '../services/PushService.js';
+import { isSuperAdminUser } from '../utils/superAdmin.js';
 
 /**
  * Controller for authentication and user management
@@ -250,13 +251,19 @@ export const authController = {
      */
     getStaff: async (req, res, next) => {
         try {
-            if (req.user.role !== 'admin') {
-                return next({ status: 403, message: 'Only admins can view staff list' });
+            if (!['admin', 'staff', 'agent'].includes(req.user.role)) {
+                return next({ status: 403, message: 'Only authorized agency personnel can view staff list' });
             }
 
-            const staff = await User.find({ role: { $in: ['staff', 'agent', 'admin'] } })
+            const staffDocs = await User.find({ role: { $in: ['staff', 'agent', 'admin'] } })
                 .select('-passwordHash -refreshTokens -pushSubscriptions')
-                .sort({ createdAt: -1 });
+                .sort({ createdAt: -1 })
+                .lean();
+
+            const staff = staffDocs.map((u) => ({
+                ...u,
+                isSuperAdmin: isSuperAdminUser(u),
+            }));
 
             res.json({
                 ok: true,

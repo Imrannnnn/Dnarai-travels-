@@ -14,11 +14,30 @@ import BlogPostPage from './pages/BlogPostPage'
 import TimeConverterPage from './pages/TimeConverterPage'
 import FlightQuotationsPage from './pages/FlightQuotationsPage'
 import StaffDutyDashboard from './components/schedule/StaffDutyDashboard'
+import SpreadsheetScheduleView from './components/schedule/SpreadsheetScheduleView'
 import { useAuth } from './data/AuthContext'
 import { useAppData } from './data/AppDataContext'
 import LoadingOverlay from './components/LoadingOverlay'
 import SessionExpiredModal from './components/SessionExpiredModal'
 import NotificationOnboardingModal from './components/NotificationOnboardingModal'
+
+function StaffSchedulesRoute() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-6">
+        <h1 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight font-display">
+          Staff Operational Roster & Schedules
+        </h1>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          {isAdmin ? 'Manage team shifts and operational scheduling' : 'View your scheduled duties and agency shift roster'}
+        </p>
+      </div>
+      <SpreadsheetScheduleView readOnly={!isAdmin} />
+    </div>
+  )
+}
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -73,6 +92,10 @@ export default function App() {
           path="/travel-card"
           element={<SuperAdminPage initialTab="travel-card" />}
         />
+        <Route
+          path="/super-admin/schedules"
+          element={<SuperAdminPage initialTab="schedules" />}
+        />
 
         {/* Main Pages */}
         <Route
@@ -93,6 +116,22 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <DashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/staff-schedules"
+                  element={
+                    <ProtectedRoute>
+                      <StaffSchedulesRoute />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/schedules"
+                  element={
+                    <ProtectedRoute>
+                      <StaffSchedulesRoute />
                     </ProtectedRoute>
                   }
                 />

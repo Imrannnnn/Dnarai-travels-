@@ -24,6 +24,7 @@ const BookOpen = Lucide.BookOpen
 const Globe = Lucide.Globe
 const ClipboardCheck = Lucide.ClipboardCheck || Lucide.CheckSquare
 const ShieldCheck = Lucide.ShieldCheck || Lucide.Shield
+const CalendarClock = Lucide.CalendarClock || Lucide.Calendar
 
 function NavItem({ to, icon: Icon, label, badge, onClick }) {
   const SafeIcon = Icon || Plane
@@ -88,6 +89,7 @@ export default function Navbar() {
     ...(isAuthenticated ? [
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
       ...(user?.role === 'staff' || user?.role === 'agent' || user?.role === 'admin' ? [
+        { to: '/staff-schedules', icon: CalendarClock, label: 'Schedules' },
         { to: '/staff-duties', icon: ClipboardCheck, label: 'My Duties' }
       ] : []),
       ...(user?.role === 'admin' ? [

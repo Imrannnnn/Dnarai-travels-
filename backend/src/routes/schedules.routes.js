@@ -10,8 +10,8 @@ router.get('/my-schedule', requireAuth, scheduleController.getMySchedule);
 // Query on-duty staff (accessible to all agency personnel and admin)
 router.get('/on-duty', requireAuth, requireAgency, scheduleController.getOnDutyStaff);
 
-// Admin-only schedule management routes
-router.get('/', requireAuth, requireRole(['admin']), scheduleController.getSchedules);
+// Schedule routes: viewable by staff & admin, editable only by admin
+router.get('/', requireAuth, requireAgency, scheduleController.getSchedules);
 router.post('/', requireAuth, requireRole(['admin']), scheduleController.createSchedule);
 router.patch('/staff-color/:staffId', requireAuth, requireRole(['admin']), scheduleController.updateStaffColor);
 router.patch('/:id', requireAuth, requireRole(['admin']), scheduleController.updateSchedule);

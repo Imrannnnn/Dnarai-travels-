@@ -8,7 +8,10 @@ import {
   deleteSchedule,
   updateStaffColor,
   fetchOnDutyStaff,
+  fetchStaffMembers,
 } from '../../data/api'
+import { useAuth } from '../../data/AuthContext'
+import { isSuperAdminUser } from '../../utils/superAdmin'
 
 const PRESET_COLORS = [
   '#2563EB', // Ocean Blue
@@ -53,13 +56,20 @@ function formatDateYMD(d) {
   return `${year}-${month}-${day}`
 }
 
-export default function SpreadsheetScheduleView({ staffMembers = [], onReloadStaff }) {
+export default function SpreadsheetScheduleView({ staffMembers: initialStaffMembers = [], onReloadStaff, readOnly = false }) {
+  const { user: currentUser } = useAuth()
+  const currentRole = currentUser?.role || localStorage.getItem('admin_role')
+  const canEdit = !readOnly && currentRole === 'admin'
+
+  const [internalStaff, setInternalStaff] = useState([])
   const [schedules, setSchedules] = useState([])
   const [onDutyList, setOnDutyList] = useState([])
   const [loading, setLoading] = useState(true)
   const [currentWeekStart, setCurrentWeekStart] = useState(() => getStartOfWeek(new Date()))
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('all') // all | recurring | part_time | one_day
+  const [staffFilter, setStaffFilter] = useState('all') // 'all' | 'my_schedule' | specificStaffId
+  const [viewingShiftDetails, setViewingShiftDetails] = useState(null)
 
   // Modals state
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
@@ -98,6 +108,26 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
     })
   }, [currentWeekStart])
 
+  // Self load staff members if not provided by parent
+  useEffect(() => {
+    if (!initialStaffMembers || initialStaffMembers.length === 0) {
+      fetchStaffMembers().then((res) => {
+        if (res?.ok && Array.isArray(res.staff)) {
+          setInternalStaff(res.staff)
+        }
+      }).catch((err) => {
+        console.error('Failed to self-load staff members in schedule view:', err)
+      })
+    }
+  }, [initialStaffMembers])
+
+  const rawStaffList = initialStaffMembers && initialStaffMembers.length > 0 ? initialStaffMembers : internalStaff
+
+  // EXCLUDE the Super Admin (regular admins and staff are kept)
+  const eligibleStaff = useMemo(() => {
+    return rawStaffList.filter((s) => !isSuperAdminUser(s))
+  }, [rawStaffList])
+
   // Load schedules and on-duty list
   const loadData = async () => {
     setLoading(true)
@@ -107,8 +137,14 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
         fetchSchedules(),
         fetchOnDutyStaff({ date: todayYmd }),
       ])
-      if (schedRes?.ok) setSchedules(schedRes.schedules || [])
-      if (onDutyRes?.ok) setOnDutyList(onDutyRes.onDuty || [])
+      if (schedRes?.ok) {
+        const validScheds = (schedRes.schedules || []).filter((s) => !isSuperAdminUser(s.staffId))
+        setSchedules(validScheds)
+      }
+      if (onDutyRes?.ok) {
+        const validOnDuty = (onDutyRes.onDuty || []).filter((item) => !isSuperAdminUser(item.user))
+        setOnDutyList(validOnDuty)
+      }
     } catch (err) {
       console.error('Failed to load schedule data:', err)
     } finally {
@@ -122,14 +158,31 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
 
   // Filtered staff members
   const filteredStaff = useMemo(() => {
-    return staffMembers.filter((s) => {
+    let list = eligibleStaff
+
+    if (staffFilter === 'my_schedule') {
+      const myEmail = currentUser?.email?.toLowerCase().trim()
+      const myId = currentUser?.id || currentUser?._id || currentUser?.sub
+      list = list.filter((s) => {
+        if (myId && String(s._id) === String(myId)) return true
+        if (myEmail && s.email?.toLowerCase().trim() === myEmail) return true
+        return false
+      })
+    } else if (staffFilter !== 'all') {
+      list = list.filter((s) => String(s._id) === String(staffFilter))
+    }
+
+    if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase()
-      const matchSearch =
-        (s.name && s.name.toLowerCase().includes(query)) ||
-        (s.email && s.email.toLowerCase().includes(query))
-      return matchSearch
-    })
-  }, [staffMembers, searchQuery])
+      list = list.filter((s) => {
+        return (
+          (s.name && s.name.toLowerCase().includes(query)) ||
+          (s.email && s.email.toLowerCase().includes(query))
+        )
+      })
+    }
+    return list
+  }, [eligibleStaff, staffFilter, searchQuery, currentUser])
 
   // Map schedules by staffId
   const schedulesByStaff = useMemo(() => {
@@ -167,7 +220,7 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
   const handleOpenAddModal = (staffId = null, dayKey = null) => {
     setEditingSchedule(null)
     setConflictWarning(null)
-    setFormStaffId(staffId || (staffMembers[0]?._id || ''))
+    setFormStaffId(staffId || (eligibleStaff[0]?._id || ''))
     setFormScheduleType('recurring')
     setFormDaysOfWeek(dayKey ? [dayKey] : ['monday', 'tuesday', 'wednesday'])
     setFormSpecificDate(formatDateYMD(new Date()))
@@ -397,6 +450,7 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
 
         {/* Search, Filter & Actions */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Search by name/email */}
           <div className="relative">
             <Lucide.Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -404,9 +458,52 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
               placeholder="Search staff..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-ocean-500/20 text-slate-800 dark:text-white w-40 sm:w-48"
+              className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-ocean-500/20 text-slate-800 dark:text-white w-36 sm:w-44"
             />
           </div>
+
+          {/* Quick Staff Filter Buttons (All Team vs My Schedule) */}
+          <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold">
+            <button
+              onClick={() => setStaffFilter('all')}
+              className={clsx(
+                "px-3 py-1.5 rounded-lg transition-all",
+                staffFilter === 'all'
+                  ? "bg-white dark:bg-slate-900 text-ocean-600 dark:text-ocean-400 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
+            >
+              All Staff
+            </button>
+            <button
+              onClick={() => setStaffFilter('my_schedule')}
+              className={clsx(
+                "px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5",
+                staffFilter === 'my_schedule'
+                  ? "bg-white dark:bg-slate-900 text-ocean-600 dark:text-ocean-400 shadow-sm"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
+              title="Show only my personal schedule"
+            >
+              <Lucide.UserCheck size={14} />
+              <span>My Schedule</span>
+            </button>
+          </div>
+
+          {/* Specific Staff Dropdown Selector */}
+          <select
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
+            className="text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none max-w-[180px] truncate"
+          >
+            <option value="all">Staff: Everyone ({eligibleStaff.length})</option>
+            <option value="my_schedule">⭐ My Schedule Only</option>
+            {eligibleStaff.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.name || s.email.split('@')[0]} {s.role === 'admin' ? '(Admin)' : ''}
+              </option>
+            ))}
+          </select>
 
           {/* Filter Type */}
           <select
@@ -414,19 +511,26 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
             onChange={(e) => setTypeFilter(e.target.value)}
             className="text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none"
           >
-            <option value="all">All Modes</option>
-            <option value="recurring">Recurring Only</option>
-            <option value="part_time">Part-Time Only</option>
-            <option value="one_day">One-Day Only</option>
+            <option value="all">All Shift Types</option>
+            <option value="recurring">Recurring</option>
+            <option value="part_time">Part-Time</option>
+            <option value="one_day">One-Day</option>
           </select>
 
-          <button
-            onClick={() => handleOpenAddModal()}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95"
-          >
-            <Lucide.Plus size={16} />
-            <span>Add Schedule</span>
-          </button>
+          {canEdit ? (
+            <button
+              onClick={() => handleOpenAddModal()}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all active:scale-95"
+            >
+              <Lucide.Plus size={16} />
+              <span>Add Schedule</span>
+            </button>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold">
+              <Lucide.Eye size={15} className="text-ocean-600 dark:text-ocean-400" />
+              <span>Roster View</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -495,32 +599,41 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
                       <td className="py-3 px-4 border-r border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 sticky left-0 z-10">
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
-                            {/* Color Dot Button */}
-                            <button
-                              onClick={() => handleOpenColorModal(staff)}
-                              className="h-4 w-4 rounded-full shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-900 hover:scale-125 transition-transform"
-                              style={{ backgroundColor: staffColor }}
-                              title="Click to change custom staff color"
-                            />
+                            {/* Color Dot Button (Editable only by Admin) */}
+                            {canEdit ? (
+                              <button
+                                onClick={() => handleOpenColorModal(staff)}
+                                className="h-4 w-4 rounded-full shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-900 hover:scale-125 transition-transform"
+                                style={{ backgroundColor: staffColor }}
+                                title="Click to change custom staff color"
+                              />
+                            ) : (
+                              <span
+                                className="h-4 w-4 rounded-full shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-900"
+                                style={{ backgroundColor: staffColor }}
+                              />
+                            )}
                             <div className="min-w-0">
                               <div
                                 className="font-extrabold truncate text-slate-900 dark:text-white"
                                 style={{ color: staffColor }}
                               >
-                                {staffDisplayName}
+                                {staffDisplayName} {staff.role === 'admin' ? '(Admin)' : ''}
                               </div>
                               <div className="text-[10px] text-slate-400 truncate">{staff.email}</div>
                             </div>
                           </div>
 
-                          {/* Quick Add Schedule for this staff */}
-                          <button
-                            onClick={() => handleOpenAddModal(staff._id)}
-                            className="p-1 rounded-lg text-slate-300 hover:text-ocean-600 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-0 group-hover:opacity-100 transition-opacity"
-                            title="Add schedule"
-                          >
-                            <Lucide.Plus size={15} />
-                          </button>
+                          {/* Quick Add Schedule for this staff (Admin Only) */}
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenAddModal(staff._id)}
+                              className="p-1 rounded-lg text-slate-300 hover:text-ocean-600 hover:bg-slate-100 dark:hover:bg-slate-800 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Add schedule"
+                            >
+                              <Lucide.Plus size={15} />
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -534,14 +647,15 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
                           <td
                             key={weekDay.key}
                             onClick={() => {
-                              if (!hasSched) {
+                              if (canEdit && !hasSched) {
                                 handleOpenAddModal(staff._id, weekDay.key)
                               }
                             }}
                             className={clsx(
-                              "py-2 px-1.5 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0 transition-colors relative cursor-pointer",
+                              "py-2 px-1.5 text-center border-r border-slate-200 dark:border-slate-800 last:border-r-0 transition-colors relative",
+                              canEdit ? "cursor-pointer" : hasSched ? "cursor-pointer" : "cursor-default",
                               isToday ? "bg-ocean-50/30 dark:bg-ocean-950/20" : "",
-                              !hasSched && "hover:bg-ocean-50/40 dark:hover:bg-ocean-950/30"
+                              canEdit && !hasSched && "hover:bg-ocean-50/40 dark:hover:bg-ocean-950/30"
                             )}
                           >
                             {hasSched ? (
@@ -555,7 +669,17 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
                                       key={sched._id}
                                       onClick={(e) => {
                                         e.stopPropagation()
-                                        handleOpenEditModal(sched)
+                                        if (canEdit) {
+                                          handleOpenEditModal(sched)
+                                        } else {
+                                          setViewingShiftDetails({
+                                            ...sched,
+                                            staffDisplayName,
+                                            staffEmail: staff.email,
+                                            staffColor,
+                                            weekDayDisplay: `${weekDay.full}, ${weekDay.displayDate}`,
+                                          })
+                                        }
                                       }}
                                       style={{
                                         borderColor: staffColor,
@@ -563,7 +687,7 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
                                         color: staffColor,
                                       }}
                                       className="w-full max-w-[95px] px-2 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border shadow-xs hover:scale-105 active:scale-95 transition-all text-center flex flex-col items-center justify-center"
-                                      title={`${sched.scheduleType.toUpperCase()} (${sched.startTime} - ${sched.endTime})`}
+                                      title={canEdit ? `Click to edit: ${sched.scheduleType.toUpperCase()} (${sched.startTime} - ${sched.endTime})` : `Click to view shift details (${sched.startTime} - ${sched.endTime})`}
                                     >
                                       <div className="flex items-center gap-1 font-black">
                                         <span
@@ -580,9 +704,15 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
                                 })}
                               </div>
                             ) : (
-                              <div className="h-9 flex items-center justify-center text-slate-300 dark:text-slate-700 opacity-0 hover:opacity-100 transition-opacity">
-                                <Lucide.Plus size={14} />
-                              </div>
+                              canEdit ? (
+                                <div className="h-9 flex items-center justify-center text-slate-300 dark:text-slate-700 opacity-0 hover:opacity-100 transition-opacity">
+                                  <Lucide.Plus size={14} />
+                                </div>
+                              ) : (
+                                <div className="h-9 flex items-center justify-center text-slate-200 dark:text-slate-800 text-[10px]">
+                                  —
+                                </div>
+                              )
                             )}
                           </td>
                         )
@@ -662,7 +792,7 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
                   onChange={(e) => setFormStaffId(e.target.value)}
                   className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-800 dark:text-white focus:outline-none"
                 >
-                  {staffMembers.map((s) => (
+                  {eligibleStaff.map((s) => (
                     <option key={s._id} value={s._id}>
                       {s.name || s.email.split('@')[0]} ({s.email})
                     </option>
@@ -968,6 +1098,99 @@ export default function SpreadsheetScheduleView({ staffMembers = [], onReloadSta
                 className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-40"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================= */}
+      {/* READ-ONLY SHIFT DETAILS MODAL (For Staff Viewing Roster) */}
+      {/* ============================================================= */}
+      {viewingShiftDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl relative space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <span
+                  className="h-4 w-4 rounded-full shrink-0 shadow-sm"
+                  style={{ backgroundColor: viewingShiftDetails.staffColor || '#2563EB' }}
+                />
+                <div>
+                  <h3 className="text-base font-black uppercase tracking-tight text-slate-900 dark:text-white font-display">
+                    Duty Shift Details
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {viewingShiftDetails.staffDisplayName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingShiftDetails(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl"
+              >
+                <Lucide.X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px]">
+                  Schedule Type
+                </span>
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-ocean-100 dark:bg-ocean-950/60 text-ocean-700 dark:text-ocean-300">
+                  {viewingShiftDetails.scheduleType?.replace('_', ' ')}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] block">
+                    Duty Hours
+                  </span>
+                  <span className="text-sm font-black text-slate-900 dark:text-white mt-1 block">
+                    {viewingShiftDetails.startTime} — {viewingShiftDetails.endTime}
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] block">
+                    Shift Days / Date
+                  </span>
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-1 block">
+                    {viewingShiftDetails.scheduleType === 'one_day'
+                      ? viewingShiftDetails.specificDate
+                      : viewingShiftDetails.daysOfWeek && viewingShiftDetails.daysOfWeek.length > 0
+                      ? viewingShiftDetails.daysOfWeek.map((d) => d.slice(0, 3).toUpperCase()).join(', ')
+                      : 'Everyday'}
+                  </span>
+                </div>
+              </div>
+
+              {viewingShiftDetails.notes && (
+                <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-900/40 text-amber-900 dark:text-amber-300">
+                  <span className="font-bold uppercase tracking-wider text-[10px] block text-amber-700 dark:text-amber-400 mb-1">
+                    Operational Shift Notes
+                  </span>
+                  <p className="text-xs whitespace-pre-wrap leading-relaxed">
+                    {viewingShiftDetails.notes}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold pt-1">
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Confirmed Active on Agency Roster</span>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setViewingShiftDetails(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs uppercase tracking-wider transition-all"
+              >
+                Close Details
               </button>
             </div>
           </div>

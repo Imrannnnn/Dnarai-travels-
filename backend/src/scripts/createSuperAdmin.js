@@ -23,6 +23,7 @@ async function createSuperAdmin() {
     email,
     passwordHash,
     role: 'admin',
+    isSuperAdmin: true,
   });
 
   console.log('Super admin created:', email);

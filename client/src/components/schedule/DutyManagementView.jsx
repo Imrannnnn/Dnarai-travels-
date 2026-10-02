@@ -8,6 +8,7 @@ import {
   fetchOnDutyStaff,
   triggerDailyBriefing,
 } from '../../data/api'
+import { isSuperAdminUser } from '../../utils/superAdmin'
 
 function formatDateYMD(d = new Date()) {
   const year = d.getFullYear()
@@ -270,7 +271,7 @@ export default function DutyManagementView({ staffMembers = [] }) {
             className="text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-700 dark:text-slate-300 focus:outline-none"
           >
             <option value="">All Staff</option>
-            {staffMembers.map((s) => (
+            {staffMembers.filter(s => !isSuperAdminUser(s)).map((s) => (
               <option key={s._id} value={s._id}>
                 {s.name || s.email.split('@')[0]}
               </option>
@@ -592,7 +593,7 @@ export default function DutyManagementView({ staffMembers = [] }) {
                     </div>
                   ) : (
                     <div className="flex flex-wrap gap-2">
-                      {(assignmentMode === 'on_duty' ? modalOnDutyStaff.map(i => i.user) : staffMembers).map((s) => {
+                      {(assignmentMode === 'on_duty' ? modalOnDutyStaff.map(i => i.user) : staffMembers.filter(s => !isSuperAdminUser(s))).map((s) => {
                         const sId = String(s._id)
                         const selected = selectedStaffIds.includes(sId)
                         const staffColor = s.color || '#2563EB'

@@ -8,6 +8,7 @@ import { useAppData } from '../data/AppDataContext'
 import { useAuth } from '../data/AuthContext'
 import BookingModal from '../components/BookingModal'
 import FlightDetailsModal from '../components/FlightDetailsModal'
+import StaffDutyDashboard from '../components/schedule/StaffDutyDashboard'
 
 const Plus = Lucide.Plus
 const Plane = Lucide.Plane
@@ -20,19 +21,40 @@ export default function DashboardPage() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState('upcoming') // 'upcoming' | 'history'
 
+  const isStaffUser = user?.role === 'staff' || user?.role === 'agent'
+  const isAgencyUser = isStaffUser || user?.role === 'admin'
+  const [activeDashboardTab, setActiveDashboardTab] = useState(() => (isAgencyUser ? 'duties' : 'travels'))
+
   const displayedFlights = flights.filter((f) => {
     if (viewMode === 'upcoming') return f.status !== 'Completed'
     return f.status === 'Completed'
   })
 
+  const greetingName = isStaffUser
+    ? (user?.name || user?.email?.split('@')[0] || 'Staff Member')
+    : (passenger?.name?.split(' ')[0] || user?.name || 'Traveler')
+
   return (
     <div className="container mx-auto px-4 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8 max-w-7xl space-y-5 sm:space-y-6 pb-10 md:pb-12 w-full max-w-full overflow-x-hidden">
       <div className="flex flex-col gap-4 sm:gap-6 md:flex-row md:items-center md:justify-between">
         <PageHeader
-          title={`Welcome back, ${passenger?.name?.split(' ')[0] || 'Traveler'}`}
-          subtitle="Your global travel itinerary and updates are ready."
+          title={`Welcome back, ${greetingName}`}
+          subtitle={
+            activeDashboardTab === 'duties'
+              ? "Staff Operations: Review assigned duty tasks, update progress notes, and manage daily shifts."
+              : "Your global travel itinerary and flight updates are ready."
+          }
         />
-        <div className="flex gap-3 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+          {isAgencyUser && (
+            <button
+              onClick={() => navigate('/staff-schedules')}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-4 sm:px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 shadow-sm transition-all active:scale-95 w-full sm:w-auto"
+            >
+              <Lucide.CalendarClock size={16} className="text-ocean-600 dark:text-ocean-400" />
+              <span>Staff Schedules</span>
+            </button>
+          )}
           <button
             onClick={() => setBookingModalOpen(true)}
             className="inline-flex items-center justify-center gap-2 rounded-2xl bg-ocean-600 px-5 sm:px-6 py-3 text-sm font-bold text-white shadow-lg shadow-ocean-600/20 transition-all hover:bg-ocean-700 hover:scale-[1.02] active:scale-95 w-full sm:w-auto"
@@ -43,37 +65,41 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {(user?.role === 'staff' || user?.role === 'agent' || user?.role === 'admin') && (
-        <div className="bg-gradient-to-r from-slate-900 via-ocean-950 to-slate-900 border border-slate-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 sm:gap-4">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-2xl bg-ocean-600/30 border border-ocean-500/40 flex items-center justify-center text-ocean-400 shrink-0">
-              <Lucide.ClipboardCheck size={22} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Staff Operations</span>
-              </div>
-              <h4 className="text-sm sm:text-base font-black uppercase tracking-tight text-white font-display">
-                Assigned Operational Duties
-              </h4>
-              <p className="text-xs text-slate-400 mt-0.5">
-                View your scheduled on-duty status, review today&apos;s task checklist, and mark duties completed.
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-2 w-full sm:w-auto shrink-0">
+      {/* View Switcher for Staff / Agency Users */}
+      {isAgencyUser && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-2 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200/60 dark:border-slate-700/60">
+          <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
             <button
-              onClick={() => navigate('/staff-duties')}
-              className="px-4 sm:px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
+              onClick={() => setActiveDashboardTab('duties')}
+              className={clsx(
+                "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                activeDashboardTab === 'duties'
+                  ? "bg-white dark:bg-slate-900 text-ocean-600 dark:text-ocean-400 shadow-md"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
             >
-              <span>My Duties</span>
-              <Lucide.ArrowRight size={14} />
+              <Lucide.ClipboardCheck size={16} />
+              <span>Operational Duties & Tasks</span>
             </button>
+            <button
+              onClick={() => setActiveDashboardTab('travels')}
+              className={clsx(
+                "flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap",
+                activeDashboardTab === 'travels'
+                  ? "bg-white dark:bg-slate-900 text-ocean-600 dark:text-ocean-400 shadow-md"
+                  : "text-slate-500 hover:text-slate-900 dark:text-slate-400"
+              )}
+            >
+              <Lucide.Plane size={16} />
+              <span>Passenger Journeys & Flights</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
             {user?.role === 'admin' && (
               <button
                 onClick={() => navigate('/super-admin')}
-                className="px-4 sm:px-5 py-2.5 rounded-xl bg-ocean-600 hover:bg-ocean-700 text-white font-black text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
+                className="px-3.5 py-2 rounded-xl bg-ocean-600 hover:bg-ocean-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
               >
                 <Lucide.ShieldCheck size={14} />
                 <span>Super Admin Portal</span>
@@ -83,7 +109,14 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {!passenger && (
+      {/* RENDER OPERATIONAL DUTY WORKSPACE (Personal Duty Tasks) */}
+      {isAgencyUser && activeDashboardTab === 'duties' ? (
+        <div className="space-y-6 animate-in fade-in">
+          <StaffDutyDashboard />
+        </div>
+      ) : (
+        <>
+          {!passenger && (
         <div className="animate-in fade-in slide-in-from-top-4 duration-700 bg-gradient-to-r from-ocean-600 to-indigo-600 rounded-3xl p-8 text-white shadow-premium relative overflow-hidden">
           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
             <Lucide.UserCheck size={120} />
@@ -216,6 +249,8 @@ export default function DashboardPage() {
           </div>
         </aside>
       </div>
+    </>
+  )}
 
       <BookingModal
         open={bookingModalOpen}
