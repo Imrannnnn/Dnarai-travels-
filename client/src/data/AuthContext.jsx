@@ -13,14 +13,13 @@ const getInitialAuthState = () => {
         if (lastActivity) {
             const elapsed = Date.now() - parseInt(lastActivity, 10)
             if (elapsed > IDLE_TIME) {
-                // Expired, clear storage and record notice
+                // Expired, clear storage silently without disturbing the user
                 localStorage.removeItem('token')
                 localStorage.removeItem('refreshToken')
                 localStorage.removeItem('admin_token')
                 localStorage.removeItem('admin_role')
                 localStorage.removeItem('lastActivityTime')
-                sessionStorage.setItem('session_expired_notice', 'Your session has expired due to inactivity. Please sign in again.')
-                return { token: null, user: null, expiredOnStart: true }
+                return { token: null, user: null, expiredOnStart: false }
             }
         } else {
             // If they have a token but no last activity, initialize it to now
@@ -68,18 +67,32 @@ export function AuthProvider({ children }) {
         localStorage.removeItem('lastActivityTime')
         
         const msg = 'Your session has expired due to inactivity. Please sign in again to continue.'
-        sessionStorage.setItem('session_expired_notice', msg)
         setAuthState({ token: null, user: null, expiredOnStart: false })
 
         if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-                new CustomEvent('dnarai:session-expired', {
-                    detail: {
-                        reason,
-                        message: msg,
-                    },
-                })
-            )
+            const path = window.location.pathname
+            const isPublicOrAuthPage =
+                path === '/' ||
+                path === '/login' ||
+                path === '/register' ||
+                path === '/forgot-password' ||
+                path === '/super-admin/login' ||
+                path === '/admin/login' ||
+                path === '/about' ||
+                path.startsWith('/blog') ||
+                path === '/time-converter'
+
+            if (!isPublicOrAuthPage) {
+                sessionStorage.setItem('session_expired_notice', msg)
+                window.dispatchEvent(
+                    new CustomEvent('dnarai:session-expired', {
+                        detail: {
+                            reason,
+                            message: msg,
+                        },
+                    })
+                )
+            }
         }
     }, [])
 
@@ -133,18 +146,6 @@ export function AuthProvider({ children }) {
     }, [isAuthenticated, checkTimeout, resetIdleTimer, updateLastActivity])
 
     useEffect(() => {
-        // If expired on initial start, dispatch event
-        if (authState.expiredOnStart) {
-            window.dispatchEvent(
-                new CustomEvent('dnarai:session-expired', {
-                    detail: {
-                        reason: 'initial_expired',
-                        message: 'Your previous session has expired. Please sign in to continue.',
-                    },
-                })
-            )
-        }
-
         // Listen for session restore from SessionExpiredModal
         const handleSessionRestored = (e) => {
             const { token: restoredToken, role: restoredRole, email: restoredEmail } = e.detail || {}
@@ -194,7 +195,7 @@ export function AuthProvider({ children }) {
             window.removeEventListener('focus', checkTimeoutOnFocus)
             window.removeEventListener('dnarai:session-restored', handleSessionRestored)
         }
-    }, [isAuthenticated, resetIdleTimer, handleActivity, checkTimeout, updateLastActivity, authState.expiredOnStart])
+    }, [isAuthenticated, resetIdleTimer, handleActivity, checkTimeout, updateLastActivity])
 
     const value = {
         token,

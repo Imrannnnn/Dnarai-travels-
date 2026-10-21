@@ -180,6 +180,10 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
         const stored = sessionStorage.getItem('session_expired_notice')
         if (stored) {
             sessionStorage.removeItem('session_expired_notice')
+            const lower = stored.toLowerCase()
+            if (lower.includes('bearer') || lower.includes('jwt') || lower.includes('token') || lower.includes('unauthorized')) {
+                return ''
+            }
             return stored
         }
         return ''
@@ -205,11 +209,12 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     const [isCreateBookingModalOpen, setIsCreateBookingModalOpen] = useState(false)
     const [isCreateReminderModalOpen, setIsCreateReminderModalOpen] = useState(false)
     const [isPassengerDetailsModalOpen, setIsPassengerDetailsModalOpen] = useState(false)
+    const [isAllNotificationsModalOpen, setIsAllNotificationsModalOpen] = useState(false)
     const [onboardingSuccess, setOnboardingSuccess] = useState(null)
     const [deleteConfirmation, setDeleteConfirmation] = useState(null) // { passenger: {...} }
     const [isEditBookingModalOpen, setIsEditBookingModalOpen] = useState(false)
-    const [isAllNotificationsModalOpen, setIsAllNotificationsModalOpen] = useState(false)
-    const [bookingFilter, setBookingFilter] = useState('recent') // 'recent' or 'all'
+    const [bookingFilter, setBookingFilter] = useState('active') // 'active', 'history', or 'all'
+    const [dashboardFlightTab, setDashboardFlightTab] = useState('active') // 'active' or 'history'
     const [isAddStaffModalOpen, setIsAddStaffModalOpen] = useState(false)
     const [addStaffForm, setAddStaffForm] = useState({ email: '', role: 'staff', password: '' })
     const [staffCreationSuccess, setStaffCreationSuccess] = useState(null)
@@ -342,7 +347,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                 if (passengersRes.status === 401 || bookingsRes.status === 401 || notifsRes.status === 401 || blogsRes.status === 401 || invoicesRes.status === 401) {
                     const notice = 'Your admin session has expired. Please sign in again.'
                     handleLogout(notice)
-                    if (typeof window !== 'undefined') {
+                    if (typeof window !== 'undefined' && !window.location.pathname.endsWith('/login')) {
                         window.dispatchEvent(
                             new CustomEvent('dnarai:session-expired', {
                                 detail: {
@@ -1152,13 +1157,33 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     const endIndex = startIndex + PASSENGERS_PER_PAGE
     const paginatedPassengers = filteredPassengers.slice(startIndex, endIndex)
 
+    // Active vs Completed / History Flight Classification
+    const isFlightActive = useCallback((b) => {
+        if (!b) return false
+        if (b.status === 'completed' || b.status === 'cancelled') return false
+        if (!b.departureDateTimeUtc) return true
+        // Active if departure is in the future or departed within the last 4 hours (active en route)
+        const departureTime = new Date(b.departureDateTimeUtc).getTime()
+        return departureTime >= Date.now() - 4 * 3600 * 1000
+    }, [])
+
+    const activeBookings = useMemo(() => {
+        return bookings.filter(isFlightActive)
+    }, [bookings, isFlightActive])
+
+    const completedBookings = useMemo(() => {
+        return bookings.filter(b => !isFlightActive(b))
+    }, [bookings, isFlightActive])
+
     // Bookings Pagination
     const BOOKINGS_PER_PAGE = 5
     const [bookingPage, setBookingPage] = useState(1)
 
     const displayedBookings = useMemo(() => {
-        return bookingFilter === 'recent' ? bookings.slice(0, 6) : bookings
-    }, [bookings, bookingFilter])
+        if (bookingFilter === 'active') return activeBookings
+        if (bookingFilter === 'history') return completedBookings
+        return bookings
+    }, [bookings, bookingFilter, activeBookings, completedBookings])
 
     useEffect(() => {
         setBookingPage(1)
@@ -1218,10 +1243,10 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
 
     const stats = useMemo(() => ({
         totalPassengers: passengers.length,
-        activeBookings: bookings.filter(b => b.status === 'confirmed' && new Date(b.departureDateTimeUtc) >= new Date()).length,
+        activeBookings: activeBookings.length,
         pendingNotifications: notifications.filter(n => !n.read).length,
         travelingToday: travelingPassengers.length
-    }), [passengers, bookings, notifications, travelingPassengers])
+    }), [passengers, activeBookings, notifications, travelingPassengers])
 
     // Total Billed Revenue WITHOUT service charge (net travel bookings)
     const totalBilledRevenue = useMemo(() => {
@@ -2040,7 +2065,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
                                     {[
                                         { label: 'Total Passengers', value: stats.totalPassengers, icon: Lucide.Users, color: 'text-ocean-600', bg: 'bg-ocean-50', subtext: 'Registered clients', onClick: () => { setActiveTab('passengers'); setActiveView('all'); } },
-                                        { label: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'text-emerald-600', bg: 'bg-emerald-50', subtext: 'Upcoming flights', onClick: () => setActiveTab('bookings') },
+                                        { label: 'Active Bookings', value: stats.activeBookings, icon: Lucide.PlaneTakeoff, color: 'text-emerald-600', bg: 'bg-emerald-50', subtext: 'Upcoming flights', onClick: () => { setActiveTab('bookings'); setBookingFilter('active'); } },
                                         { label: 'Traveling Today', value: stats.travelingToday, icon: Lucide.CalendarCheck, color: 'text-purple-600', bg: 'bg-purple-50', subtext: 'Current departures', onClick: () => { setActiveTab('passengers'); setActiveView('today'); } },
                                         { label: 'System Alerts', value: stats.pendingNotifications, icon: Lucide.Bell, color: 'text-amber-600', bg: 'bg-amber-50', subtext: 'Pending actions', onClick: () => setActiveTab('alerts') },
                                     ].map(stat => (
@@ -2065,95 +2090,167 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                 {/* Operational Split: Active Flights (7 cols) + Invoices & Alerts (5 cols) */}
                                 <div className="grid lg:grid-cols-12 gap-5">
                                     {/* Left Column: Recent Flight Schedules (7 cols) */}
+                                    {/* Left Column: Active Flight Schedules & History (7 cols) */}
                                     <div className="lg:col-span-7 bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs flex flex-col justify-between">
                                         <div>
-                                            <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-100">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 mb-3.5 border-b border-slate-100 gap-2.5">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className="h-8 w-8 rounded-xl bg-ocean-50 text-ocean-600 flex items-center justify-center shrink-0">
                                                         <Lucide.PlaneTakeoff size={16} />
                                                     </div>
                                                     <div>
-                                                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">Active Flight Schedules</h3>
-                                                        <p className="text-[11px] text-slate-500 font-medium">Recent passenger flight bookings & itineraries</p>
+                                                        <h3 className="text-sm font-bold text-slate-900 tracking-tight">
+                                                            {dashboardFlightTab === 'active' ? 'Active Flight Schedules' : 'Flight History & Completed'}
+                                                        </h3>
+                                                        <p className="text-[11px] text-slate-500 font-medium">
+                                                            {dashboardFlightTab === 'active'
+                                                                ? 'Upcoming & ongoing passenger flight itineraries'
+                                                                : 'Completed passenger flight bookings & travel history'}
+                                                        </p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2">
+
+                                                <div className="flex items-center gap-2 self-start sm:self-center">
+                                                    {/* Active vs History Switcher */}
+                                                    <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/60">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDashboardFlightTab('active')}
+                                                            className={clsx(
+                                                                "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all",
+                                                                dashboardFlightTab === 'active'
+                                                                    ? "bg-white text-ocean-700 shadow-2xs font-extrabold"
+                                                                    : "text-slate-500 hover:text-slate-800"
+                                                            )}
+                                                        >
+                                                            Active ({activeBookings.length})
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDashboardFlightTab('history')}
+                                                            className={clsx(
+                                                                "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all",
+                                                                dashboardFlightTab === 'history'
+                                                                    ? "bg-white text-ocean-700 shadow-2xs font-extrabold"
+                                                                    : "text-slate-500 hover:text-slate-800"
+                                                            )}
+                                                        >
+                                                            History ({completedBookings.length})
+                                                        </button>
+                                                    </div>
+
                                                     <button
                                                         onClick={() => { setActiveTab('bookings'); setIsCreateBookingModalOpen(true); }}
-                                                        className="hidden sm:flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-colors"
+                                                        className="hidden sm:flex items-center gap-1 px-2 py-1 text-xs font-bold text-ocean-600 hover:bg-ocean-50 rounded-lg transition-colors"
+                                                        title="Add Flight"
                                                     >
                                                         <Lucide.Plus size={13} />
-                                                        <span>Add Flight</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setActiveTab('bookings')}
-                                                        className="text-xs font-bold text-slate-500 hover:text-ocean-600 flex items-center gap-0.5"
-                                                    >
-                                                        <span>All</span>
-                                                        <Lucide.ChevronRight size={13} />
+                                                        <span>Add</span>
                                                     </button>
                                                 </div>
                                             </div>
 
                                             <div className="space-y-2.5">
-                                                {bookings.slice(0, 4).map(b => (
-                                                    <div
-                                                        key={b._id}
-                                                        onClick={() => handleViewBookingDetails(b)}
-                                                        className="p-3 rounded-xl border border-slate-100 hover:border-ocean-200 hover:bg-slate-50/70 transition-all cursor-pointer flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="h-9 w-9 rounded-xl bg-ocean-700 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
-                                                                {b.airlineName?.slice(0, 2) || 'FL'}
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <div className="text-xs font-bold text-slate-900 truncate">
-                                                                    {b.airlineName} • <span className="font-mono text-slate-600">{b.flightNumber}</span>
-                                                                </div>
-                                                                <div className="text-xs font-semibold text-ocean-600 flex items-center gap-1 mt-0.5">
-                                                                    <span>{b.origin?.iata || '---'}</span>
-                                                                    <Lucide.ArrowRight size={11} className="text-slate-400" />
-                                                                    <span>{b.destination?.iata || '---'}</span>
-                                                                    {b.seatNumber && (
-                                                                        <span className="text-[10px] text-slate-400 font-medium ml-1">Seat {b.seatNumber}</span>
+                                                {(() => {
+                                                    const listToRender = dashboardFlightTab === 'active' ? activeBookings : completedBookings;
+
+                                                    if (listToRender.length === 0) {
+                                                        return (
+                                                            <div className="py-10 text-center">
+                                                                <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-2.5 text-slate-300">
+                                                                    {dashboardFlightTab === 'active' ? (
+                                                                        <Lucide.PlaneTakeoff size={24} />
+                                                                    ) : (
+                                                                        <Lucide.CheckCircle2 size={24} />
                                                                     )}
                                                                 </div>
+                                                                <p className="text-xs font-bold text-slate-800">
+                                                                    {dashboardFlightTab === 'active'
+                                                                        ? 'No active flight schedules'
+                                                                        : 'No flight history recorded yet'}
+                                                                </p>
+                                                                <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs mx-auto">
+                                                                    {dashboardFlightTab === 'active'
+                                                                        ? 'There are currently no active flights. Click History above to view completed flights.'
+                                                                        : 'Completed and past passenger flight journeys will appear here.'}
+                                                                </p>
+                                                                <div className="mt-3.5 flex items-center justify-center gap-3">
+                                                                    {dashboardFlightTab === 'active' && completedBookings.length > 0 && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setDashboardFlightTab('history')}
+                                                                            className="text-xs font-bold text-slate-600 hover:text-slate-900 underline"
+                                                                        >
+                                                                            View History ({completedBookings.length})
+                                                                        </button>
+                                                                    )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => { setActiveTab('bookings'); setIsCreateBookingModalOpen(true); }}
+                                                                        className="text-xs font-bold text-ocean-600 hover:underline"
+                                                                    >
+                                                                        + Add New Flight
+                                                                    </button>
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                        <div className="text-right shrink-0">
-                                                            <span className={clsx(
-                                                                "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
-                                                                b.status === 'confirmed' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-amber-50 text-amber-700 border border-amber-100"
-                                                            )}>
-                                                                {b.status}
-                                                            </span>
-                                                            <div className="text-[10px] text-slate-400 font-medium mt-1">
-                                                                {b.departureDateTimeUtc ? new Date(b.departureDateTimeUtc).toLocaleDateString() : 'Date TBD'}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
+                                                        );
+                                                    }
 
-                                                {bookings.length === 0 && (
-                                                    <div className="py-8 text-center">
-                                                        <Lucide.PlaneTakeoff size={24} className="mx-auto text-slate-300 mb-2" />
-                                                        <p className="text-xs text-slate-500 font-medium">No flight bookings recorded yet</p>
-                                                        <button
-                                                            onClick={() => { setActiveTab('bookings'); setIsCreateBookingModalOpen(true); }}
-                                                            className="mt-2 text-xs font-bold text-ocean-600 hover:underline"
+                                                    return listToRender.slice(0, 4).map((b) => (
+                                                        <div
+                                                            key={b._id}
+                                                            onClick={() => handleViewBookingDetails(b)}
+                                                            className="p-3 rounded-xl border border-slate-100 hover:border-ocean-200 hover:bg-slate-50/70 transition-all cursor-pointer flex items-center justify-between"
                                                         >
-                                                            + Add First Flight
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className="h-9 w-9 rounded-xl bg-ocean-700 text-white flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                                                    {b.airlineName?.slice(0, 2) || 'FL'}
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <div className="text-xs font-bold text-slate-900 truncate">
+                                                                        {b.airlineName} • <span className="font-mono text-slate-600">{b.flightNumber}</span>
+                                                                    </div>
+                                                                    <div className="text-xs font-semibold text-ocean-600 flex items-center gap-1 mt-0.5">
+                                                                        <span>{b.origin?.iata || '---'}</span>
+                                                                        <Lucide.ArrowRight size={11} className="text-slate-400" />
+                                                                        <span>{b.destination?.iata || '---'}</span>
+                                                                        {b.seatNumber && (
+                                                                            <span className="text-[10px] text-slate-400 font-medium ml-1">Seat {b.seatNumber}</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <span className={clsx(
+                                                                    "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
+                                                                    b.status === 'confirmed'
+                                                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                                                        : b.status === 'completed'
+                                                                        ? "bg-slate-100 text-slate-600 border border-slate-200"
+                                                                        : "bg-amber-50 text-amber-700 border border-amber-100"
+                                                                )}>
+                                                                    {b.status}
+                                                                </span>
+                                                                <div className="text-[10px] text-slate-400 font-medium mt-1">
+                                                                    {b.departureDateTimeUtc ? new Date(b.departureDateTimeUtc).toLocaleDateString() : 'Date TBD'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ));
+                                                })()}
                                             </div>
                                         </div>
 
                                         <button
-                                            onClick={() => setActiveTab('bookings')}
+                                            onClick={() => {
+                                                setActiveTab('bookings');
+                                                setBookingFilter(dashboardFlightTab === 'active' ? 'active' : 'history');
+                                            }}
                                             className="w-full mt-3.5 py-2 bg-slate-50 hover:bg-slate-100 rounded-xl text-xs font-bold text-slate-600 transition-all text-center border border-slate-100"
                                         >
-                                            View All Flight Schedules ({bookings.length})
+                                            {dashboardFlightTab === 'active'
+                                                ? `View All Active Flight Schedules (${activeBookings.length})`
+                                                : `View All Flight History (${completedBookings.length})`}
                                         </button>
                                     </div>
 
@@ -2556,13 +2653,22 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
                                         <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/50 w-full sm:w-auto">
                                             <button
-                                                onClick={() => setBookingFilter('recent')}
+                                                onClick={() => setBookingFilter('active')}
                                                 className={clsx(
                                                     "flex-1 sm:flex-none text-center px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                                                    bookingFilter === 'recent' ? "bg-white text-ocean-700 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                                                    bookingFilter === 'active' ? "bg-white text-ocean-700 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
                                                 )}
                                             >
-                                                Recent Flights
+                                                Active Flights ({activeBookings.length})
+                                            </button>
+                                            <button
+                                                onClick={() => setBookingFilter('history')}
+                                                className={clsx(
+                                                    "flex-1 sm:flex-none text-center px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all",
+                                                    bookingFilter === 'history' ? "bg-white text-ocean-700 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                                                )}
+                                            >
+                                                History ({completedBookings.length})
                                             </button>
                                             <button
                                                 onClick={() => setBookingFilter('all')}
@@ -2571,7 +2677,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                                     bookingFilter === 'all' ? "bg-white text-ocean-700 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
                                                 )}
                                             >
-                                                All History ({bookings.length})
+                                                All ({bookings.length})
                                             </button>
                                         </div>
 
@@ -2665,12 +2771,29 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                         </div>
                                     ))}
                                     {displayedBookings.length === 0 && (
-                                        <div className="bg-white rounded-3xl p-16 border border-slate-200 text-center">
+                                        <div className="bg-white rounded-3xl p-12 sm:p-16 border border-slate-200 text-center">
                                             <div className="h-16 w-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300">
                                                 <Lucide.PlaneTakeoff size={32} />
                                             </div>
-                                            <h3 className="font-bold text-slate-800 mb-1">No bookings found</h3>
-                                            <p className="text-xs text-slate-400">Flight bookings added to passengers will appear here.</p>
+                                            <h3 className="font-bold text-slate-800 mb-1">
+                                                {bookingFilter === 'active' ? 'No active flight schedules' : bookingFilter === 'history' ? 'No flight history found' : 'No bookings found'}
+                                            </h3>
+                                            <p className="text-xs text-slate-400 max-w-sm mx-auto mb-4">
+                                                {bookingFilter === 'active'
+                                                    ? 'There are currently no active flight schedules. You can view completed flights in History.'
+                                                    : bookingFilter === 'history'
+                                                    ? 'There are no past or completed flight records in the ledger.'
+                                                    : 'Flight bookings added to passengers will appear here.'}
+                                            </p>
+                                            {bookingFilter === 'active' && completedBookings.length > 0 && (
+                                                <button
+                                                    onClick={() => setBookingFilter('history')}
+                                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-ocean-600 hover:text-ocean-700 bg-ocean-50 hover:bg-ocean-100 px-3.5 py-2 rounded-xl transition-all"
+                                                >
+                                                    <Lucide.History size={14} />
+                                                    <span>View Flight History ({completedBookings.length})</span>
+                                                </button>
+                                            )}
                                         </div>
                                     )}
                                 </div>

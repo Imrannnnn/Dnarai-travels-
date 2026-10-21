@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import * as Lucide from 'lucide-react'
 import clsx from 'clsx'
-import { fetchMyDuties, completeDutyAssignment, updateDutyAssignmentNotes } from '../../data/api'
+import { fetchMyDuties, completeDutyAssignment, updateDutyAssignmentNotes, updateDutyChecklist } from '../../data/api'
 
 export default function StaffDutyDashboard() {
   const [searchParams] = useSearchParams()
@@ -18,6 +18,7 @@ export default function StaffDutyDashboard() {
   const [loading, setLoading] = useState(true)
   const [completingId, setCompletingId] = useState(null)
   const [savingNoteId, setSavingNoteId] = useState(null)
+  const [updatingChecklistId, setUpdatingChecklistId] = useState(null)
   const [tab, setTab] = useState('today') // today | all | completed | travels
 
   // Complete Task Modal state
@@ -108,8 +109,76 @@ export default function StaffDutyDashboard() {
     return data.assignments
   }, [tab, todayAssignments, completedAssignments, data.assignments])
 
-  // Open Complete Modal
+  // Toggle Checklist item with optimistic update
+  const handleToggleChecklistItem = async (assignment, itemId, completed) => {
+    if (assignment.status === 'completed') return
+
+    const assignmentId = assignment._id
+    setUpdatingChecklistId(`${assignmentId}-${itemId}`)
+
+    // Calculate new checklist & percentage optimistically
+    const updatedChecklist = (assignment.checklist || []).map((item) => {
+      const match = String(item.id || item._id) === String(itemId)
+      return match ? { ...item, completed, completedAt: completed ? new Date().toISOString() : null } : item
+    })
+
+    const total = updatedChecklist.length
+    const done = updatedChecklist.filter((i) => i.completed).length
+    const percentageDone = total > 0 ? Math.round((done / total) * 100) : 0
+    const newStatus =
+      percentageDone > 0
+        ? assignment.status === 'pending'
+          ? 'in_progress'
+          : assignment.status
+        : assignment.status
+
+    setData((prev) => ({
+      ...prev,
+      assignments: prev.assignments.map((a) =>
+        a._id === assignmentId
+          ? {
+              ...a,
+              checklist: updatedChecklist,
+              percentageDone,
+              status: newStatus,
+            }
+          : a
+      ),
+    }))
+
+    try {
+      const res = await updateDutyChecklist({
+        assignmentId,
+        itemId,
+        completed,
+      })
+      if (!res?.ok) {
+        showToast(res?.message || 'Failed to save checklist state', 'error')
+        await loadMyDuties()
+      } else {
+        if (percentageDone === 100) {
+          showToast('🎉 All checklist items complete! You can now mark this duty Final Done.', 'success')
+        }
+      }
+    } catch (err) {
+      console.error('Error updating checklist:', err)
+      showToast(err.message || 'Error updating checklist item', 'error')
+      await loadMyDuties()
+    } finally {
+      setUpdatingChecklistId(null)
+    }
+  }
+
+  // Open Complete Modal (Gated: 100% checklist items must be checked)
   const openCompleteModal = (assignment) => {
+    const incomplete = (assignment.checklist || []).filter((i) => !i.completed)
+    if (incomplete.length > 0) {
+      showToast(
+        `⚠️ Incomplete: Please check off all checklist items (${incomplete.length} remaining) before completing this duty.`,
+        'error'
+      )
+      return
+    }
     setCompleteModalAssignment(assignment)
     setCompletionNotes(assignment.notes || '')
   }
@@ -536,6 +605,101 @@ export default function StaffDutyDashboard() {
                       </p>
                     )}
 
+                    {/* TODO CHECKLIST SECTION */}
+                    {assignment.checklist && assignment.checklist.length > 0 && (
+                      <div className="mt-3 p-3.5 sm:p-4 rounded-2xl bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <Lucide.ListTodo size={16} className="text-ocean-600 dark:text-ocean-400" />
+                            <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                              Task Todo Checklist ({assignment.checklist.filter((i) => i.completed).length}/{assignment.checklist.length} items)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={clsx(
+                                'text-[11px] font-black px-2.5 py-0.5 rounded-full border tracking-wide',
+                                (assignment.percentageDone ?? 0) === 100
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800'
+                                  : isOverdue
+                                  ? 'bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800'
+                                  : 'bg-ocean-100 text-ocean-800 border-ocean-300 dark:bg-ocean-950/60 dark:text-ocean-300 dark:border-ocean-800'
+                              )}
+                            >
+                              {(assignment.percentageDone ?? 0) === 100
+                                ? '✓ 100% Done'
+                                : `${assignment.percentageDone ?? 0}% Done`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Animated Percentage Progress Bar */}
+                        <div className="w-full h-2.5 bg-slate-200/90 dark:bg-slate-700 rounded-full overflow-hidden">
+                          <div
+                            className={clsx(
+                              'h-full transition-all duration-300 rounded-full',
+                              (assignment.percentageDone ?? 0) === 100
+                                ? 'bg-emerald-500'
+                                : isOverdue
+                                ? 'bg-rose-500'
+                                : 'bg-ocean-600'
+                            )}
+                            style={{ width: `${assignment.percentageDone ?? 0}%` }}
+                          />
+                        </div>
+
+                        {/* Checklist items list */}
+                        <div className="space-y-1.5 pt-1">
+                          {assignment.checklist.map((item) => {
+                            const itemId = item.id || item._id;
+                            const isItemDone = Boolean(item.completed);
+                            const isUpdating = updatingChecklistId === `${assignment._id}-${itemId}`;
+
+                            return (
+                              <label
+                                key={itemId}
+                                className={clsx(
+                                  'flex items-start gap-3 p-2.5 rounded-xl border transition-all select-none',
+                                  isDone
+                                    ? 'cursor-not-allowed opacity-80 bg-slate-100/50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-500'
+                                    : isItemDone
+                                    ? 'cursor-pointer bg-emerald-50/70 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-slate-800 dark:text-slate-200'
+                                    : 'cursor-pointer bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-slate-200 hover:border-ocean-400'
+                                )}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isItemDone}
+                                  disabled={isDone || isUpdating}
+                                  onChange={(e) => handleToggleChecklistItem(assignment, itemId, e.target.checked)}
+                                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 shrink-0 cursor-pointer disabled:cursor-not-allowed"
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <span
+                                    className={clsx(
+                                      'text-xs font-bold block leading-tight',
+                                      isItemDone && 'line-through text-slate-400 dark:text-slate-500'
+                                    )}
+                                  >
+                                    {item.text}
+                                  </span>
+                                  {item.completedAt && (
+                                    <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5">
+                                      Checked {new Date(item.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  )}
+                                </div>
+                                {isUpdating && (
+                                  <Lucide.Loader2 size={13} className="animate-spin text-ocean-600 shrink-0 self-center" />
+                                )}
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Staff Notes Display Box */}
                     {assignment.notes && (
                       <div className="mt-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60">
@@ -580,16 +744,51 @@ export default function StaffDutyDashboard() {
                   <div className="shrink-0 flex flex-row sm:flex-col items-end gap-2 self-end sm:self-center">
                     {!isDone ? (
                       <>
-                        <button
-                          onClick={() => openCompleteModal(assignment)}
-                          disabled={completingId === assignment._id}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-emerald-600/20 active:scale-95 transition-all disabled:opacity-50"
-                        >
-                          <Lucide.Check size={16} strokeWidth={2.5} />
-                          <span>
-                            {completingId === assignment._id ? 'Saving...' : 'Mark as Done'}
-                          </span>
-                        </button>
+                        {(() => {
+                          const checklistItems = assignment.checklist || [];
+                          const hasChecklist = checklistItems.length > 0;
+                          const incompleteCount = checklistItems.filter((i) => !i.completed).length;
+                          const isAllChecklistDone = hasChecklist ? incompleteCount === 0 : true;
+
+                          return (
+                            <div className="flex flex-col items-end gap-1">
+                              <button
+                                onClick={() => openCompleteModal(assignment)}
+                                disabled={completingId === assignment._id || !isAllChecklistDone}
+                                title={
+                                  !isAllChecklistDone
+                                    ? `Please complete all ${incompleteCount} checklist item${incompleteCount > 1 ? 's' : ''} first`
+                                    : 'Mark this duty as complete and notify admins'
+                                }
+                                className={clsx(
+                                  'inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 disabled:opacity-50',
+                                  isAllChecklistDone
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                                    : 'bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-300 dark:border-slate-700 cursor-not-allowed shadow-none'
+                                )}
+                              >
+                                {isAllChecklistDone ? (
+                                  <Lucide.CheckCheck size={16} strokeWidth={2.5} />
+                                ) : (
+                                  <Lucide.Lock size={15} />
+                                )}
+                                <span>
+                                  {completingId === assignment._id
+                                    ? 'Saving...'
+                                    : isAllChecklistDone
+                                    ? 'Final Done'
+                                    : `Done (${incompleteCount} Left)`}
+                                </span>
+                              </button>
+
+                              {!isAllChecklistDone && hasChecklist && (
+                                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                                  Check all items to finish
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         <button
                           onClick={() => openNoteModal(assignment)}
@@ -655,6 +854,19 @@ export default function StaffDutyDashboard() {
                 </span>
               </div>
             </div>
+
+            {/* Checklist Verification Banner */}
+            {completeModalAssignment.checklist && completeModalAssignment.checklist.length > 0 && (
+              <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between text-xs">
+                <span className="font-bold text-emerald-800 dark:text-emerald-200 flex items-center gap-1.5">
+                  <Lucide.CheckCircle2 size={15} className="text-emerald-600" />
+                  <span>Checklist Verified: All Items Complete</span>
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-200/80 dark:bg-emerald-900 text-emerald-900 dark:text-emerald-100 font-extrabold text-[11px]">
+                  {completeModalAssignment.checklist.length}/{completeModalAssignment.checklist.length} Done
+                </span>
+              </div>
+            )}
 
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">

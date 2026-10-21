@@ -18,7 +18,7 @@ function urlBase64ToUint8Array(base64String) {
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY
 
 export default function NotificationOnboardingModal({ isOpen: controlledIsOpen, onClose }) {
-  const { token, user } = useAuth()
+  const { token, user, isAuthenticated } = useAuth()
 
   const [internalOpen, setInternalOpen] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
@@ -50,6 +50,13 @@ export default function NotificationOnboardingModal({ isOpen: controlledIsOpen, 
   const checkSubscriptionStatus = useCallback(async () => {
     try {
       if (!('serviceWorker' in navigator)) return
+
+      // Only sync with backend if user is authenticated with a valid token
+      if (!token || !isAuthenticated) {
+        setIsSubscribed(false)
+        return
+      }
+
       const registration = await navigator.serviceWorker.ready
       const subscription = await registration.pushManager.getSubscription()
       const currentPerm = Notification.permission
@@ -85,18 +92,21 @@ export default function NotificationOnboardingModal({ isOpen: controlledIsOpen, 
       console.warn('[NotificationOnboarding] Error checking push status:', err)
       setIsSubscribed(false)
     }
-  }, [user])
+  }, [user, token, isAuthenticated])
 
   // Check subscription and support on mount or user change
   useEffect(() => {
     if (typeof window === 'undefined') return
+
+    // Do not run background checks or API sync for unauthenticated visitors
+    if (!token || !isAuthenticated) return
 
     const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 
     if (supported) {
       checkSubscriptionStatus()
     }
-  }, [user, token, checkSubscriptionStatus])
+  }, [user, token, isAuthenticated, checkSubscriptionStatus])
 
   // Subscribe User to Web Push
   const handleSubscribe = async () => {

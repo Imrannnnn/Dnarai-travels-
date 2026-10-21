@@ -17,7 +17,36 @@ export default function SessionExpiredModal() {
 
   useEffect(() => {
     const handleSessionExpired = (e) => {
-      const customMsg = e.detail?.message || 'Your session has expired. Please sign in again to continue.'
+      // Never pop up session expired modal on public pages or login pages
+      const path = typeof window !== 'undefined' ? window.location.pathname : ''
+      const isPublicOrAuthPage =
+        path === '/' ||
+        path === '/login' ||
+        path === '/register' ||
+        path === '/forgot-password' ||
+        path === '/super-admin/login' ||
+        path === '/admin/login' ||
+        path === '/about' ||
+        path.startsWith('/blog') ||
+        path === '/time-converter'
+
+      if (isPublicOrAuthPage) {
+        return
+      }
+
+      let customMsg = e.detail?.message || 'Your session has expired. Please sign in again to continue.'
+      // Sanitize message - never expose raw backend errors like 'Missing Bearer token'
+      if (
+        !customMsg ||
+        customMsg.toLowerCase().includes('bearer') ||
+        customMsg.toLowerCase().includes('jwt') ||
+        customMsg.toLowerCase().includes('token') ||
+        customMsg.toLowerCase().includes('unauthorized') ||
+        customMsg.toLowerCase().includes('forbidden')
+      ) {
+        customMsg = 'Your session has expired. Please sign in again to continue.'
+      }
+
       setMessage(customMsg)
       setError('')
       setSuccess(false)
@@ -40,6 +69,34 @@ export default function SessionExpiredModal() {
     window.addEventListener('dnarai:session-expired', handleSessionExpired)
     return () => window.removeEventListener('dnarai:session-expired', handleSessionExpired)
   }, [])
+
+  const handleDismiss = () => {
+    setIsOpen(false)
+    setPassword('')
+    setError('')
+    const path = typeof window !== 'undefined' ? window.location.pathname : ''
+    const isProtected =
+      path.startsWith('/dashboard') ||
+      path.startsWith('/profile') ||
+      path.startsWith('/super-admin') ||
+      path.startsWith('/admin') ||
+      path.startsWith('/staff-schedules') ||
+      path.startsWith('/staff-duties') ||
+      path.startsWith('/my-duties') ||
+      path.startsWith('/notifications')
+    if (isProtected) {
+      window.location.href = '/'
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') handleDismiss()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
 
   const handleReLogin = async (e) => {
     e.preventDefault()
@@ -114,10 +171,26 @@ export default function SessionExpiredModal() {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleDismiss()
+      }}
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-6 sm:p-8 relative overflow-hidden text-slate-900 dark:text-white">
         {/* Top Accent Line */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-rose-500 to-amber-500" />
+
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={handleDismiss}
+          className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          title="Dismiss dialog"
+          aria-label="Close"
+        >
+          <Lucide.X size={18} />
+        </button>
 
         {/* Icon & Title */}
         <div className="flex flex-col items-center text-center mb-6">
@@ -213,15 +286,22 @@ export default function SessionExpiredModal() {
           </form>
         )}
 
-        {/* Secondary Logout / Switch Account Link */}
-        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
+        {/* Secondary Navigation Links */}
+        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-center px-1">
           <button
             type="button"
             onClick={handleFullRedirect}
             className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:underline transition-colors inline-flex items-center gap-1.5"
           >
             <Lucide.ArrowRight size={12} />
-            <span>Switch account or go to Login Page</span>
+            <span>Go to Login Page</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="text-[11px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:underline transition-colors inline-flex items-center gap-1"
+          >
+            <span>Continue as Guest</span>
           </button>
         </div>
       </div>

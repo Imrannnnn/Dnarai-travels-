@@ -8,6 +8,7 @@ const router = Router();
 router.get('/my-duties', requireAuth, requireAgency, dutyController.getMyDuties);
 router.patch('/assignments/:id/complete', requireAuth, requireAgency, dutyController.completeDutyAssignment);
 router.patch('/assignments/:id/notes', requireAuth, requireAgency, dutyController.updateDutyAssignmentNotes);
+router.patch('/assignments/:id/checklist', requireAuth, requireAgency, dutyController.updateDutyChecklist);
 
 // Admin-only duty management routes
 router.get('/', requireAuth, requireRole(['admin']), dutyController.getDuties);

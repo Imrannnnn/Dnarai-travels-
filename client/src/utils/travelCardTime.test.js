@@ -1,3 +1,7 @@
+jest.mock('../data/api', () => ({
+  getApiBaseUrl: () => 'http://localhost:5000',
+}))
+
 import { resolveStateName } from './travelCardTime'
 
 describe('Travel Card State Name Resolution', () => {

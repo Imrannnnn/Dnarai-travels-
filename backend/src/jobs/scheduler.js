@@ -2,12 +2,18 @@ import cron from 'node-cron';
 import { runPassportExpiryJob } from './passportExpiry.job.js';
 import { runAutoCompleteFlightsJob } from './autoCompleteFlights.job.js';
 import { runDailyDutyRemindersJob } from './dailyDutyReminders.job.js';
+import { checkOverdueDutyChecklists } from '../controllers/duty.controller.js';
 
 export function startSchedulers() {
 
   // Complete past flights: every 15 minutes
   cron.schedule('*/15 * * * *', async () => {
     await runAutoCompleteFlightsJob().catch((e) => console.error('[job] autoCompleteFlights', e));
+  });
+
+  // Check overdue duty assignments & checklists: every 15 minutes
+  cron.schedule('*/15 * * * *', async () => {
+    await checkOverdueDutyChecklists().catch((e) => console.error('[job] checkOverdueDutyChecklists', e));
   });
 
   // Passport expiry: daily at 02:00
@@ -24,5 +30,5 @@ export function startSchedulers() {
     { timezone: 'Africa/Lagos' }
   );
 
-  console.log('[jobs] schedulers started (including twice-daily duty briefings at 08:00 & 14:00 WAT)');
+  console.log('[jobs] schedulers started (including duty overdue checks and briefings at 08:00 & 14:00 WAT)');
 }

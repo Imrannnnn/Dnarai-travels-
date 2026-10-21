@@ -22,7 +22,7 @@ export default function DutyManagementView({ staffMembers = [] }) {
   const [onDutyStaff, setOnDutyStaff] = useState([])
   const [loading, setLoading] = useState(true)
   const [briefingSending, setBriefingSending] = useState(false)
-  const [activeStatusFilter, setActiveStatusFilter] = useState('all') // all | pending | completed | overdue | cancelled
+  const [activeStatusFilter, setActiveStatusFilter] = useState('active') // active | history | overdue | all
   const [staffFilter, setStaffFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -38,6 +38,11 @@ export default function DutyManagementView({ staffMembers = [] }) {
   const [sendPush, setSendPush] = useState(true)
   const [sendEmail, setSendEmail] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+
+  // Checklist Builder & Breakdown States
+  const [checklistItems, setChecklistItems] = useState([])
+  const [newChecklistText, setNewChecklistText] = useState('')
+  const [expandedChecklistAssignId, setExpandedChecklistAssignId] = useState(null)
 
   // Load duties and on-duty list
   const loadData = async () => {
@@ -60,6 +65,19 @@ export default function DutyManagementView({ staffMembers = [] }) {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Classification & Counts
+  const activeDuties = useMemo(() => {
+    return duties.filter((d) => d.displayStatus !== 'completed' && d.displayStatus !== 'cancelled')
+  }, [duties])
+
+  const completedDuties = useMemo(() => {
+    return duties.filter((d) => d.displayStatus === 'completed' || d.displayStatus === 'cancelled')
+  }, [duties])
+
+  const overdueDuties = useMemo(() => {
+    return duties.filter((d) => d.displayStatus === 'overdue')
+  }, [duties])
 
   // When date changes in create duty modal, re-check who is on duty for that date
   const [modalOnDutyStaff, setModalOnDutyStaff] = useState([])
@@ -85,7 +103,13 @@ export default function DutyManagementView({ staffMembers = [] }) {
   // Filtered duties
   const filteredDuties = useMemo(() => {
     return duties.filter((d) => {
-      if (activeStatusFilter !== 'all' && d.displayStatus !== activeStatusFilter) return false
+      if (activeStatusFilter === 'active') {
+        if (d.displayStatus === 'completed' || d.displayStatus === 'cancelled') return false
+      } else if (activeStatusFilter === 'history' || activeStatusFilter === 'completed') {
+        if (d.displayStatus !== 'completed' && d.displayStatus !== 'cancelled') return false
+      } else if (activeStatusFilter !== 'all' && d.displayStatus !== activeStatusFilter) {
+        return false
+      }
       if (staffFilter) {
         const hasStaff = d.assignments?.some((a) => String(a.staffId?._id || a.staffId) === String(staffFilter))
         if (!hasStaff) return false
@@ -110,7 +134,29 @@ export default function DutyManagementView({ staffMembers = [] }) {
     setSelectedStaffIds(onDutyStaff.map((item) => String(item.user._id)))
     setSendPush(true)
     setSendEmail(true)
+    setChecklistItems([])
+    setNewChecklistText('')
     setIsCreateModalOpen(true)
+  }
+
+  // Checklist builder helpers
+  const handleAddChecklistItem = () => {
+    const text = newChecklistText.trim()
+    if (!text) return
+    setChecklistItems((prev) => [...prev, { id: Date.now().toString(), text }])
+    setNewChecklistText('')
+  }
+
+  const handleRemoveChecklistItem = (index) => {
+    setChecklistItems((prev) => prev.filter((_, idx) => idx !== index))
+  }
+
+  const handleAddChecklistPreset = (presetText) => {
+    if (checklistItems.some((i) => i.text.toLowerCase() === presetText.toLowerCase())) return
+    setChecklistItems((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${Math.random().toString(36).substr(2, 5)}`, text: presetText },
+    ])
   }
 
   // Toggle staff selection
@@ -140,6 +186,7 @@ export default function DutyManagementView({ staffMembers = [] }) {
         staffIds: selectedStaffIds,
         sendPush,
         sendEmail,
+        checklist: checklistItems,
       }
 
       const res = await createDuty({ dutyData: payload })
@@ -232,10 +279,10 @@ export default function DutyManagementView({ staffMembers = [] }) {
         {/* Status Filter Tabs */}
         <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
           {[
-            { id: 'all', label: 'All Duties' },
-            { id: 'pending', label: 'Pending' },
-            { id: 'completed', label: 'Completed' },
-            { id: 'overdue', label: 'Overdue' },
+            { id: 'active', label: `Active Duties (${activeDuties.length})` },
+            { id: 'history', label: `History (${completedDuties.length})` },
+            { id: 'overdue', label: `Overdue (${overdueDuties.length})` },
+            { id: 'all', label: `All (${duties.length})` },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -304,10 +351,14 @@ export default function DutyManagementView({ staffMembers = [] }) {
           <div className="flex items-center gap-2.5">
             <Lucide.ClipboardList size={18} className="text-ocean-600" />
             <h3 className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white font-display">
-              Operational Duties Ledger
+              {activeStatusFilter === 'active'
+                ? 'Active Operational Duties'
+                : activeStatusFilter === 'history'
+                ? 'Operational Duties History'
+                : 'Operational Duties Ledger'}
             </h3>
             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-slate-100 dark:bg-slate-800 text-slate-500">
-              {filteredDuties.length} Duties
+              {filteredDuties.length} {activeStatusFilter === 'active' ? 'Active' : activeStatusFilter === 'history' ? 'History' : ''} Duties
             </span>
           </div>
 
@@ -326,10 +377,52 @@ export default function DutyManagementView({ staffMembers = [] }) {
             <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Loading duty tasks...</p>
           </div>
         ) : filteredDuties.length === 0 ? (
-          <div className="py-16 text-center text-slate-400">
-            <Lucide.CheckCircle2 size={36} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-            <p className="text-sm font-bold text-slate-600 dark:text-slate-300">No duties found</p>
-            <p className="text-xs text-slate-400 mt-0.5">Click &quot;Create Duty&quot; above to assign a new operational task.</p>
+          <div className="py-16 text-center text-slate-400 px-4">
+            {activeStatusFilter === 'active' ? (
+              <>
+                <div className="h-14 w-14 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300 dark:text-slate-600">
+                  <Lucide.ClipboardCheck size={32} />
+                </div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No active operational duties</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  There are currently no active duties assigned to staff. You can check completed tasks in History or create a new duty.
+                </p>
+                <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                  {completedDuties.length > 0 && (
+                    <button
+                      onClick={() => setActiveStatusFilter('history')}
+                      className="inline-flex items-center gap-1.5 text-xs font-bold text-ocean-600 dark:text-ocean-400 bg-ocean-50 dark:bg-ocean-950/40 hover:bg-ocean-100 px-3.5 py-2 rounded-xl transition-all"
+                    >
+                      <Lucide.History size={14} />
+                      <span>View Duty History ({completedDuties.length})</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={handleOpenCreateModal}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 px-3.5 py-2 rounded-xl transition-all"
+                  >
+                    <Lucide.Plus size={14} />
+                    <span>Create Duty</span>
+                  </button>
+                </div>
+              </>
+            ) : activeStatusFilter === 'history' ? (
+              <>
+                <div className="h-14 w-14 bg-slate-50 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-300 dark:text-slate-600">
+                  <Lucide.History size={32} />
+                </div>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No completed duty history</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  Completed duty tasks and checklists will be recorded here for auditing.
+                </p>
+              </>
+            ) : (
+              <>
+                <Lucide.CheckCircle2 size={36} className="mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">No duties found</p>
+                <p className="text-xs text-slate-400 mt-0.5">Click &quot;Create Duty&quot; above to assign a new operational task.</p>
+              </>
+            )}
           </div>
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -380,39 +473,121 @@ export default function DutyManagementView({ staffMembers = [] }) {
                             const staffName = staff?.name || staff?.email?.split('@')[0] || 'Staff'
                             const isDone = assign.status === 'completed'
                             const isAssignOverdue = assign.effectiveStatus === 'overdue'
+                            const checklist = assign.checklist || []
+                            const totalChecklist = checklist.length
+                            const completedChecklist = checklist.filter((i) => i.completed).length
+                            const percent = assign.percentageDone ?? (totalChecklist > 0 ? Math.round((completedChecklist / totalChecklist) * 100) : isDone ? 100 : 0)
+                            const isExpanded = expandedChecklistAssignId === assign._id
 
                             return (
                               <div
                                 key={assign._id}
-                                className="flex flex-col gap-1 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs text-xs max-w-xs"
+                                className="flex flex-col gap-1.5 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xs text-xs w-full sm:max-w-xs"
                               >
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: staffColor }}
-                                  />
-                                  <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate">
-                                    {staffName}
-                                  </span>
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 truncate">
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: staffColor }}
+                                    />
+                                    <span className="font-extrabold text-slate-800 dark:text-slate-200 truncate">
+                                      {staffName}
+                                    </span>
+                                  </div>
 
                                   {isDone ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md shrink-0">
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md shrink-0 border border-emerald-200 dark:border-emerald-900/60">
                                       <Lucide.Check size={11} strokeWidth={3} />
-                                      <span>Done {assign.completedAt ? `(${new Date(assign.completedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}</span>
+                                      <span>100% Done</span>
                                     </span>
                                   ) : isAssignOverdue ? (
-                                    <span className="text-[10px] font-black text-rose-600 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md shrink-0">
-                                      Overdue
+                                    <span className="text-[10px] font-black text-rose-700 bg-rose-50 dark:bg-rose-950/40 px-2 py-0.5 rounded-md shrink-0 border border-rose-200 dark:border-rose-900/60 animate-pulse">
+                                      ⚠️ {percent}% (Overdue)
+                                    </span>
+                                  ) : percent > 0 ? (
+                                    <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded-md shrink-0 border border-indigo-200 dark:border-indigo-900/60">
+                                      {percent}% Done
                                     </span>
                                   ) : (
-                                    <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md shrink-0">
-                                      Pending
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md shrink-0 border border-amber-200 dark:border-amber-900/60">
+                                      0% Pending
                                     </span>
                                   )}
                                 </div>
 
+                                {/* Progress Bar */}
+                                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mt-0.5">
+                                  <div
+                                    className={clsx(
+                                      'h-full transition-all duration-300 rounded-full',
+                                      isDone
+                                        ? 'bg-emerald-500'
+                                        : isAssignOverdue
+                                        ? 'bg-rose-500'
+                                        : percent > 0
+                                        ? 'bg-ocean-600'
+                                        : 'bg-slate-300 dark:bg-slate-700'
+                                    )}
+                                    style={{ width: `${percent}%` }}
+                                  />
+                                </div>
+
+                                {/* Checklist Toggle & Items */}
+                                {totalChecklist > 0 && (
+                                  <div className="pt-1">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setExpandedChecklistAssignId((prev) =>
+                                          prev === assign._id ? null : assign._id
+                                        )
+                                      }
+                                      className="flex items-center justify-between w-full text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 py-1"
+                                    >
+                                      <span className="flex items-center gap-1">
+                                        <Lucide.ListTodo size={12} className="text-ocean-600" />
+                                        <span>Checklist: {completedChecklist}/{totalChecklist} done</span>
+                                      </span>
+                                      <Lucide.ChevronDown
+                                        size={13}
+                                        className={clsx('transition-transform', isExpanded && 'rotate-180')}
+                                      />
+                                    </button>
+
+                                    {isExpanded && (
+                                      <div className="mt-1 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 space-y-1 animate-in fade-in">
+                                        {checklist.map((item, idx) => (
+                                          <div
+                                            key={item.id || idx}
+                                            className="flex items-start gap-1.5 text-[11px] leading-tight"
+                                          >
+                                            {item.completed ? (
+                                              <span className="text-emerald-600 font-black shrink-0">✓</span>
+                                            ) : (
+                                              <span className={clsx('shrink-0 font-bold', isAssignOverdue ? 'text-rose-500' : 'text-slate-400')}>
+                                                ○
+                                              </span>
+                                            )}
+                                            <span
+                                              className={clsx(
+                                                item.completed
+                                                  ? 'line-through text-slate-400 dark:text-slate-500'
+                                                  : isAssignOverdue
+                                                  ? 'text-rose-600 dark:text-rose-400 font-semibold'
+                                                  : 'text-slate-700 dark:text-slate-300'
+                                              )}
+                                            >
+                                              {item.text}
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
                                 {assign.notes && (
-                                  <div className="mt-1 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 text-[11px] text-slate-600 dark:text-slate-300 italic border-l-2 border-ocean-500 leading-snug">
+                                  <div className="mt-0.5 p-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/80 text-[11px] text-slate-600 dark:text-slate-300 italic border-l-2 border-ocean-500 leading-snug">
                                     <span className="font-bold not-italic text-slate-700 dark:text-slate-200">Note: </span>
                                     &quot;{assign.notes}&quot;
                                   </div>
@@ -625,6 +800,100 @@ export default function DutyManagementView({ staffMembers = [] }) {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Checklist Builder */}
+              <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Lucide.ListTodo size={15} className="text-ocean-600" />
+                    <span>Duty Checklist / Todo Items</span>
+                  </label>
+                  <span className="text-[11px] font-extrabold text-ocean-600 dark:text-ocean-400">
+                    {checklistItems.length} item{checklistItems.length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-snug">
+                  Assigned staff will see this as a todo list, track percentage completed, and cannot mark the duty Final Done until all items are checked.
+                </p>
+
+                {/* Quick template suggestions */}
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Quick Preset Tasks:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      'Verify passenger passport & visa',
+                      'Confirm baggage allowance',
+                      'Check-in & issue boarding pass',
+                      'Send WhatsApp departure update',
+                      'Escort passenger to boarding gate',
+                    ].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => handleAddChecklistPreset(preset)}
+                        className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-ocean-50 dark:hover:bg-ocean-950/40 text-slate-600 hover:text-ocean-700 dark:text-slate-300 dark:hover:text-ocean-300 text-[10px] font-bold transition-all border border-slate-200 dark:border-slate-700 active:scale-95"
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Input to add custom item */}
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="Type a todo item and press Add (or Enter)..."
+                    value={newChecklistText}
+                    onChange={(e) => setNewChecklistText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddChecklistItem()
+                      }
+                    }}
+                    className="flex-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-ocean-500/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddChecklistItem}
+                    className="px-3.5 py-2 bg-ocean-600 hover:bg-ocean-700 text-white rounded-xl text-xs font-bold transition-all shrink-0 active:scale-95"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                {/* Checklist items list */}
+                {checklistItems.length > 0 && (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pt-1">
+                    {checklistItems.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <span className="h-5 w-5 rounded-full bg-ocean-100 dark:bg-ocean-950 text-ocean-700 dark:text-ocean-300 flex items-center justify-center text-[10px] font-black shrink-0">
+                            {index + 1}
+                          </span>
+                          <span className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {item.text}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveChecklistItem(index)}
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
+                          title="Remove item"
+                        >
+                          <Lucide.Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Notification Channels Preview (Requirement 29: Notification Preview) */}

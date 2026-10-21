@@ -62,6 +62,34 @@ async function request(path, { method = 'GET', body, baseUrl, signal, token } = 
 
     // Handle Token Expiry & Auto-Refresh
     if (res.status === 401) {
+      const isAuthEndpoint =
+        path.includes('/api/auth/login') ||
+        path.includes('/api/auth/register') ||
+        path.includes('/api/auth/forgot-password') ||
+        path.includes('/api/auth/reset-password')
+
+      // If it's an authentication action (login, register, etc.), 401 is simply an auth failure.
+      // Do NOT trigger session-expired or clear storage.
+      if (isAuthEndpoint) {
+        const authData = await res.json().catch(() => null)
+        throw {
+          status: 401,
+          code: authData?.code || 'AUTH_FAILED',
+          message: authData?.message || 'Authentication failed. Please check your credentials.',
+        }
+      }
+
+      // If request was made without an authToken, it was an unauthenticated call.
+      // There was no active authenticated session to expire.
+      if (!authToken) {
+        const unauthData = await res.json().catch(() => null)
+        throw {
+          status: 401,
+          code: unauthData?.code || 'UNAUTHORIZED',
+          message: unauthData?.message || 'Authentication required.',
+        }
+      }
+
       const refreshToken = localStorage.getItem('refreshToken')
       const isRefreshEndpoint = path.includes('/api/auth/refresh')
       
@@ -107,19 +135,34 @@ async function request(path, { method = 'GET', body, baseUrl, signal, token } = 
       localStorage.removeItem('admin_role')
       localStorage.removeItem('lastActivityTime')
 
-      const expireMsg = data?.message || 'Your session has expired. Please sign in again to continue.'
-      sessionStorage.setItem('session_expired_notice', expireMsg)
+      const expireMsg = 'Your session has expired. Please sign in again to continue.'
 
+      // Only trigger session expired notice & modal if user was on a protected/authenticated route
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('dnarai:session-expired', {
-            detail: {
-              code: data?.code || 'SESSION_EXPIRED',
-              message: expireMsg,
-              url: window.location.pathname,
-            },
-          })
-        )
+        const pathname = window.location.pathname
+        const isPublicOrAuthPage =
+          pathname === '/' ||
+          pathname === '/login' ||
+          pathname === '/register' ||
+          pathname === '/forgot-password' ||
+          pathname === '/super-admin/login' ||
+          pathname === '/admin/login' ||
+          pathname === '/about' ||
+          pathname.startsWith('/blog') ||
+          pathname === '/time-converter'
+
+        if (!isPublicOrAuthPage) {
+          sessionStorage.setItem('session_expired_notice', expireMsg)
+          window.dispatchEvent(
+            new CustomEvent('dnarai:session-expired', {
+              detail: {
+                code: data?.code || 'SESSION_EXPIRED',
+                message: expireMsg,
+                url: pathname,
+              },
+            })
+          )
+        }
       }
 
       throw {
@@ -371,6 +414,15 @@ export async function updateDutyAssignmentNotes({ assignmentId, notes, baseUrl, 
   return request(`/api/duties/assignments/${assignmentId}/notes`, {
     method: 'PATCH',
     body: { notes },
+    baseUrl,
+    token,
+  })
+}
+
+export async function updateDutyChecklist({ assignmentId, checklist, itemId, completed, baseUrl, token } = {}) {
+  return request(`/api/duties/assignments/${assignmentId}/checklist`, {
+    method: 'PATCH',
+    body: { checklist, itemId, completed },
     baseUrl,
     token,
   })

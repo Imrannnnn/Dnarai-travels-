@@ -13,6 +13,10 @@ export default function LoginPage() {
         const stored = sessionStorage.getItem('session_expired_notice')
         if (stored) {
             sessionStorage.removeItem('session_expired_notice')
+            const lower = stored.toLowerCase()
+            if (lower.includes('bearer') || lower.includes('jwt') || lower.includes('token') || lower.includes('unauthorized')) {
+                return ''
+            }
             return stored
         }
         return ''
@@ -132,19 +136,10 @@ export default function LoginPage() {
 
                     </form>
 
-                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center space-y-3">
+                    <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 text-center">
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                             {"Don't"} have an account? <Link to="/register" className="text-ocean-600 dark:text-ocean-400 font-bold hover:underline underline-offset-4">Create One</Link>
                         </p>
-                        <div className="pt-2">
-                            <Link
-                                to="/super-admin"
-                                className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-ocean-600 dark:text-slate-400 dark:hover:text-ocean-400 py-1.5 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            >
-                                <ShieldCheck size={15} className="text-ocean-500" />
-                                <span>Agency Staff & Super Admin Sign In &rarr;</span>
-                            </Link>
-                        </div>
                     </div>
                 </div>
 

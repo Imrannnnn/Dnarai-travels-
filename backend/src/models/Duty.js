@@ -57,6 +57,12 @@ const DutySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    checklist: [
+      {
+        id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
+        text: { type: String, required: true, trim: true },
+      },
+    ],
   },
   { timestamps: true }
 );

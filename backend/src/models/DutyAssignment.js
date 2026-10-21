@@ -40,6 +40,24 @@ const DutyAssignmentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    checklist: [
+      {
+        id: { type: String, default: () => new mongoose.Types.ObjectId().toString() },
+        text: { type: String, required: true, trim: true },
+        completed: { type: Boolean, default: false },
+        completedAt: { type: Date },
+      },
+    ],
+    percentageDone: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    overdueAlertSentAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

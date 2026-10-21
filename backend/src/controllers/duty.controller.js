@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Duty } from '../models/Duty.js';
 import { DutyAssignment } from '../models/DutyAssignment.js';
 import { User } from '../models/User.js';
@@ -22,6 +23,101 @@ function isOverdue(dueDate, dueTime = '23:59') {
   }
 }
 
+/**
+ * Background / on-demand checker for overdue duty assignments.
+ * If deadline passed and not completed, notify admins with percentage done and incomplete items.
+ */
+export async function checkOverdueDutyChecklists() {
+  try {
+    const overdueAssignments = await DutyAssignment.find({
+      status: { $in: ['pending', 'in_progress'] },
+      overdueAlertSentAt: null,
+    })
+      .populate('dutyId')
+      .populate('staffId', 'name email role');
+
+    const admins = await User.find({ role: 'admin' });
+    if (!admins || admins.length === 0) return { checked: 0, alerted: 0 };
+
+    let alertedCount = 0;
+
+    for (const assign of overdueAssignments) {
+      const duty = assign.dutyId;
+      if (!duty) continue;
+
+      if (isOverdue(duty.dueDate, duty.dueTime)) {
+        // Mark as overdue & record alert timestamp to prevent duplicate notifications
+        assign.status = 'overdue';
+        assign.overdueAlertSentAt = new Date();
+        await assign.save();
+
+        const staffName = assign.staffId?.name || assign.staffId?.email || 'Staff Member';
+        const dutyTitle = duty.title;
+        const totalCount = assign.checklist?.length || 0;
+        const completedCount = assign.checklist?.filter((i) => i.completed).length || 0;
+        const percentageDone = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : assign.percentageDone || 0;
+        const incompleteItems = (assign.checklist || []).filter((i) => !i.completed).map((i) => i.text);
+
+        for (const admin of admins) {
+          try {
+            // 1. In-App Notification
+            await Notification.create({
+              recipientUserId: admin._id,
+              type: 'duty_overdue',
+              title: '⚠️ Task Deadline Alert: Duty Incomplete',
+              message: totalCount > 0
+                ? `⚠️ ${staffName} reached deadline with ${percentageDone}% completed (${completedCount}/${totalCount} items) on "${dutyTitle}". Remaining: ${incompleteItems.slice(0, 3).join(', ')}${incompleteItems.length > 3 ? '...' : ''}`
+                : `⚠️ ${staffName} did not complete duty "${dutyTitle}" before deadline (${duty.dueDate} at ${duty.dueTime}).`,
+              deliveryMethod: 'in_app',
+              isAdminOnly: true,
+              relatedDutyId: duty._id,
+              dedupeKey: `duty_overdue:${assign._id}:${admin._id}`,
+            }).catch((err) => {
+              if (err?.code !== 11000) console.error('[Notification] overdue alert err:', err);
+            });
+
+            // 2. Web Push Notification
+            PushService.sendPushNotification(admin, {
+              title: '⚠️ Task Deadline Missed',
+              body: totalCount > 0
+                ? `${staffName} reached deadline with ${percentageDone}% completed on "${dutyTitle}".`
+                : `${staffName} missed deadline for "${dutyTitle}".`,
+              url: '/super-admin?tab=duties',
+              type: 'duty_overdue',
+              dutyId: String(duty._id),
+            }).catch((err) => console.error(`[Push] Overdue alert to ${admin.email} failed:`, err));
+
+            // 3. Email Alert
+            if (admin.email) {
+              EmailService.sendDutyOverdueAdminEmail({
+                adminEmail: admin.email,
+                adminName: admin.name,
+                staffName,
+                dutyTitle,
+                dueDate: duty.dueDate,
+                dueTime: duty.dueTime,
+                percentageDone,
+                completedCount,
+                totalCount,
+                incompleteItems,
+                dashboardUrl: `${process.env.CORS_ORIGIN || 'https://dnaraitravels.com'}/super-admin?tab=duties`,
+              }).catch((err) => console.error(`[Email] Overdue alert to ${admin.email} failed:`, err));
+            }
+          } catch (notifErr) {
+            console.error(`[Duty] Failed sending overdue alert to admin ${admin._id}:`, notifErr);
+          }
+        }
+        alertedCount++;
+      }
+    }
+
+    return { checked: overdueAssignments.length, alerted: alertedCount };
+  } catch (error) {
+    console.error('[checkOverdueDutyChecklists] Error running overdue check:', error);
+    return { error: error.message };
+  }
+}
+
 export const dutyController = {
   /**
    * Create a new duty and resolve dynamic/manual assignments
@@ -38,11 +134,29 @@ export const dutyController = {
         staffIds = [], // Array of User IDs
         sendPush = true,
         sendEmail = true,
+        checklist = [],
       } = req.body;
 
       if (!title || !dueDate) {
         return res.status(400).json({ ok: false, message: 'Title and dueDate are required' });
       }
+
+      // Normalize checklist items
+      const normalizedChecklist = Array.isArray(checklist)
+        ? checklist
+            .map((item) => {
+              if (typeof item === 'string') {
+                const text = item.trim();
+                return text ? { id: new mongoose.Types.ObjectId().toString(), text } : null;
+              }
+              if (item && typeof item === 'object') {
+                const text = (item.text || '').trim();
+                return text ? { id: item.id || new mongoose.Types.ObjectId().toString(), text } : null;
+              }
+              return null;
+            })
+            .filter(Boolean)
+        : [];
 
       // 1. Create the primary Duty
       const duty = await Duty.create({
@@ -56,6 +170,7 @@ export const dutyController = {
         sendEmail,
         createdBy: req.user.sub,
         status: 'pending',
+        checklist: normalizedChecklist,
       });
 
       // 2. Resolve recipients
@@ -101,6 +216,13 @@ export const dutyController = {
             assignmentSource,
             status: 'pending',
             assignedAt: new Date(),
+            checklist: normalizedChecklist.map((c) => ({
+              id: c.id,
+              text: c.text,
+              completed: false,
+              completedAt: null,
+            })),
+            percentageDone: 0,
           });
           assignments.push(assignment);
 
@@ -172,6 +294,9 @@ export const dutyController = {
    */
   async getDuties(req, res, next) {
     try {
+      // Trigger background check for overdue duty checklists
+      checkOverdueDutyChecklists().catch((e) => console.error('[checkOverdueDutyChecklists]', e));
+
       const { status, staffId, priority, date } = req.query;
       const filter = {};
 
@@ -348,10 +473,24 @@ export const dutyController = {
         return res.status(400).json({ ok: false, message: 'Duty has been cancelled' });
       }
 
+      // Check if duty has checklist items and require 100% completion
+      if (assignment.checklist && assignment.checklist.length > 0) {
+        const incomplete = assignment.checklist.filter((item) => !item.completed);
+        if (incomplete.length > 0) {
+          return res.status(400).json({
+            ok: false,
+            message: `Cannot complete duty: ${incomplete.length} checklist item${incomplete.length > 1 ? 's' : ''} not yet completed. Please check off all items before finalizing.`,
+            incompleteCount: incomplete.length,
+            percentageDone: assignment.percentageDone,
+          });
+        }
+      }
+
       const completedAt = new Date();
 
       // 1. Update DutyAssignment
       assignment.status = 'completed';
+      assignment.percentageDone = 100;
       assignment.completedAt = completedAt;
       assignment.completedBy = userId;
       if (notes) assignment.notes = notes;
@@ -524,6 +663,97 @@ export const dutyController = {
         ok: true,
         message: 'Duty notes updated successfully',
         assignment,
+      });
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  /**
+   * Update checklist items on a duty assignment, recalculate percentage, and save
+   */
+  async updateDutyChecklist(req, res, next) {
+    try {
+      const { id } = req.params;
+      const { checklist, itemId, completed } = req.body;
+      const userId = req.user.sub;
+      const userRole = req.user.role;
+
+      const assignment = await DutyAssignment.findById(id).populate('dutyId');
+      if (!assignment) {
+        return res.status(404).json({ ok: false, message: 'Duty assignment not found' });
+      }
+
+      // Security check: Only assigned staff or admin can update checklist
+      if (String(assignment.staffId) !== String(userId) && userRole !== 'admin') {
+        return res.status(403).json({
+          ok: false,
+          message: 'Access denied: You are not authorized to update this checklist',
+        });
+      }
+
+      if (assignment.status === 'completed') {
+        return res.status(400).json({ ok: false, message: 'Cannot update checklist of a completed duty' });
+      }
+
+      // Update specific item or whole checklist array
+      if (itemId !== undefined && completed !== undefined) {
+        const item = assignment.checklist.find(
+          (i) => String(i.id) === String(itemId) || String(i._id) === String(itemId)
+        );
+        if (item) {
+          item.completed = Boolean(completed);
+          item.completedAt = completed ? new Date() : null;
+        }
+      } else if (Array.isArray(checklist)) {
+        // Map from passed array
+        const map = new Map(checklist.map((c) => [String(c.id || c._id), Boolean(c.completed)]));
+        for (const item of assignment.checklist) {
+          const key = String(item.id || item._id);
+          if (map.has(key)) {
+            const isComp = map.get(key);
+            item.completed = isComp;
+            item.completedAt = isComp ? (item.completedAt || new Date()) : null;
+          }
+        }
+      }
+
+      // Recalculate percentage
+      const totalCount = assignment.checklist.length;
+      const completedCount = assignment.checklist.filter((i) => i.completed).length;
+      const percentageDone = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+      assignment.percentageDone = percentageDone;
+
+      if (percentageDone > 0 && assignment.status === 'pending') {
+        assignment.status = 'in_progress';
+      } else if (percentageDone === 0 && assignment.status === 'in_progress') {
+        assignment.status = 'pending';
+      }
+
+      await assignment.save();
+
+      // If duty was pending and now in_progress, reflect on parent Duty
+      if (assignment.dutyId && assignment.dutyId.status === 'pending' && percentageDone > 0) {
+        await Duty.findByIdAndUpdate(assignment.dutyId._id, { status: 'in_progress' });
+      }
+
+      // Audit log
+      await AuditLog.create({
+        actorUserId: userId,
+        actorType: 'user',
+        action: 'UPDATE_DUTY_CHECKLIST',
+        entityType: 'DutyAssignment',
+        entityId: assignment._id,
+        diff: { percentageDone, completedCount, totalCount },
+      }).catch((e) => console.error('[AuditLog] updateDutyChecklist error:', e));
+
+      res.json({
+        ok: true,
+        message: 'Checklist updated successfully',
+        assignment,
+        percentageDone,
+        completedCount,
+        totalCount,
       });
     } catch (err) {
       next(err);

@@ -1000,6 +1000,98 @@ export const EmailService = {
   },
 
   /**
+   * Send duty incomplete past deadline alert email to Admin / Super Admin
+   */
+  async sendDutyOverdueAdminEmail({
+    adminEmail,
+    adminName,
+    staffName,
+    dutyTitle,
+    dueDate,
+    dueTime,
+    percentageDone = 0,
+    completedCount = 0,
+    totalCount = 0,
+    incompleteItems = [],
+    dashboardUrl
+  }) {
+    const transporter = getTransporter();
+    if (!transporter) return { ok: false, error: 'Transporter not configured' };
+
+    const actionUrl = dashboardUrl || `${process.env.CORS_ORIGIN || 'https://dnaraitravels.com'}/super-admin?tab=duties`;
+
+    const incompleteListHtml = incompleteItems.length > 0
+      ? incompleteItems.map((item) => `
+        <li style="margin-bottom: 6px; font-size: 13px; color: #DC2626; font-weight: 600;">
+          ✗ ${item}
+        </li>
+      `).join('')
+      : '<li style="font-size: 13px; color: #DC2626;">Duty was not marked completed before deadline.</li>';
+
+    const content = `
+      <tr>
+        <td style="padding: 40px 30px; background-color: #ffffff; border-radius: 16px;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="display: inline-block; padding: 6px 16px; background-color: #FEF2F2; color: #DC2626; border-radius: 9999px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+              ⚠️ Task Deadline Alert
+            </span>
+            <h2 style="margin: 16px 0 8px 0; font-size: 22px; font-weight: 800; color: ${COLORS.NAVY}; letter-spacing: -0.5px;">Task Incomplete Past Deadline</h2>
+            <p style="margin: 0; font-size: 15px; color: ${COLORS.SLATE};">
+              Hello ${adminName || 'Admin'}, duty assigned to <strong>${staffName}</strong> has exceeded its deadline and remains incomplete.
+            </p>
+          </div>
+
+          <div style="margin: 25px 0; padding: 20px; background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 14px;">
+            <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Task Title</p>
+            <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 800; color: #0F172A;">${dutyTitle}</p>
+            
+            <p style="margin: 0 0 4px 0; font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Scheduled Deadline</p>
+            <p style="margin: 0 0 16px 0; font-size: 14px; font-weight: 700; color: #DC2626;">${dueDate} at ${dueTime}</p>
+
+            <p style="margin: 0 0 6px 0; font-size: 11px; font-weight: 800; color: #64748B; text-transform: uppercase; letter-spacing: 0.5px;">Staff Completion Progress</p>
+            <div style="margin: 0 0 14px 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 13px; font-weight: 800; color: #0F172A;">${percentageDone}% Completed</span>
+                <span style="font-size: 12px; font-weight: 700; color: #64748B;">${completedCount} of ${totalCount} items finished</span>
+              </div>
+              <div style="width: 100%; height: 10px; background-color: #E2E8F0; border-radius: 9999px; overflow: hidden;">
+                <div style="width: ${percentageDone}%; height: 100%; background-color: ${percentageDone > 50 ? '#0284C7' : '#EF4444'}; border-radius: 9999px;"></div>
+              </div>
+            </div>
+
+            <div style="margin-top: 16px; padding: 14px; background-color: #FFF5F5; border: 1px solid #FEE2E2; border-left: 4px solid #EF4444; border-radius: 8px;">
+              <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 800; color: #991B1B; text-transform: uppercase;">Incomplete Checklist Items (${incompleteItems.length}):</p>
+              <ul style="margin: 0; padding-left: 18px;">
+                ${incompleteListHtml}
+              </ul>
+            </div>
+          </div>
+
+          <div style="text-align: center; margin: 30px 0 10px 0;">
+            <a href="${actionUrl}" style="display: inline-block; padding: 14px 32px; background-color: ${COLORS.NAVY}; color: #ffffff; text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);">
+              Review Staff Tasks in Portal
+            </a>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    try {
+      await transporter.sendMail({
+        from: `"Dnarai Operations" <${process.env.EMAIL}>`,
+        to: adminEmail,
+        subject: `⚠️ Task Deadline Passed: ${staffName} on "${dutyTitle}" (${percentageDone}% Done)`,
+        html: getEmailWrapper(content, `Duty "${dutyTitle}" assigned to ${staffName} is past deadline and only ${percentageDone}% completed.`),
+        attachments: getAttachments()
+      });
+      return { ok: true };
+    } catch (error) {
+      console.error('[EmailService] Duty overdue alert email failed:', error);
+      return { ok: false, error: error.message };
+    }
+  },
+
+  /**
    * Send daily duty briefing email to on-duty staff
    * Includes: "You are on duty today, stay active please", shift info, travels today, assigned tasks
    */
