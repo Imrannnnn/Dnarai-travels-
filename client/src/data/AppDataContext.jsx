@@ -309,11 +309,11 @@ export function AppDataProvider({ children }) {
     try {
       await action()
       setOverlay({ show: true, message: 'Success', status: 'success' })
-      await new Promise(r => setTimeout(r, 1500))
+      await new Promise(r => setTimeout(r, 400))
     } catch (err) {
       console.error(err)
       setOverlay({ show: true, message: err.message || 'Action failed', status: 'error' })
-      await new Promise(r => setTimeout(r, 2000))
+      await new Promise(r => setTimeout(r, 1200))
     } finally {
       setOverlay({ show: false, message: '', status: 'loading' })
     }

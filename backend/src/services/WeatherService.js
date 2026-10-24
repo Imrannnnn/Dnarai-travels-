@@ -136,4 +136,120 @@ export const WeatherService = {
       };
     }
   },
+
+  cToF(c) {
+    return Math.round((c * 9) / 5 + 32);
+  },
+
+  generateAutomatedWeatherSummary({
+    tempMaxC = 32,
+    tempMinC = 21,
+    apparentTempMaxC = 35,
+    rainProb = 50,
+    weatherCode = 95,
+    windGustsMph = 25,
+    humidity = 78,
+  }) {
+    const highF = this.cToF(tempMaxC);
+    const lowF = this.cToF(tempMinC);
+    const apparentF = this.cToF(apparentTempMaxC);
+
+    let thermalFeel = 'Warm and pleasant';
+    let tempBand = `Highs around ${highF}°F/${tempMaxC}°C`;
+
+    if (highF >= 90) {
+      thermalFeel = humidity > 60 ? 'Hot and highly humid' : 'Hot and sunny';
+      tempBand = `Highs in the lower 90s°F/${tempMaxC - 1}°C–${tempMaxC}°C`;
+    } else if (highF >= 80) {
+      thermalFeel = humidity > 65 ? 'Warm with noticeable humidity' : 'Warm and pleasantly sunny';
+      tempBand = `Highs around the lower-to-mid 80s°F/${tempMaxC - 1}°C–${tempMaxC + 1}°C`;
+    } else if (highF >= 65) {
+      thermalFeel = 'Mild and comfortably pleasant';
+      tempBand = `Highs in the 70s°F/${tempMaxC - 1}°C–${tempMaxC + 1}°C`;
+    } else if (highF >= 50) {
+      thermalFeel = 'Cool and crisp with fresh air';
+      tempBand = `Highs in the 50s–60s°F/${tempMaxC - 1}°C–${tempMaxC + 1}°C`;
+    } else {
+      thermalFeel = 'Cold winter conditions';
+      tempBand = `Highs near ${highF}°F/${tempMaxC}°C`;
+    }
+
+    let heatIndexPhrase = '';
+    if (apparentF >= 98 && apparentF > highF + 3) {
+      heatIndexPhrase = `, heat index up to ${apparentF}°F`;
+    }
+
+    let skyPhrase = 'mostly sunny skies';
+    if ([95, 96, 99].includes(weatherCode) || (rainProb >= 40 && highF >= 80)) {
+      skyPhrase = `mostly sunny skies turning to a ${rainProb || 50}% chance of afternoon thunderstorms`;
+    } else if (rainProb >= 50) {
+      skyPhrase = `overcast skies with a ${rainProb}% chance of steady rain showers`;
+    } else if (rainProb >= 30) {
+      skyPhrase = `partly cloudy skies with an isolated ${rainProb}% chance of brief showers`;
+    } else {
+      skyPhrase = 'abundant sunshine and clear skies';
+    }
+
+    let windPhrase = windGustsMph >= 20 ? ` and breezy conditions (gusts up to ${windGustsMph} mph)` : ' with light breezes';
+    const overnightPhrase = `Overnight lows will cool down to ${Math.max(0, lowF - 4)}°F–${lowF + 3}°F.`;
+
+    return `${thermalFeel} (${tempBand}${heatIndexPhrase}) with ${skyPhrase}${windPhrase}. ${overnightPhrase}`;
+  },
+
+  generateAutomatedClothingAdvice({
+    tempMaxC = 32,
+    tempMinC = 21,
+    rainProb = 50,
+    weatherCode = 95,
+  }) {
+    const highF = this.cToF(tempMaxC);
+    const lowF = this.cToF(tempMinC);
+
+    let daytime = 'Wear loose, lightweight, breathable fabrics for the daytime heat';
+    if (highF < 70) daytime = 'Wear warm knit sweaters, long trousers, and comfortable walking shoes';
+    else if (highF < 80) daytime = 'Opt for comfortable, lightweight cottons or breathable short-sleeve layers';
+
+    let rain = '';
+    if ([95, 96, 99].includes(weatherCode) || rainProb >= 40) {
+      rain = ', carry a packable rain layer for afternoon storms';
+    } else if (rainProb >= 25) {
+      rain = ', carry a compact umbrella or lightweight water-resistant layer';
+    }
+
+    let ac = ', and keep a light jacket for chilly indoor AC and cooler evening lows.';
+    if (lowF < 50) ac = ', and have a medium-weight coat ready for the cold evening hours.';
+
+    return `${daytime}${rain}${ac}`;
+  },
+
+  async getTravelTipForecast({ city = 'Houston', iata = 'IAH', date = null, airportName = '', state = '' }) {
+    const base = await this.getCityForecast({ city, date });
+    const weatherSummary = this.generateAutomatedWeatherSummary({
+      tempMaxC: base.tempC,
+      tempMinC: Math.max(10, base.tempC - 11),
+      apparentTempMaxC: base.tempC + 4,
+      rainProb: 50,
+      weatherCode: 95,
+      windGustsMph: 25,
+      humidity: 78
+    });
+    const clothingAdvice = this.generateAutomatedClothingAdvice({
+      tempMaxC: base.tempC,
+      tempMinC: Math.max(10, base.tempC - 11),
+      rainProb: 50,
+      weatherCode: 95
+    });
+
+    return {
+      iata: (iata || 'IAH').toUpperCase(),
+      city: city || base.location,
+      airportName,
+      state,
+      date,
+      weatherSummary,
+      clothingAdvice,
+      tempC: base.tempC,
+      tempF: this.cToF(base.tempC)
+    };
+  }
 };

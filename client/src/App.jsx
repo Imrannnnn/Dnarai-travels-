@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Layout from './components/Layout'
 import HomePage from './pages/HomePage'
@@ -5,21 +6,31 @@ import AboutPage from './pages/AboutPage'
 import DashboardPage from './pages/DashboardPage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfilePage from './pages/ProfilePage'
-import SuperAdminPage from './pages/SuperAdminPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import BlogListPage from './pages/BlogListPage'
-import BlogPostPage from './pages/BlogPostPage'
-import TimeConverterPage from './pages/TimeConverterPage'
-import FlightQuotationsPage from './pages/FlightQuotationsPage'
-import StaffDutyDashboard from './components/schedule/StaffDutyDashboard'
-import SpreadsheetScheduleView from './components/schedule/SpreadsheetScheduleView'
 import { useAuth } from './data/AuthContext'
 import { useAppData } from './data/AppDataContext'
 import LoadingOverlay from './components/LoadingOverlay'
 import SessionExpiredModal from './components/SessionExpiredModal'
 import NotificationOnboardingModal from './components/NotificationOnboardingModal'
+
+// Code-split heavy routes to drastically reduce initial bundle size and speed up page loading
+const SuperAdminPage = lazy(() => import('./pages/SuperAdminPage'))
+const FlightQuotationsPage = lazy(() => import('./pages/FlightQuotationsPage'))
+const BlogListPage = lazy(() => import('./pages/BlogListPage'))
+const BlogPostPage = lazy(() => import('./pages/BlogPostPage'))
+const TimeConverterPage = lazy(() => import('./pages/TimeConverterPage'))
+import StaffDutyDashboard from './components/schedule/StaffDutyDashboard'
+const SpreadsheetScheduleView = lazy(() => import('./components/schedule/SpreadsheetScheduleView'))
+
+function PageFallback() {
+  return (
+    <div className="min-h-[50vh] flex items-center justify-center p-8">
+      <div className="w-8 h-8 border-3 border-ocean-200 border-t-ocean-600 rounded-full animate-spin"></div>
+    </div>
+  )
+}
 
 function StaffSchedulesRoute() {
   const { user } = useAuth()
@@ -63,7 +74,8 @@ export default function App() {
           status={overlay.status || 'loading'}
         />
       )}
-      <Routes>
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
         {/* Auth Pages */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
@@ -178,6 +190,7 @@ export default function App() {
           }
         />
       </Routes>
+      </Suspense>
     </>
   )
 }

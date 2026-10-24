@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Mail, Lock, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Mail, Lock, ArrowRight, ShieldCheck, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../data/AuthContext'
 import { login as apiLogin, getApiBaseUrl } from '../data/api'
 import { useAppData } from '../data/AppDataContext'
@@ -8,16 +8,21 @@ import { useAppData } from '../data/AppDataContext'
 export default function LoginPage() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
     const [error, setError] = useState('')
     const [sessionExpiredNotice] = useState(() => {
         const stored = sessionStorage.getItem('session_expired_notice')
-        if (stored) {
+        if (stored && typeof stored === 'string') {
             sessionStorage.removeItem('session_expired_notice')
-            const lower = stored.toLowerCase()
+            const trimmed = stored.trim()
+            if (!trimmed || trimmed === '[object Object]') {
+                return ''
+            }
+            const lower = trimmed.toLowerCase()
             if (lower.includes('bearer') || lower.includes('jwt') || lower.includes('token') || lower.includes('unauthorized')) {
                 return ''
             }
-            return stored
+            return trimmed
         }
         return ''
     })
@@ -72,7 +77,7 @@ export default function LoginPage() {
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-ocean-400 via-ocean-600 to-ocean-400"></div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        {sessionExpiredNotice && !error && (
+                        {typeof sessionExpiredNotice === 'string' && sessionExpiredNotice.trim() && !error && (
                             <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-start gap-2.5 animate-in fade-in">
                                 <ShieldCheck size={18} className="text-amber-500 shrink-0 mt-0.5" />
                                 <div>
@@ -116,13 +121,22 @@ export default function LoginPage() {
                                     <Lock size={18} />
                                 </div>
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-ocean-500/20 focus:border-ocean-500 transition-all font-medium"
+                                    className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-4 pl-12 pr-12 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-ocean-500/20 focus:border-ocean-500 transition-all font-medium"
                                     placeholder="••••••••"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(prev => !prev)}
+                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors"
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    title={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                         </div>
 

@@ -140,4 +140,68 @@ describe('Weather Service', () => {
       expect(result.location).toBe('UnknownCity');
     });
   });
+
+  describe('generateAutomatedWeatherSummary', () => {
+    it('generates rich summary with temperatures and sky conditions', () => {
+      const summary = WeatherService.generateAutomatedWeatherSummary({
+        tempMaxC: 33,
+        tempMinC: 21,
+        apparentTempMaxC: 40,
+        rainProb: 50,
+        weatherCode: 95,
+        windGustsMph: 25,
+        humidity: 78
+      });
+
+      expect(summary).toContain('Hot and highly humid');
+      expect(summary).toContain('Highs in the lower 90s°F');
+      expect(summary).toContain('50% chance of afternoon thunderstorms');
+      expect(summary).toContain('gusts up to 25 mph');
+      expect(summary).toContain('Overnight lows will cool down to');
+    });
+  });
+
+  describe('generateAutomatedClothingAdvice', () => {
+    it('generates practical clothing advice for warm climates', () => {
+      const advice = WeatherService.generateAutomatedClothingAdvice({
+        tempMaxC: 32,
+        tempMinC: 21,
+        rainProb: 50,
+        weatherCode: 95
+      });
+
+      expect(advice).toContain('Wear loose, lightweight, breathable fabrics for the daytime heat');
+      expect(advice).toContain('carry a packable rain layer for afternoon storms');
+      expect(advice).toContain('keep a light jacket for chilly indoor AC and cooler evening lows');
+    });
+  });
+
+  describe('getTravelTipForecast', () => {
+    it('produces a full travel tip forecast payload', async () => {
+      axios.get.mockResolvedValueOnce({
+        data: {
+          results: [{ latitude: 29.98, longitude: -95.34, name: 'Houston' }]
+        }
+      }).mockResolvedValueOnce({
+        data: {
+          daily: {
+            time: ['2026-10-15'],
+            temperature_2m_max: [32],
+            weathercode: [95]
+          }
+        }
+      });
+
+      const tip = await WeatherService.getTravelTipForecast({
+        city: 'Houston',
+        iata: 'IAH',
+        date: '2026-10-15'
+      });
+
+      expect(tip.iata).toBe('IAH');
+      expect(tip.city).toBe('Houston');
+      expect(tip.weatherSummary).toBeTruthy();
+      expect(tip.clothingAdvice).toBeTruthy();
+    });
+  });
 });

@@ -14,6 +14,7 @@ import SpreadsheetScheduleView from '../components/schedule/SpreadsheetScheduleV
 import DutyManagementView from '../components/schedule/DutyManagementView'
 import StaffDutyDashboard from '../components/schedule/StaffDutyDashboard'
 import TravelCardManager from '../components/travelCard/TravelCardManager'
+import WeatherCardManager from '../components/travelCard/WeatherCardManager'
 import PushNotificationToggle from '../components/PushNotificationToggle'
 
 function AirportAutocomplete({ label, onSelect, onChange, initialCity, initialIata }) {
@@ -175,16 +176,21 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     // Login State
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [showPassword, setShowPassword] = useState(false)
     const [loginError, setLoginError] = useState('')
     const [sessionExpiredNotice, setSessionExpiredNotice] = useState(() => {
         const stored = sessionStorage.getItem('session_expired_notice')
-        if (stored) {
+        if (stored && typeof stored === 'string') {
             sessionStorage.removeItem('session_expired_notice')
-            const lower = stored.toLowerCase()
+            const trimmed = stored.trim()
+            if (!trimmed || trimmed === '[object Object]') {
+                return ''
+            }
+            const lower = trimmed.toLowerCase()
             if (lower.includes('bearer') || lower.includes('jwt') || lower.includes('token') || lower.includes('unauthorized')) {
                 return ''
             }
-            return stored
+            return trimmed
         }
         return ''
     })
@@ -271,8 +277,9 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     })
 
     // Navigation & Layout State
-    const [activeTab, setActiveTab] = useState(initialTab || 'overview') // 'overview', 'passengers', 'bookings', 'invoices', 'insights', 'staff', 'schedules', 'duties', 'travel-card', 'alerts'
+    const [activeTab, setActiveTab] = useState(initialTab || 'overview') // 'overview', 'passengers', 'bookings', 'invoices', 'insights', 'staff', 'schedules', 'duties', 'travel-card', 'weather-card', 'alerts'
     const [travelCardPassengerId, setTravelCardPassengerId] = useState(null)
+    const [weatherCardPassengerId, setWeatherCardPassengerId] = useState(null)
 
     useEffect(() => {
         if (initialTab) {
@@ -323,9 +330,16 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
     const handleLogout = useCallback((expiredMessage = null) => {
         localStorage.removeItem('admin_token')
         localStorage.removeItem('admin_role')
-        if (expiredMessage) {
-            sessionStorage.setItem('session_expired_notice', expiredMessage)
-            setSessionExpiredNotice(expiredMessage)
+        const validNotice = typeof expiredMessage === 'string' && expiredMessage.trim() && expiredMessage !== '[object Object]'
+            ? expiredMessage.trim()
+            : null
+
+        if (validNotice) {
+            sessionStorage.setItem('session_expired_notice', validNotice)
+            setSessionExpiredNotice(validNotice)
+        } else {
+            sessionStorage.removeItem('session_expired_notice')
+            setSessionExpiredNotice('')
         }
         setToken(null)
         setRole(null)
@@ -1290,7 +1304,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
 
                     <div className="bg-white rounded-3xl p-8 shadow-2xl">
                         <form className="space-y-6" onSubmit={handleLogin}>
-                            {sessionExpiredNotice && !loginError && (
+                            {typeof sessionExpiredNotice === 'string' && sessionExpiredNotice.trim() && !loginError && (
                                 <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-xs font-bold flex items-start gap-2.5 animate-in fade-in">
                                     <Lucide.ShieldAlert size={16} className="text-amber-600 shrink-0 mt-0.5" />
                                     <div>
@@ -1311,10 +1325,25 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Password</label>
-                                    <input
-                                        type="password" required value={password} onChange={e => setPassword(e.target.value)}
-                                        className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium focus:border-ocean-500 focus:outline-none focus:bg-white transition-all"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            required
+                                            value={password}
+                                            onChange={e => setPassword(e.target.value)}
+                                            className="w-full rounded-xl border-2 border-slate-200 bg-slate-50 px-4 py-3 pr-11 text-sm font-medium focus:border-ocean-500 focus:outline-none focus:bg-white transition-all"
+                                            placeholder="••••••••"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(prev => !prev)}
+                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none p-1 transition-colors"
+                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                            title={showPassword ? 'Hide password' : 'Show password'}
+                                        >
+                                            {showPassword ? <Lucide.EyeOff size={18} /> : <Lucide.Eye size={18} />}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1470,6 +1499,25 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                 </button>
 
                                 <button
+                                    onClick={() => setActiveTab('weather-card')}
+                                    title="Generate Weather Travel Tip Card & Destination Climate Advice"
+                                    className={clsx(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all relative group",
+                                        activeTab === 'weather-card'
+                                            ? "bg-[#00456E] text-white shadow-md shadow-[#00456E]/20"
+                                            : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+                                    )}
+                                >
+                                    <Lucide.SunMedium size={18} className={clsx(activeTab === 'weather-card' ? "text-amber-400" : "text-slate-400 group-hover:text-amber-400 shrink-0")} />
+                                    {!isSidebarCollapsed && <span className="flex-1 text-left truncate">Weather Card</span>}
+                                    {!isSidebarCollapsed && (
+                                        <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                                            TIP
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
                                     onClick={() => setActiveTab('insights')}
                                     title="Travel Insights & Blog Management"
                                     className={clsx(
@@ -1605,7 +1653,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
 
                         <div className="flex items-center gap-1">
                             <button
-                                onClick={handleLogout}
+                                onClick={() => handleLogout()}
                                 className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
                                 title="Sign Out"
                             >
@@ -1991,12 +2039,12 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                 title="Flight Quotation Comparisons"
                             >
                                 <Lucide.PlaneTakeoff size={15} className="text-ocean-600" />
-                                <span>Quotations</span>
+                                <span>Flight Quotations</span>
                             </button>
 
                             {/* Sign Out */}
                             <button
-                                onClick={handleLogout}
+                                onClick={() => handleLogout()}
                                 className="p-2 sm:p-2.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
                                 title="Sign Out"
                             >
@@ -2056,7 +2104,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                             className="w-full sm:w-auto px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100/80 text-amber-800 border border-amber-200 rounded-xl text-xs font-semibold transition-all active:scale-95 flex items-center justify-center gap-1.5"
                                         >
                                             <Lucide.Sparkles size={15} className="text-amber-600" />
-                                            <span>Quotes</span>
+                                            <span>Flight Quotations</span>
                                         </button>
                                     </div>
                                 </div>
@@ -2226,8 +2274,8 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                                                     b.status === 'confirmed'
                                                                         ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                                                                         : b.status === 'completed'
-                                                                        ? "bg-slate-100 text-slate-600 border border-slate-200"
-                                                                        : "bg-amber-50 text-amber-700 border border-amber-100"
+                                                                            ? "bg-slate-100 text-slate-600 border border-slate-200"
+                                                                            : "bg-amber-50 text-amber-700 border border-amber-100"
                                                                 )}>
                                                                     {b.status}
                                                                 </span>
@@ -2487,6 +2535,17 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                                     >
                                                         <Lucide.CreditCard size={18} />
                                                     </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setWeatherCardPassengerId(p.id || p._id);
+                                                            setActiveTab('weather-card');
+                                                        }}
+                                                        className="p-2 text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                                                        title="Generate Weather Travel Tip Card"
+                                                    >
+                                                        <Lucide.SunMedium size={18} />
+                                                    </button>
                                                     <Lucide.ChevronRight size={18} className="text-slate-300" />
                                                 </div>
                                             </div>
@@ -2559,6 +2618,17 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                                                     title="Generate Travel Card"
                                                                 >
                                                                     <Lucide.CreditCard size={15} />
+                                                                </button>
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setWeatherCardPassengerId(p.id || p._id);
+                                                                        setActiveTab('weather-card');
+                                                                    }}
+                                                                    className="p-2 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                                                                    title="Generate Weather Travel Tip Card"
+                                                                >
+                                                                    <Lucide.SunMedium size={15} />
                                                                 </button>
                                                                 <button
                                                                     onClick={(e) => { e.stopPropagation(); setSelectedPassenger(p); setIsPassengerDetailsModalOpen(true); }}
@@ -2782,8 +2852,8 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                                 {bookingFilter === 'active'
                                                     ? 'There are currently no active flight schedules. You can view completed flights in History.'
                                                     : bookingFilter === 'history'
-                                                    ? 'There are no past or completed flight records in the ledger.'
-                                                    : 'Flight bookings added to passengers will appear here.'}
+                                                        ? 'There are no past or completed flight records in the ledger.'
+                                                        : 'Flight bookings added to passengers will appear here.'}
                                             </p>
                                             {bookingFilter === 'active' && completedBookings.length > 0 && (
                                                 <button
@@ -3412,6 +3482,17 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                             />
                         )}
 
+                        {/* SECTION: WEATHER TRAVEL TIP CARD GENERATOR */}
+                        {activeTab === 'weather-card' && (
+                            <WeatherCardManager
+                                passengers={passengers}
+                                bookings={bookings}
+                                initialPassengerId={weatherCardPassengerId || travelCardPassengerId}
+                                onClose={() => setActiveTab('overview')}
+                                onSwitchToTravelCard={() => setActiveTab('travel-card')}
+                            />
+                        )}
+
                         {/* SECTION 7: SYSTEM ALERTS */}
                         {activeTab === 'alerts' && (
                             <div className="space-y-6">
@@ -3903,7 +3984,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                 <Lucide.FileText className="text-ocean-600 shrink-0" size={18} />
                                 <h4 className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Passport Credentials</h4>
                             </div>
-                            
+
                             {selectedPassenger.documentNumberFull || selectedPassenger.passportName ? (
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="sm:col-span-2">
@@ -4946,7 +5027,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                         >
                                             <Lucide.ChevronLeft size={16} />
                                         </button>
-                                        
+
                                         {(() => {
                                             if (totalInsightPages <= 7) {
                                                 return Array.from({ length: totalInsightPages }, (_, i) => i + 1);
@@ -4989,7 +5070,7 @@ export default function SuperAdminPage({ initialTab = 'overview' } = {}) {
                                                 </button>
                                             );
                                         })}
-                                        
+
                                         <button
                                             disabled={insightPage === totalInsightPages}
                                             onClick={() => setInsightPage(prev => Math.min(prev + 1, totalInsightPages))}

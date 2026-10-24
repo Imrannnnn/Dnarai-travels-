@@ -6,13 +6,14 @@ import { resolveStateName } from '../../utils/travelCardTime'
  * Inlined D.Narai Enterprise Logo (SVG)
  * Direct vector paths guarantee 100% sharp rendering in html2canvas with zero CORS or network issues.
  */
-export function DNaraiLogoVector({ className = 'h-10 w-auto' }) {
+export function DNaraiLogoVector({ className = 'h-10 w-auto', style = {}, ...props }) {
   return (
     <svg
       viewBox="0 0 271.54 120.19"
       className={className}
       xmlns="http://www.w3.org/2000/svg"
-      style={{ overflow: 'visible', display: 'block' }}
+      style={{ overflow: 'visible', display: 'block', ...style }}
+      {...props}
     >
       <defs>
         <style>{`
@@ -379,7 +380,7 @@ const TravelCardPreview = forwardRef(function TravelCardPreview(
                                   letterSpacing: '0.03em',
                                   color: '#cbd5e1',
                                   marginRight: '4px',
-                                  maxWidth: '85px',
+                                  maxWidth: '74px',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
@@ -518,7 +519,7 @@ const TravelCardPreview = forwardRef(function TravelCardPreview(
                                   letterSpacing: '0.03em',
                                   color: '#cbd5e1',
                                   marginRight: '4px',
-                                  maxWidth: '85px',
+                                  maxWidth: '74px',
                                   overflow: 'hidden',
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',

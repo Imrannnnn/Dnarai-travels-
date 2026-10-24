@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import * as Lucide from 'lucide-react'
-import html2canvas from 'html2canvas'
 import clsx from 'clsx'
 import TravelCardPreview from './TravelCardPreview'
+import WeatherCardManager from './WeatherCardManager'
 import { convertFlightTimeToWat, resolveStateName } from '../../utils/travelCardTime'
+import { exportCardAsImage, exportCardAsPdf } from '../../utils/cardExport'
 
 // Helper to generate a blank itinerary leg
 const createEmptyLeg = () => ({
@@ -27,8 +28,11 @@ export default function TravelCardManager({
   passengers = [],
   bookings = [],
   initialPassengerId = null,
+  initialCardType = 'travel',
   onClose,
 }) {
+  const [cardType, setCardType] = useState(initialCardType)
+
   // Mode: 'manual' (unregistered/walk-in client) | 'registered' (existing passenger in database)
   const [clientMode, setClientMode] = useState(
     initialPassengerId ? 'registered' : 'manual'
@@ -50,8 +54,22 @@ export default function TravelCardManager({
   const [legs, setLegs] = useState([createEmptyLeg()])
   const [isExporting, setIsExporting] = useState(null) // 'png' | 'jpeg' | null
   const [exportFeedback, setExportFeedback] = useState(null)
+  const [isFullscreenPreview, setIsFullscreenPreview] = useState(false)
+  const [zoomLevel, setZoomLevel] = useState(1)
+  const [viewMode, setViewMode] = useState('split') // 'split' | 'full'
 
   const cardRef = useRef(null)
+
+  // Close fullscreen modal with Escape key
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape' && isFullscreenPreview) {
+        setIsFullscreenPreview(false)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isFullscreenPreview])
 
   // If initialPassengerId changes, set client mode to registered
   useEffect(() => {
@@ -278,7 +296,7 @@ export default function TravelCardManager({
     })
   }
 
-  // High-Resolution Export (PNG or JPEG)
+  // High-Resolution & Perfectly Aligned Export (PNG, JPEG, or PDF)
   const handleExport = async (format = 'png') => {
     const target = document.getElementById('dnarai-travel-card-export-target')
     if (!target) {
@@ -288,52 +306,23 @@ export default function TravelCardManager({
 
     try {
       setIsExporting(format)
-      setExportFeedback(`Generating high-resolution ${format.toUpperCase()}...`)
-
-      // Wait for fonts and rendering to be completely settled
-      if (document.fonts && document.fonts.ready) {
-        await document.fonts.ready
-      }
-      await new Promise((r) => setTimeout(r, 200))
-
-      const canvas = await html2canvas(target, {
-        scale: 3, // 3x resolution for razor-sharp clarity and clear text
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: 1200,
-        onclone: (clonedDoc) => {
-          const el = clonedDoc.getElementById('dnarai-travel-card-export-target')
-          if (el) {
-            el.style.width = '540px'
-            el.style.minWidth = '540px'
-            el.style.maxWidth = '540px'
-            el.style.margin = '0 auto'
-            el.style.transform = 'none'
-          }
-        },
-      })
-
-      const mimeType = format === 'jpeg' ? 'image/jpeg' : 'image/png'
-      const dataUrl = canvas.toDataURL(mimeType, 0.98)
+      setExportFeedback(`Generating pixel-perfect ${format.toUpperCase()}...`)
 
       const cleanName = (passengerName || 'Client')
         .replace(/[^a-zA-Z0-9]/g, '_')
         .slice(0, 25)
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-      const filename = `DNARAI_StaffTravelCard_${cleanName}_${dateStr}.${format === 'jpeg' ? 'jpg' : 'png'}`
 
-      const link = document.createElement('a')
-      link.href = dataUrl
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      if (format === 'pdf') {
+        const filename = `DNARAI_StaffTravelCard_${cleanName}_${dateStr}.pdf`
+        await exportCardAsPdf(target, { filename, scale: 2, backgroundColor: '#ffffff' })
+        setExportFeedback(`Downloaded ${filename} successfully!`)
+      } else {
+        const filename = `DNARAI_StaffTravelCard_${cleanName}_${dateStr}.${format === 'jpeg' ? 'jpg' : 'png'}`
+        await exportCardAsImage(target, { filename, format, scale: 2, backgroundColor: '#ffffff' })
+        setExportFeedback(`Downloaded ${filename} successfully!`)
+      }
 
-      setExportFeedback(`Downloaded ${filename} successfully!`)
       setTimeout(() => setExportFeedback(null), 4000)
     } catch (err) {
       console.error('Failed to export travel card:', err)
@@ -344,8 +333,71 @@ export default function TravelCardManager({
     }
   }
 
+  if (cardType === 'weather') {
+    return (
+      <div className="space-y-4">
+        {/* Card Type Switcher Bar */}
+        <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit">
+          <button
+            type="button"
+            onClick={() => setCardType('travel')}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-slate-600 hover:text-slate-900"
+          >
+            <Lucide.Plane size={14} className="text-ocean-600" />
+            <span>Flight Timeline & WAT Card</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setCardType('weather')}
+            className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-white text-slate-900 shadow-xs"
+          >
+            <Lucide.SunMedium size={14} className="text-amber-500" />
+            <span>Weather Travel Tip Card</span>
+            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800">
+              Active
+            </span>
+          </button>
+        </div>
+
+        <WeatherCardManager
+          passengers={passengers}
+          bookings={bookings}
+          initialPassengerId={selectedPassengerId || initialPassengerId}
+          onClose={onClose}
+          onSwitchToTravelCard={() => setCardType('travel')}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto w-full max-w-full overflow-x-hidden">
+      {/* Card Type Switcher Bar */}
+      <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl w-fit">
+        <button
+          type="button"
+          onClick={() => setCardType('travel')}
+          className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 bg-white text-slate-900 shadow-xs"
+        >
+          <Lucide.Plane size={14} className="text-ocean-600" />
+          <span>Flight Timeline & WAT Card</span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-ocean-100 text-ocean-800">
+            Active
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setCardType('weather')}
+          className="px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 text-slate-600 hover:text-slate-900"
+        >
+          <Lucide.SunMedium size={14} className="text-amber-500" />
+          <span>Weather Travel Tip Card</span>
+          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-800">
+            New
+          </span>
+        </button>
+      </div>
+
       {/* ======================================================== */}
       {/* TOP HEADER & EXPORT ACTIONS                              */}
       {/* ======================================================== */}
@@ -382,6 +434,49 @@ export default function TravelCardManager({
             <span>Reset Card</span>
           </button>
 
+          {/* View Mode Toggle: Split vs Full Page */}
+          <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/60 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setViewMode('split')}
+              className={clsx(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5',
+                viewMode === 'split'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+              title="Split View (Form + Live Card)"
+            >
+              <Lucide.Columns size={13} />
+              <span>Split View</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('full')}
+              className={clsx(
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5',
+                viewMode === 'full'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              )}
+              title="Full Page Live Card"
+            >
+              <Lucide.Eye size={13} className="text-ocean-600" />
+              <span>Full Page</span>
+            </button>
+          </div>
+
+          {/* Full Screen Modal Preview Button */}
+          <button
+            type="button"
+            onClick={() => setIsFullscreenPreview(true)}
+            className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-ocean-200 bg-ocean-50/70 hover:bg-ocean-100/70 text-ocean-900 text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs"
+            title="Preview full card on entire screen"
+          >
+            <Lucide.Maximize2 size={14} className="text-ocean-600" />
+            <span>Full Screen Preview</span>
+          </button>
+
           <button
             disabled={isExporting !== null}
             onClick={() => handleExport('png')}
@@ -408,6 +503,20 @@ export default function TravelCardManager({
             <span>Export JPEG</span>
           </button>
 
+          <button
+            disabled={isExporting !== null}
+            onClick={() => handleExport('pdf')}
+            className="px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            title="Export as Document PDF"
+          >
+            {isExporting === 'pdf' ? (
+              <Lucide.Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Lucide.FileText size={15} className="text-rose-600" />
+            )}
+            <span>PDF</span>
+          </button>
+
           {onClose && (
             <button
               onClick={onClose}
@@ -428,12 +537,34 @@ export default function TravelCardManager({
         </div>
       )}
 
+      {/* Full Page Banner Alert */}
+      {viewMode === 'full' && (
+        <div className="bg-ocean-50/80 border border-ocean-200 rounded-2xl p-3.5 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 font-bold text-ocean-900">
+            <Lucide.Eye size={16} className="text-ocean-600 shrink-0" />
+            <span>Full-Page Card Preview Mode — All itinerary legs and live adjustments are active.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setViewMode('split')}
+            className="px-3 py-1.5 rounded-xl bg-white border border-ocean-200 font-bold text-ocean-900 hover:bg-ocean-100/50 shadow-2xs flex items-center gap-1.5 transition-all"
+          >
+            <Lucide.Columns size={13} />
+            <span>Switch to Form + Preview</span>
+          </button>
+        </div>
+      )}
+
       {/* ======================================================== */}
-      {/* MAIN TWO-COLUMN WORKSPACE: CONTROLS & LIVE PREVIEW       */}
+      {/* MAIN WORKSPACE: CONTROLS & LIVE PREVIEW                  */}
       {/* ======================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className={clsx(
+        "grid gap-8 items-start",
+        viewMode === 'split' ? "grid-cols-1 lg:grid-cols-12" : "grid-cols-1 max-w-2xl mx-auto w-full"
+      )}>
         {/* LEFT COLUMN: ITINERARY CONTROLS (6 cols on lg) */}
-        <div className="lg:col-span-6 space-y-5">
+        {viewMode === 'split' && (
+          <div className="lg:col-span-6 space-y-5">
           {/* CARD 1: CLIENT SELECTION & DETAILS */}
           <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -860,9 +991,13 @@ export default function TravelCardManager({
             </button>
           </div>
         </div>
+      )}
 
-        {/* RIGHT COLUMN: LIVE CARD PREVIEW (6 cols on lg) */}
-        <div className="lg:col-span-6 flex flex-col items-center">
+        {/* RIGHT COLUMN: LIVE CARD PREVIEW */}
+        <div className={clsx(
+          "flex flex-col items-center",
+          viewMode === 'split' ? "lg:col-span-6" : "w-full"
+        )}>
           <div className="w-full flex items-center justify-between mb-3 px-2">
             <div className="flex items-center gap-2">
               <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -871,8 +1006,16 @@ export default function TravelCardManager({
               </span>
             </div>
 
-            <div className="text-[11px] font-bold text-slate-400">
-              High-Res Vector Export (560px)
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsFullscreenPreview(true)}
+                className="px-2.5 py-1 rounded-lg bg-ocean-50 hover:bg-ocean-100 border border-ocean-200 text-ocean-900 text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                title="Preview full on screen"
+              >
+                <Lucide.Maximize2 size={12} className="text-ocean-600" />
+                <span>Full on Screen</span>
+              </button>
             </div>
           </div>
 
@@ -915,9 +1058,151 @@ export default function TravelCardManager({
               )}
               <span>Download JPEG</span>
             </button>
+
+            <button
+              disabled={isExporting !== null}
+              onClick={() => handleExport('pdf')}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2"
+            >
+              {isExporting === 'pdf' ? (
+                <Lucide.Loader2 size={15} className="animate-spin" />
+              ) : (
+                <Lucide.FileText size={15} className="text-rose-600" />
+              )}
+              <span>PDF</span>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* ======================================================== */}
+      {/* FULLSCREEN IMMERSIVE LIGHTBOX MODAL                      */}
+      {/* ======================================================== */}
+      {isFullscreenPreview && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col p-3 sm:p-5 animate-in fade-in duration-200 overflow-hidden"
+        >
+          {/* Top Bar inside Fullscreen Modal */}
+          <div className="w-full flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-xl bg-ocean-500/20 text-ocean-400 flex items-center justify-center border border-ocean-500/30">
+                <Lucide.Plane size={18} />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <span>D.Narai Staff Travel Card</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-ocean-400/20 text-ocean-300 border border-ocean-400/30">
+                    Live Fullscreen View
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-300">
+                  {passengerName || 'Client'} • {legs.length} Flight Leg{legs.length === 1 ? '' : 's'}
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Controls: Zoom & Actions */}
+            <div className="flex items-center gap-2">
+              {/* Zoom Buttons */}
+              <div className="hidden sm:flex items-center bg-white/10 rounded-xl p-1 border border-white/10 text-white text-xs">
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel((z) => Math.max(0.6, Number((z - 0.1).toFixed(1))))}
+                  className="px-2.5 py-1 hover:bg-white/10 rounded-lg font-bold"
+                  title="Zoom Out"
+                >
+                  <Lucide.ZoomOut size={14} />
+                </button>
+                <span className="px-2 font-mono text-[11px] text-ocean-300">
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel((z) => Math.min(1.5, Number((z + 0.1).toFixed(1))))}
+                  className="px-2.5 py-1 hover:bg-white/10 rounded-lg font-bold"
+                  title="Zoom In"
+                >
+                  <Lucide.ZoomIn size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(1)}
+                  className="px-2 py-1 hover:bg-white/10 rounded-lg text-[10px] uppercase font-bold text-slate-300"
+                >
+                  100%
+                </button>
+              </div>
+
+              {/* Download actions right inside modal */}
+              <button
+                type="button"
+                onClick={() => handleExport('png')}
+                disabled={isExporting !== null}
+                className="px-3 py-1.5 rounded-xl bg-[#00456E] hover:bg-[#0c3b5e] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm border border-white/20"
+              >
+                <Lucide.Download size={14} />
+                <span>Save PNG</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExport('jpeg')}
+                disabled={isExporting !== null}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                <Lucide.Image size={14} />
+                <span>JPEG</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleExport('pdf')}
+                disabled={isExporting !== null}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                <Lucide.FileText size={14} className="text-rose-400" />
+                <span>PDF</span>
+              </button>
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setIsFullscreenPreview(false)}
+                className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-all ml-1 border border-white/10"
+                title="Close Fullscreen (Esc)"
+              >
+                <Lucide.X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Card Presentation Area (Centered & Scrollable) */}
+          <div className="flex-1 overflow-auto flex items-center justify-center p-4">
+            <div
+              style={{
+                transform: `scale(${zoomLevel})`,
+                transformOrigin: 'center center',
+                transition: 'transform 0.15s ease-out',
+              }}
+            >
+              <TravelCardPreview
+                passengerName={passengerName}
+                greeting={greeting}
+                cardTitle={cardTitle}
+                itineraryLegs={legs}
+                showTimes={showTimes}
+              />
+            </div>
+          </div>
+
+          {/* Modal Bottom Instruction */}
+          <div className="w-full text-center text-[11px] text-slate-400 pt-2 shrink-0">
+            Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white font-mono text-[10px]">ESC</kbd> or click the close button to return to the itinerary editor.
+          </div>
+        </div>
+      )}
     </div>
   )
 }

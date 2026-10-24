@@ -977,7 +977,7 @@ export default function FlightQuotationsPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   )}
                 >
-                  Inbound
+                  Return
                 </button>
               </div>
             </div>
@@ -1044,7 +1044,7 @@ export default function FlightQuotationsPage() {
               {formData.tripType === 'return' && (
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Inbound Date *
+                    Return Date*
                   </label>
                   <input
                     type="date"
